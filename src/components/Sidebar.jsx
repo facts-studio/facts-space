@@ -40,7 +40,7 @@ export default function Sidebar({ user }) {
   return (
     <aside className="w-[248px] shrink-0 h-screen sticky top-0 hidden md:flex flex-col border-r border-border px-4 py-6">
       <div className="px-3 mb-8 flex items-center gap-3">
-        <FctsMark className="w-7 h-7 text-brand shrink-0" />
+        <FctsMark className="h-5 w-auto text-brand shrink-0" />
         <div>
           <p className="section-eyebrow mb-0.5">F*cts Studio</p>
           <p className="font-display text-[18px] text-ink leading-none">

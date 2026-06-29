@@ -27,7 +27,7 @@ export default function LoginPage() {
     <main className="min-h-screen grid place-items-center px-6">
       <div className="w-full max-w-[400px] fade-up">
         <div className="text-center mb-8">
-          <FctsMark className="w-10 h-10 text-brand mx-auto mb-5" />
+          <FctsMark className="h-9 w-auto text-brand mx-auto mb-5" />
           <p className="section-eyebrow mb-3">F*cts Studio</p>
           <h1 className="font-display text-[34px] leading-[1.1] text-ink">
             Portal <span className="title-italic">interno</span>
