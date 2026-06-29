@@ -124,7 +124,7 @@ export default function VacacionesChecker() {
   const result = useMemo(() => (start ? evaluate(start, end) : null), [start, end]);
 
   return (
-    <aside className="mt-8 lg:mt-0 lg:sticky lg:top-8 lg:h-[calc(100vh-4rem)] lg:overflow-y-auto lg:border-l lg:border-border lg:pl-7">
+    <aside className="mt-8 lg:mt-0 lg:sticky lg:top-8 lg:border-l lg:border-border lg:pl-7">
       <h2 className="section-eyebrow mb-1.5">Comprobador</h2>
       <p className="text-title text-ink mb-1">¿Puedo pedir estos días?</p>
       <p className="text-small text-muted mb-5">Introduce las fechas y te decimos si es viable según la política.</p>
