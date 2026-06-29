@@ -81,31 +81,24 @@ export default function TodayHero({ nombre = "equipo", events = [] }) {
   const fechaRaw = now.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
   const fecha = fechaRaw.charAt(0).toUpperCase() + fechaRaw.slice(1);
 
-  // Frases con iconos + caras intercaladas.
-  const frases = [];
-  if (deVacaciones.length === 0) {
-    frases.push(<><Ico>🏖️</Ico> hoy no hay nadie de vacaciones</>);
-  } else {
-    frases.push(
-      <>
-        <Ico>🏖️</Ico> hoy {joinNodes(deVacaciones.map((n) => <Face name={n} />))}{" "}
-        {deVacaciones.length === 1 ? "está" : "están"} de vacaciones
-      </>
+  // Una sola frase, fluida. Un único avatar (la persona de vacaciones).
+  const vac =
+    deVacaciones.length === 0 ? (
+      <>Hoy no hay nadie de vacaciones</>
+    ) : deVacaciones.length === 1 ? (
+      <>Hoy <Face name={deVacaciones[0]} /> está de vacaciones</>
+    ) : (
+      <>Hoy {joinNodes(deVacaciones.map((n) => <Hi>{n}</Hi>))} están de vacaciones</>
     );
-  }
+
+  const partes = [];
   if (proxCumple) {
-    frases.push(
-      <>
-        <Ico>🎂</Ico> el próximo cumple es el de <Face name={proxCumple.who} /> ({rel(proxCumple.dias)})
-      </>
+    partes.push(
+      <>{deVacaciones.length ? "el próximo cumpleaños" : ", aunque el próximo cumpleaños"} es el de <Hi>{proxCumple.who}</Hi>, {rel(proxCumple.dias)}</>
     );
   }
   if (proxFestivo) {
-    frases.push(
-      <>
-        <Ico>🗓️</Ico> y el siguiente festivo, <Hi>«{proxFestivo.title}»</Hi> {rel(proxFestivo.dias)}
-      </>
-    );
+    partes.push(<>el siguiente festivo será <Hi>«{proxFestivo.title}»</Hi></>);
   }
 
   return (
@@ -117,10 +110,11 @@ export default function TodayHero({ nombre = "equipo", events = [] }) {
       </h1>
 
       <p className="mt-7 text-[22px] md:text-[30px] leading-[1.4] tracking-[-0.01em] text-mutedSoft max-w-[44ch]">
-        {frases.map((f, i) => (
+        {vac}
+        {partes.map((p, i) => (
           <span key={i}>
-            {i > 0 && ". "}
-            {f}
+            {i === 0 ? (deVacaciones.length ? "; " : " ") : ", y "}
+            {p}
           </span>
         ))}
         .
