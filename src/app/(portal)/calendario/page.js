@@ -4,7 +4,7 @@ import { EVENTS } from "@/lib/mock";
 
 export default function CalendarioPage() {
   return (
-    <div className="max-w-[1100px]">
+    <div>
       <PageHeader
         eyebrow="Equipo"
         title="Calendario"
