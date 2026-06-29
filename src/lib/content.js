@@ -129,21 +129,21 @@ export const POLICIES = [
     updated: "2026-06-20",
     min: 6,
     body: [
-      { stats: [
-        { n: "22", label: "días hábiles", sub: "de vacaciones al año" },
+      { figures: [
+        { n: "22", label: "días hábiles al año", sub: "de vacaciones" },
         { n: "+1", label: "tu cumpleaños 🎂", sub: "día libre extra" },
         { n: "15", label: "festivos oficiales", sub: "en 2026" },
       ] },
       { p: "Las vacaciones pueden distribuirse libremente a lo largo del año, siempre que se garantice la cobertura del equipo y se aprueben según la carga de trabajo." },
 
-      { h3: "Reparto orientativo por trimestre" },
-      { quarters: [
-        { q: "Q1", months: "Ene–Mar", days: "8–10", level: "Carga baja", tone: "success", fill: "85%", note: "Carga de trabajo regular." },
-        { q: "Q2", months: "Abr–Jun", days: "1–3", level: "Carga alta", tone: "warn", fill: "25%", note: "Campañas y eventos." },
-        { q: "Q3", months: "Jul–Sep", days: "8–10", level: "Carga baja", tone: "success", fill: "85%", note: "Carga de trabajo regular." },
-        { q: "Q4", months: "Oct–Dic", days: "1–3", level: "Bloqueado", tone: "danger", fill: "15%", note: "Black Friday y cierre anual." },
+      { h3: "El año de un vistazo" },
+      { loadbar: [
+        { q: "Q1", months: "Ene–Mar", days: "8–10", level: "Carga baja", tone: "success" },
+        { q: "Q2", months: "Abr–Jun", days: "1–3", level: "Carga alta", tone: "warn" },
+        { q: "Q3", months: "Jul–Sep", days: "8–10", level: "Carga baja", tone: "success" },
+        { q: "Q4", months: "Oct–Dic", days: "1–3", level: "Bloqueado", tone: "danger" },
       ] },
-      { note: "Los días son orientativos para evitar acumulaciones a final de año, no un reparto fijo. Diciembre puede tener algún día más en su primera mitad; se evitarán vacaciones de ±5 días la semana antes de Navidad." },
+      { note: "Los días son orientativos para evitar acumulaciones a final de año, no un reparto fijo." },
 
       { h3: "Cómo funciona según la carga" },
       { ul: [
@@ -153,13 +153,13 @@ export const POLICIES = [
       ] },
 
       { h3: "Antelación para solicitar" },
-      { timeline: [
+      { deflist: [
         { label: "1–3 días", value: "15 días naturales de antelación" },
         { label: "Más de 3 días", value: "30 días naturales de antelación" },
         { label: "Periodos de +5 días", value: "Comunicar antes del 15 de marzo" },
       ] },
 
-      { note: "🎂 El día de tu cumpleaños es fiesta. Si cae en fin de semana, se mueve a un día próximo (normalmente el viernes anterior o el lunes siguiente)." },
+      { note: "🎂 El día de tu cumpleaños es fiesta. Si cae en fin de semana, se mueve a un día próximo (el viernes anterior o el lunes siguiente)." },
       { p: "Se gestionan por Holded, se comunican al responsable de área y se registran en el calendario compartido. El objetivo es simple: que todos sepamos cuándo alguien estará fuera para planificar y evitar bloqueos." },
     ],
   },

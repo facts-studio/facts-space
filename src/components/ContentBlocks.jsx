@@ -41,9 +41,59 @@ export default function ContentBlocks({ blocks = [] }) {
           </ul>
         );
         if (b.note) return (
-          <p key={i} className="text-body text-muted leading-relaxed bg-surface/55 rounded-xl px-4 py-3.5">
+          <p key={i} className="border-l-2 border-borderStrong/50 pl-4 text-body text-muted leading-relaxed italic">
             {b.note}
           </p>
+        );
+        // Banda de cifras (sin caja): grandes números con divisores.
+        if (b.figures) return (
+          <div key={i} className="flex flex-wrap gap-y-5">
+            {b.figures.map((f, j) => (
+              <div key={j} className="pr-8 mr-8 border-r border-border last:border-r-0 last:mr-0 last:pr-0">
+                <div className="font-display text-[40px] leading-none tracking-[-0.02em] text-ink">{f.n}</div>
+                <div className="text-small text-ink mt-2">{f.label}</div>
+                {f.sub && <div className="text-micro text-mutedSoft">{f.sub}</div>}
+              </div>
+            ))}
+          </div>
+        );
+        // Barra de carga anual: un único gráfico con segmentos por trimestre.
+        if (b.loadbar) return (
+          <div key={i}>
+            <div className="flex gap-1.5">
+              {b.loadbar.map((q, j) => (
+                <div key={j} className="flex-1">
+                  <div className={`h-2.5 rounded-full ${tone(q.tone).bar}`} />
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-4 mt-4">
+              {b.loadbar.map((q, j) => {
+                const tn = tone(q.tone);
+                return (
+                  <div key={j}>
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-body font-medium text-ink">{q.q}</span>
+                      <span className="text-micro text-mutedSoft">{q.months}</span>
+                    </div>
+                    <div className="font-display text-[22px] text-ink leading-none mt-1">{q.days} <span className="text-small text-muted">días</span></div>
+                    <div className={`text-[10.5px] uppercase tracking-[0.1em] font-medium mt-1.5 ${tn.text}`}>{q.level}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+        // Lista de definición (filas hairline, sin caja).
+        if (b.deflist) return (
+          <dl key={i} className="border-t border-border">
+            {b.deflist.map((it, j) => (
+              <div key={j} className="flex items-center justify-between gap-4 py-3.5 border-b border-border">
+                <dt className="text-body text-ink">{it.label}</dt>
+                <dd className="text-small text-muted text-right">{it.value}</dd>
+              </div>
+            ))}
+          </dl>
         );
         if (b.table) return (
           <div key={i} className="rounded-2xl bg-surface/55 overflow-hidden">
