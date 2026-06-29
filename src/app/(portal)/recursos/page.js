@@ -3,7 +3,7 @@ import { RESOURCE_CATEGORIES } from "@/lib/mock";
 
 export default function RecursosPage() {
   return (
-    <>
+    <div className="max-w-[1100px]">
       <PageHeader
         eyebrow="Compartido"
         title="Recursos"
@@ -53,6 +53,6 @@ export default function RecursosPage() {
           </section>
         ))}
       </div>
-    </>
+    </div>
   );
 }

@@ -12,9 +12,9 @@ const SHORTCUTS = [
 
 export default function HomePage() {
   return (
-    <div className="grid lg:grid-cols-[1fr_320px] gap-8 lg:gap-10 items-start">
+    <div className="grid lg:grid-cols-[minmax(0,1fr)_320px] gap-8 lg:gap-12 items-start">
       {/* Columna principal */}
-      <div className="min-w-0">
+      <div className="min-w-0 max-w-[820px]">
         <TodayHero nombre="equipo" events={EVENTS} />
 
         <div className="grid sm:grid-cols-3 gap-4 mb-4">

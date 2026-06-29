@@ -4,7 +4,7 @@ import { EVENTS, EVENT_TYPES, TEAM, fmtRange, fmtDate } from "@/lib/mock";
 
 export default function AdminPage() {
   return (
-    <>
+    <div className="max-w-[1100px]">
       <PageHeader
         eyebrow="Gestión"
         title="Administrar"
@@ -64,6 +64,6 @@ export default function AdminPage() {
           </tbody>
         </table>
       </section>
-    </>
+    </div>
   );
 }

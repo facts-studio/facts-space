@@ -3,7 +3,7 @@ import { POLICY_CATEGORIES, fmtDate } from "@/lib/mock";
 
 export default function PoliticasPage() {
   return (
-    <>
+    <div className="max-w-[1100px]">
       <PageHeader
         eyebrow="Cómo trabajamos"
         title="Políticas"
@@ -35,6 +35,6 @@ export default function PoliticasPage() {
           </section>
         ))}
       </div>
-    </>
+    </div>
   );
 }

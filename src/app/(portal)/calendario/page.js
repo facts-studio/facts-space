@@ -6,7 +6,7 @@ import { EVENTS, EVENT_TYPES, fmtRange } from "@/lib/mock";
 export default function CalendarioPage() {
   const sorted = [...EVENTS].sort((a, b) => a.start.localeCompare(b.start));
   return (
-    <>
+    <div className="max-w-[1100px]">
       <PageHeader
         eyebrow="Equipo"
         title="Calendario"
@@ -37,6 +37,6 @@ export default function CalendarioPage() {
           </ul>
         </section>
       </div>
-    </>
+    </div>
   );
 }
