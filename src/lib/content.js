@@ -280,11 +280,11 @@ export const CLIENTS = [
     kind: "Holding",
     desc: "Holding al que damos servicio integral: estrategia, comunicación, diseño y desarrollo de producto.",
     brands: [
-      { id: "tradinglab", name: "TradingLab", desc: "Formación de trading real y sin humo.", url: "" },
-      { id: "tradingmind", name: "TradingMind", desc: "Psicología y mentalidad aplicada al trading.", url: "" },
-      { id: "flickflow", name: "Flickflow", desc: "Herramienta IA de información financiera adaptativa.", url: "" },
-      { id: "benchmark", name: "The Benchmark", desc: "Portal editorial de análisis financiero (Alex Ruiz).", url: "" },
-      { id: "alexruiz", name: "Alex Ruiz", desc: "Marca personal del CEO y figura destacada del sector.", url: "" },
+      { id: "tradinglab", name: "TradingLab", tagline: "Trading sin filtros", desc: "Academia de trading en español: estrategias validadas, mentorías en vivo, psicología y comunidad de +3.000 alumnos.", url: "https://tradinglab.es" },
+      { id: "tradingmind", name: "TradingMind", tagline: "Tu mente, tu mayor activo", desc: "Academia centrada en la mente del trader: gestión emocional, psicología y estrategia con psicólogos y traders.", url: "https://www.tradingmind.es" },
+      { id: "flickflow", name: "Flickflow", tagline: "Datos financieros filtrados por IA", desc: "Plataforma de inteligencia de mercado en tiempo real: gráficos, eventos económicos y asistente de IA (cripto, acciones, forex).", url: "https://flickflow.com" },
+      { id: "benchmark", name: "The Benchmark", tagline: "Sin humo, sin ruido, sin postureo", desc: "Newsletter semanal de análisis financiero de Alex Ruiz: claro, útil y con criterio.", url: "https://thebenchmark.es" },
+      { id: "alexruiz", name: "Alex Ruiz", tagline: "Marca personal · CEO", desc: "Divulgación y análisis de trading y mercados financieros en YouTube. Figura destacada del sector.", url: "https://www.youtube.com/@AlexRuiiz" },
     ],
   },
 ];
