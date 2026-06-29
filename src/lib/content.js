@@ -268,6 +268,42 @@ export const TOOLS = [
     when: ["Guardar y usar cualquier acceso profesional.", "Mantener tu vault actualizado según tus permisos de área."],
     avoid: ["Nunca guardar accesos en notas, Slack o email.", "Está prohibido compartir contraseñas fuera de 1Password."],
   },
+  {
+    id: "claude", name: "Claude", url: "https://claude.ai", tag: "IA · texto", category: "IA y creación",
+    what: "Asistente de IA de Anthropic para redacción, análisis, síntesis y apoyo en código. Acelera tareas de texto y exploración de ideas.",
+    when: ["Redactar, revisar y reescribir textos.", "Resumir, analizar o transformar contenido.", "Brainstorming y apoyo en documentación o código."],
+    avoid: ["No compartir datos sensibles o de clientes sin permiso.", "Revisar y editar siempre lo que genera.", "No es fuente única de verdad."],
+  },
+  {
+    id: "chatgpt", name: "ChatGPT", url: "https://chatgpt.com", tag: "IA · texto", category: "IA y creación",
+    what: "Asistente de IA de OpenAI para texto, ideas, investigación rápida y código.",
+    when: ["Generar borradores y variaciones de copy.", "Explorar enfoques o resolver dudas puntuales.", "Apoyo en tareas técnicas."],
+    avoid: ["No compartir información confidencial.", "Contrastar datos: puede inventar.", "Revisar antes de usar."],
+  },
+  {
+    id: "reve", name: "Reve", url: "https://reve.com", tag: "IA · imagen", category: "IA y creación",
+    what: "Generación de imágenes con IA para conceptos visuales, moodboards y exploración creativa.",
+    when: ["Generar imágenes y direcciones visuales.", "Explorar conceptos rápido antes de producir."],
+    avoid: ["No sustituye el diseño/arte final.", "Cuidar consistencia de marca y derechos de uso."],
+  },
+  {
+    id: "capcut", name: "CapCut", url: "https://www.capcut.com", tag: "Vídeo", category: "IA y creación",
+    what: "Edición de vídeo ágil para redes y contenido: cortes, subtítulos, efectos y plantillas.",
+    when: ["Montar vídeos para redes sociales.", "Subtítulos, recortes y retoques rápidos."],
+    avoid: ["Piezas de marca complejas → Premiere / After Effects.", "Exportar en el formato y resolución acordados."],
+  },
+  {
+    id: "elevenlabs", name: "ElevenLabs", url: "https://elevenlabs.io", tag: "IA · voz", category: "IA y creación",
+    what: "Voz por IA: locución y doblaje sintético de calidad para vídeo, prototipos y contenido.",
+    when: ["Locuciones para vídeo o prototipos.", "Pruebas de narración y voz."],
+    avoid: ["Cuidar licencias y consentimiento de voz.", "No para usos engañosos o suplantación."],
+  },
+  {
+    id: "raindrop", name: "Raindrop", url: "https://raindrop.io", tag: "Referencias", category: "Inspiración y referencias",
+    what: "Gestor de marcadores del estudio: referencias, inspiración y enlaces útiles, organizados por colecciones.",
+    when: ["Guardar inspiración y referencias por área.", "Compartir enlaces útiles con el equipo."],
+    avoid: ["No es archivo de entregables → eso es Drive.", "No sustituye la documentación de proyecto."],
+  },
 ];
 
 // ── Clientes de F*cts ────────────────────────────────────────────────────────
