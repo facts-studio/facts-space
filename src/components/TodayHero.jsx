@@ -134,6 +134,30 @@ export default function TodayHero({ nombre = "equipo", events = [] }) {
     return <><Ico>🏖️</Ico> las vacaciones de <Hi>{e.who}</Hi> el <Hi>{corto(e.start)}</Hi></>;
   };
 
+  // Entradilla y cierre que van variando (deterministas por fecha).
+  const hasContent = hasNow || fill.length > 0;
+  const seed = now.getFullYear() + now.getMonth() * 31 + now.getDate();
+  const pick = (arr) => arr[seed % arr.length];
+  const INTROS_NOW = [
+    "Parece que tenemos algunas cosas.",
+    "Esto es lo que se cuece estos días.",
+    "Un vistazo rápido a la agenda.",
+    "Vamos a ver qué tenemos por aquí.",
+  ];
+  const INTROS_CALM = [
+    "De momento, tranquilo por aquí.",
+    "Poca cosa inmediata, pero atentos.",
+    "Nada urgente ahora mismo.",
+  ];
+  const CLOSINGS = [
+    "Eso es todo por el momento.",
+    "Y poco más por ahora.",
+    "Nada más de momento.",
+    "Lo dicho, a por el día.",
+  ];
+  const intro = hasNow ? pick(INTROS_NOW) : pick(INTROS_CALM);
+  const closing = pick(CLOSINGS);
+
   return (
     <header className="pb-2 mb-8 fade-up">
       <p className="text-caption uppercase text-mutedSoft mb-5">{fecha}</p>
@@ -143,13 +167,8 @@ export default function TodayHero({ nombre = "equipo", events = [] }) {
       </h1>
 
       <p className="mt-7 text-[22px] md:text-[30px] leading-[1.4] tracking-[-0.01em] text-mutedSoft max-w-[44ch]">
-        {!hasNow ? (
-          fill.length > 0 ? (
-            <>Parece que de momento nada por aquí. Lo próximo será {joinNodes(fill.map(nodeFor))}.</>
-          ) : (
-            <>Parece que de momento nada más. Buen momento para avanzar con calma.</>
-          )
-        ) : (
+        {hasContent && <>{intro} </>}
+        {hasNow ? (
           <>
             {vac}
             {partes.map((p, i) => (
@@ -164,7 +183,12 @@ export default function TodayHero({ nombre = "equipo", events = [] }) {
               "."
             )}
           </>
+        ) : fill.length > 0 ? (
+          <>Lo próximo será {joinNodes(fill.map(nodeFor))}.</>
+        ) : (
+          <>Parece que de momento nada más. Buen momento para avanzar con calma.</>
         )}
+        {hasContent && <> {closing}</>}
       </p>
 
       {/* Lo más cercano */}

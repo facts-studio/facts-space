@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { NAV, SECONDARY_NAV } from "@/lib/nav";
 import { createClient } from "@/lib/supabase/client";
 import FctsMark from "@/components/FctsMark";
+import ThemeToggle from "@/components/ThemeToggle";
 
 function NavLink({ href, label, icon, active }) {
   return (
@@ -88,6 +89,7 @@ export default function Sidebar({ user }) {
               </button>
             )}
           </div>
+          <ThemeToggle />
         </div>
       </div>
     </aside>

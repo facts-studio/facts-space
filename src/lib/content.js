@@ -146,10 +146,10 @@ export const POLICIES = [
       { note: "Los días son orientativos para evitar acumulaciones a final de año, no un reparto fijo. Diciembre puede tener algún día más en su primera mitad; se evitarán vacaciones de ±5 días la semana antes de Navidad." },
 
       { h3: "Cómo funciona según la carga" },
-      { cards: [
-        { tone: "success", title: "🟢 Carga baja · Q1 y Q3", items: ["Días sueltos y periodos largos.", "Más flexibilidad para distribuir.", "Sujeto a aprobación por cobertura."] },
-        { tone: "warn", title: "🔘 Carga alta · Q2", items: ["Máximo 2 días laborables seguidos.", "Sin periodos largos.", "Aprobación por carga y cobertura."] },
-        { tone: "danger", title: "❌ Bloqueado · Q4", items: ["Oct y nov: sin vacaciones.", "Dic: solo 1ª mitad, con aprobación.", "Nada ±5 días antes de Navidad."] },
+      { ul: [
+        "🟢 Carga baja (Q1 y Q3): días sueltos y periodos largos, con más flexibilidad. Sujeto a aprobación por cobertura.",
+        "🔘 Carga alta (Q2): máximo 2 días laborables seguidos, sin periodos largos. Aprobación por carga y cobertura.",
+        "❌ Bloqueado (Q4): octubre y noviembre sin vacaciones; diciembre solo en su 1ª mitad con aprobación; nada ±5 días antes de Navidad.",
       ] },
 
       { h3: "Antelación para solicitar" },

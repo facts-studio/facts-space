@@ -12,9 +12,16 @@ export const viewport = {
   themeColor: "#EFEEEB",
 };
 
+// Evita el parpadeo: fija el tema antes de pintar, según preferencia guardada
+// o, si no hay, la del sistema (prefers-color-scheme).
+const themeInit = `(function(){try{var t=localStorage.getItem('theme');var d=t?t==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');}catch(e){}})();`;
+
 export default function RootLayout({ children }) {
   return (
     <html lang="es" className="h-full">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInit }} />
+      </head>
       <body className="min-h-full">{children}</body>
     </html>
   );
