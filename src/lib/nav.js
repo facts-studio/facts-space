@@ -8,6 +8,7 @@ export const NAV = [
 
 // Accesos secundarios (no son navegación diaria).
 export const SECONDARY_NAV = [
+  { href: "/equipo", label: "Equipo", icon: "❖" },
   { href: "/onboarding", label: "Onboarding", icon: "✳", hint: "Para nuevas incorporaciones" },
   { href: "/admin", label: "Administrar", icon: "⚙" },
 ];

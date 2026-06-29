@@ -1,15 +1,15 @@
 // Datos ficticios para previsualizar el sistema completo.
 // En la Fase 1 esto se sustituye por consultas a Supabase.
 
-// photo: en el demo usamos un servicio de avatares (determinista por email).
-// En producción será la foto real subida a Supabase Storage.
-const av = (email) => `https://i.pravatar.cc/80?u=${encodeURIComponent(email)}`;
+// Fotos reales en /public/team. Roles "por definir" hasta confirmarlos.
 export const TEAM = [
-  { id: 1, name: "Álvaro Vigil", role: "Dirección creativa", email: "alvaro@fcts.studio", birthday: "1992-03-14", color: "brand", photo: av("alvaro@fcts.studio") },
-  { id: 2, name: "Marina Soler", role: "Diseño de marca", email: "marina@fcts.studio", birthday: "1995-07-02", color: "info", photo: av("marina@fcts.studio") },
-  { id: 3, name: "Bruno Esteve", role: "Desarrollo", email: "bruno@fcts.studio", birthday: "1990-11-22", color: "violet", photo: av("bruno@fcts.studio") },
-  { id: 4, name: "Lucía Ferrer", role: "Project manager", email: "lucia@fcts.studio", birthday: "1997-01-09", color: "warn", photo: av("lucia@fcts.studio") },
-  { id: 5, name: "Owen Marsh", role: "Motion & 3D", email: "owen@fcts.studio", birthday: "1993-09-30", color: "success", photo: av("owen@fcts.studio") },
+  { id: 1, name: "Álvaro", role: "Dirección creativa", email: "alvaro@fcts.studio", birthday: "1992-03-14", color: "brand", photo: "/team/alvaro.jpg" },
+  { id: 2, name: "Alba", role: "Por definir", email: "alba@fcts.studio", birthday: "1995-07-02", color: "info", photo: "/team/alba.jpg" },
+  { id: 3, name: "Carla", role: "Por definir", email: "carla@fcts.studio", birthday: "1996-05-12", color: "violet", photo: "/team/carla.jpg" },
+  { id: 4, name: "Carles", role: "Por definir", email: "carles@fcts.studio", birthday: "1990-11-22", color: "warn", photo: "/team/carles.jpg" },
+  { id: 5, name: "Lucas", role: "Por definir", email: "lucas@fcts.studio", birthday: "1993-09-30", color: "success", photo: "/team/lucas.jpg" },
+  { id: 6, name: "Mariola", role: "Por definir", email: "mariola@fcts.studio", birthday: "1997-01-09", color: "info", photo: "/team/mariola.jpg" },
+  { id: 7, name: "Samu", role: "Por definir", email: "samu@fcts.studio", birthday: "1994-03-03", color: "brand", photo: "/team/samu.jpg" },
 ];
 
 // Tipos de evento → color del sistema (tokens del design system).
@@ -22,13 +22,13 @@ export const EVENT_TYPES = {
 
 export const EVENTS = [
   { id: 1, type: "festivo", title: "San Juan", start: "2026-06-24", end: "2026-06-24", who: null },
-  { id: 2, type: "hito", title: "Entrega rebrand Aurora", start: "2026-07-03", end: "2026-07-03", who: "Marina Soler" },
-  { id: 3, type: "cumple", title: "Cumpleaños de Marina", start: "2026-07-02", end: "2026-07-02", who: "Marina Soler" },
-  { id: 4, type: "vacaciones", title: "Vacaciones de Bruno", start: "2026-07-07", end: "2026-07-18", who: "Bruno Esteve" },
-  { id: 5, type: "hito", title: "Kickoff proyecto Nimbus", start: "2026-07-10", end: "2026-07-10", who: "Lucía Ferrer" },
+  { id: 2, type: "hito", title: "Entrega rebrand Aurora", start: "2026-07-03", end: "2026-07-03", who: "Carla" },
+  { id: 3, type: "cumple", title: "Cumpleaños de Carla", start: "2026-07-02", end: "2026-07-02", who: "Carla" },
+  { id: 4, type: "vacaciones", title: "Vacaciones de Carles", start: "2026-07-07", end: "2026-07-18", who: "Carles" },
+  { id: 5, type: "hito", title: "Kickoff proyecto Nimbus", start: "2026-07-10", end: "2026-07-10", who: "Mariola" },
   { id: 6, type: "festivo", title: "Festivo local", start: "2026-07-15", end: "2026-07-15", who: null },
-  { id: 7, type: "vacaciones", title: "Vacaciones de Owen", start: "2026-07-21", end: "2026-07-31", who: "Owen Marsh" },
-  { id: 8, type: "hito", title: "Presentación cliente Vela", start: "2026-07-24", end: "2026-07-24", who: "Álvaro Vigil" },
+  { id: 7, type: "vacaciones", title: "Vacaciones de Lucas", start: "2026-07-21", end: "2026-07-31", who: "Lucas" },
+  { id: 8, type: "hito", title: "Presentación cliente Vela", start: "2026-07-24", end: "2026-07-24", who: "Álvaro" },
 ];
 
 export const POLICY_CATEGORIES = [

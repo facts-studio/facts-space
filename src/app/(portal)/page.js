@@ -40,7 +40,7 @@ export default function HomePage() {
           <ul className="grid sm:grid-cols-2 gap-x-8 gap-y-4">
             {TEAM.map((m) => (
               <li key={m.id} className="flex items-center gap-3">
-                <Avatar name={m.name} color={m.color} />
+                <Avatar name={m.name} color={m.color} photo={m.photo} />
                 <div className="min-w-0">
                   <p className="text-small text-ink truncate">{m.name}</p>
                   <p className="text-micro text-mutedSoft truncate">{m.role}</p>

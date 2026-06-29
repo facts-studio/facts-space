@@ -67,6 +67,19 @@ export default function CalendarMonth({ events = [] }) {
       return n;
     });
 
+  // Filtro por persona. null = sin filtro (todas). Set = solo esas personas
+  // (los eventos sin persona —festivos— se siguen mostrando).
+  const [people, setPeople] = useState(null);
+  const togglePerson = (name) =>
+    setPeople((cur) => {
+      const n = new Set(cur || []);
+      n.has(name) ? n.delete(name) : n.add(name);
+      return n.size === 0 ? null : n;
+    });
+  const passPerson = (e) => !people || !e.who || people.has(e.who);
+  const passType = (e) => active.has(e.type);
+  const pass = (e) => passType(e) && passPerson(e);
+
   // Eventos por día (sensible al rango start→end).
   const byDay = useMemo(() => {
     const m = new Map();
@@ -92,7 +105,7 @@ export default function CalendarMonth({ events = [] }) {
     const d = new Date(gridStart); d.setDate(gridStart.getDate() + i); return d;
   });
 
-  const selItems = (selected ? byDay.get(selected) || EMPTY : EMPTY).filter((e) => active.has(e.type));
+  const selItems = (selected ? byDay.get(selected) || EMPTY : EMPTY).filter(pass);
 
   return (
     <div className={`h-[calc(100vh-5rem)] ${selected ? "lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-5 lg:items-stretch" : ""}`}>
@@ -114,32 +127,65 @@ export default function CalendarMonth({ events = [] }) {
           </div>
         </div>
 
-        {/* Filtros por tipo */}
-        <div className="flex flex-wrap items-center gap-1.5 mb-4">
-          {Object.entries(EVENT_TYPES).map(([key, t]) => {
-            const on = active.has(key);
-            return (
+        {/* Filtros: por tipo (izda) · por persona (dcha) */}
+        <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {Object.entries(EVENT_TYPES).map(([key, t]) => {
+              const on = active.has(key);
+              return (
+                <button
+                  key={key}
+                  onClick={() => toggle(key)}
+                  aria-pressed={on}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] border transition active:scale-[0.97] ${
+                    on ? FILTER_ON[t.color] : "bg-transparent text-mutedSoft border-borderStrong/50 hover:text-ink hover:border-borderStrong"
+                  }`}
+                >
+                  <span className={`inline-block w-2 h-2 rounded-full ${on ? DOT[t.color] : "bg-mutedSoft/50"}`} />
+                  {t.label}
+                </button>
+              );
+            })}
+            {active.size < Object.keys(EVENT_TYPES).length && (
               <button
-                key={key}
-                onClick={() => toggle(key)}
-                aria-pressed={on}
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] border transition active:scale-[0.97] ${
-                  on ? FILTER_ON[t.color] : "bg-transparent text-mutedSoft border-borderStrong/50 hover:text-ink hover:border-borderStrong"
-                }`}
+                onClick={() => setActive(new Set(Object.keys(EVENT_TYPES)))}
+                className="ml-1 text-[12px] text-muted hover:text-ink transition px-2 py-1"
               >
-                <span className={`inline-block w-2 h-2 rounded-full ${on ? DOT[t.color] : "bg-mutedSoft/50"}`} />
-                {t.label}
+                Mostrar todo
               </button>
-            );
-          })}
-          {active.size < Object.keys(EVENT_TYPES).length && (
-            <button
-              onClick={() => setActive(new Set(Object.keys(EVENT_TYPES)))}
-              className="ml-1 text-[12px] text-muted hover:text-ink transition px-2 py-1"
-            >
-              Mostrar todo
-            </button>
-          )}
+            )}
+          </div>
+
+          {/* Filtro por persona */}
+          <div className="flex items-center gap-1.5">
+            {people && (
+              <button
+                onClick={() => setPeople(null)}
+                className="text-[12px] text-muted hover:text-ink transition px-1.5"
+              >
+                Todas
+              </button>
+            )}
+            <div className="flex items-center -space-x-1.5">
+              {TEAM.map((m) => {
+                const on = !people || people.has(m.name);
+                return (
+                  <button
+                    key={m.id}
+                    onClick={() => togglePerson(m.name)}
+                    title={m.name}
+                    aria-pressed={on}
+                    className={`rounded-full transition active:scale-95 hover:z-10 ${
+                      on ? "ring-2 ring-bg" : "opacity-35 grayscale ring-2 ring-bg"
+                    }`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={m.photo} alt={m.name} className="w-7 h-7 rounded-full object-cover block" />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
         {/* Cabecera de días */}
@@ -156,7 +202,7 @@ export default function CalendarMonth({ events = [] }) {
             const inMonth = d.getMonth() === month;
             const isToday = k === todayISO;
             const isSel = selected === k;
-            const items = (byDay.get(k) || EMPTY).filter((e) => active.has(e.type));
+            const items = (byDay.get(k) || EMPTY).filter(pass);
             const extra = items.length - MAX_CHIPS;
             return (
               <div

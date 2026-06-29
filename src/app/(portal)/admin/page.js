@@ -51,7 +51,7 @@ export default function AdminPage() {
               <tr key={m.id}>
                 <td>
                   <div className="flex items-center gap-3">
-                    <Avatar name={m.name} color={m.color} size={28} />
+                    <Avatar name={m.name} color={m.color} size={28} photo={m.photo} />
                     <span className="text-ink">{m.name}</span>
                   </div>
                 </td>
