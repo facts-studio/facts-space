@@ -90,7 +90,7 @@ export default function ClientesPage() {
               <button
                 key={b.id}
                 onClick={() => setOpenId(active ? null : b.id)}
-                className={`group rounded-2xl p-6 min-h-[170px] flex flex-col text-left transition ${
+                className={`group rounded-2xl p-6 min-h-[260px] flex flex-col text-left transition ${
                   active ? "bg-surface ring-1 ring-borderStrong" : "bg-surface/55 hover:bg-surface"
                 }`}
               >
