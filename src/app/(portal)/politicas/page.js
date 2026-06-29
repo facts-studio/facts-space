@@ -1,43 +1,46 @@
 import Link from "next/link";
-import PageHeader from "@/components/PageHeader";
-import { POLICIES, POLICY_GROUPS } from "@/lib/content";
-
-const byId = new Map(POLICIES.map((p) => [p.id, p]));
+import { POLICIES } from "@/lib/content";
 
 export default function PoliticasPage() {
   return (
-    <div className="max-w-[1100px]">
-      <PageHeader
-        eyebrow="Cómo trabajamos"
-        title="Políticas"
-        helper="Horarios, vacaciones, comunicación, organización y seguridad del estudio."
-      />
+    <div className="max-w-[1200px]">
+      {/* Cabecera tipo ficha */}
+      <header className="flex items-baseline justify-between mb-6">
+        <p className="font-mono text-[12px] uppercase tracking-[0.16em] text-muted">/ Políticas internas</p>
+        <p className="font-mono text-[12px] text-mutedSoft tabular-nums">{String(POLICIES.length).padStart(2, "0")} / {String(POLICIES.length).padStart(2, "0")}</p>
+      </header>
 
-      <div className="flex flex-col gap-10">
-        {POLICY_GROUPS.map((g) => (
-          <section key={g.name}>
-            <div className="mb-4">
-              <p className="section-eyebrow mb-1">{g.eyebrow}</p>
-              <h2 className="font-display text-[22px] text-ink">{g.name}</h2>
-            </div>
-            <div className="grid sm:grid-cols-2 gap-4">
-              {g.ids.map((id) => {
-                const p = byId.get(id);
-                if (!p) return null;
-                return (
-                  <Link key={id} href={`/politicas/${id}`} className="row-card p-5 group flex flex-col">
-                    <div className="flex items-center gap-2.5 mb-2">
-                      <span className="text-[18px]">{p.icon}</span>
-                      <h3 className="text-title text-ink group-hover:text-brand transition-colors">{p.title}</h3>
-                    </div>
-                    <p className="text-small text-muted leading-relaxed flex-1">{p.summary}</p>
-                    <span className="text-micro text-mutedSoft mt-4">{p.min} min de lectura</span>
-                  </Link>
-                );
-              })}
-            </div>
-          </section>
-        ))}
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {POLICIES.map((p, i) => {
+          const num = String(i + 1).padStart(2, "0");
+          const last = i === POLICIES.length - 1;
+          return (
+            <Link
+              key={p.id}
+              href={`/politicas/${p.id}`}
+              className="group relative rounded-2xl bg-surface border border-border p-6 min-h-[260px] flex flex-col transition hover:border-borderStrong hover:bg-surface2/40"
+            >
+              {/* Cabecera de la ficha */}
+              <div className="flex items-start justify-between">
+                <span className="font-mono text-[13px] text-muted tabular-nums">{num}</span>
+                {last && <span className="w-2.5 h-2.5 rounded-full bg-brand" />}
+              </div>
+
+              <h2 className="font-mono text-[13px] uppercase tracking-[0.1em] text-ink mt-4 leading-snug">
+                {p.title}
+              </h2>
+
+              {/* Detalle abajo */}
+              <div className="mt-auto pt-8">
+                <p className="text-small text-muted leading-relaxed">{p.summary}</p>
+                <div className="flex items-center justify-between mt-5">
+                  <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-mutedSoft">{p.min} min</span>
+                  <span className="text-mutedSoft text-[14px] -translate-x-1 group-hover:translate-x-0 group-hover:text-ink transition">→</span>
+                </div>
+              </div>
+            </Link>
+          );
+        })}
       </div>
     </div>
   );
