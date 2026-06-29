@@ -8,9 +8,9 @@ import { TEAM, EVENTS, EVENT_TYPES, fmtRange, fmtDate } from "@/lib/mock";
 function memberEvents(name) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   return EVENTS
-    .filter((e) => e.who === name && new Date(e.end + "T00:00:00") >= today)
+    .filter((e) => e.who === name)
     .sort((a, b) => a.start.localeCompare(b.start))
-    .slice(0, 5);
+    .map((e) => ({ ...e, done: new Date(e.end + "T00:00:00") < today }));
 }
 
 export default function EquipoPage() {
@@ -79,11 +79,14 @@ export default function EquipoPage() {
 
             {memberEvents(m.name).length > 0 && (
               <div className="mt-6">
-                <h3 className="section-eyebrow mb-3">Próximas ausencias</h3>
+                <h3 className="section-eyebrow mb-3">Eventos del año</h3>
                 <ul className="flex flex-col gap-2">
                   {memberEvents(m.name).map((e) => (
-                    <li key={e.id} className="flex items-center justify-between gap-3">
-                      <span className="text-small text-ink">{fmtRange(e.start, e.end)}</span>
+                    <li key={e.id} className={`flex items-center justify-between gap-3 ${e.done ? "opacity-45" : ""}`}>
+                      <span className="text-small text-ink flex items-center gap-2">
+                        {e.done && <span className="text-mutedSoft">✓</span>}
+                        {fmtRange(e.start, e.end)}
+                      </span>
                       <EventPill color={EVENT_TYPES[e.type].color}>{EVENT_TYPES[e.type].label}</EventPill>
                     </li>
                   ))}
