@@ -84,6 +84,15 @@ export const RESOURCE_CATEGORIES = [
   },
 ];
 
+// Novedades de empresa (lo que NO es un evento de calendario): comunicados,
+// recursos nuevos, políticas actualizadas. Se mezclan con los próximos eventos
+// en el panel de la derecha.
+export const NEWS = [
+  { id: "n1", tone: "brand", icon: "❡", tag: "Políticas", title: "Nueva política de vacaciones", sub: "Revisada para la temporada de verano.", date: "2026-06-26", cta: "Leer", to: "/politicas" },
+  { id: "n2", tone: "success", icon: "✦", tag: "Recursos", title: "Plantillas de propuesta añadidas", sub: "Keynote y Figma listos para usar.", date: "2026-06-24", cta: "Ver", to: "/recursos" },
+  { id: "n3", tone: "info", icon: "✻", tag: "Estudio", title: "Bienvenido, Owen 👋", sub: "Se incorpora al equipo de Motion & 3D.", date: "2026-06-20", cta: null, to: null },
+];
+
 // Helpers de fecha (formato es-ES).
 export function fmtDate(iso) {
   const d = new Date(iso + "T00:00:00");
