@@ -41,12 +41,12 @@ export default function ContentBlocks({ blocks = [] }) {
           </ul>
         );
         if (b.note) return (
-          <p key={i} className="text-body text-muted leading-relaxed bg-surface2/50 border border-border/60 rounded-xl px-4 py-3">
+          <p key={i} className="text-body text-muted leading-relaxed bg-surface/55 rounded-xl px-4 py-3.5">
             {b.note}
           </p>
         );
         if (b.table) return (
-          <div key={i} className="card overflow-hidden">
+          <div key={i} className="rounded-2xl bg-surface/55 overflow-hidden">
             <table className="table">
               <thead><tr>{b.table.head.map((h, j) => <th key={j}>{h}</th>)}</tr></thead>
               <tbody>
@@ -64,7 +64,7 @@ export default function ContentBlocks({ blocks = [] }) {
         if (b.stats) return (
           <div key={i} className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {b.stats.map((s, j) => (
-              <div key={j} className="card p-5">
+              <div key={j} className="rounded-2xl bg-surface/55 p-5">
                 <div className="font-display text-[36px] text-ink leading-none tracking-[-0.02em]">{s.n}</div>
                 <div className="text-small text-ink mt-2.5">{s.label}</div>
                 {s.sub && <div className="text-micro text-mutedSoft mt-0.5">{s.sub}</div>}
@@ -78,7 +78,7 @@ export default function ContentBlocks({ blocks = [] }) {
             {b.quarters.map((q, j) => {
               const tn = tone(q.tone);
               return (
-                <div key={j} className="card p-5 flex flex-col gap-3">
+                <div key={j} className="rounded-2xl bg-surface/55 p-5 flex flex-col gap-3">
                   <div className="flex items-baseline justify-between">
                     <span className="text-title text-ink">{q.q}</span>
                     <span className="text-micro text-mutedSoft">{q.months}</span>
@@ -118,7 +118,7 @@ export default function ContentBlocks({ blocks = [] }) {
         );
         // Timeline / filas etiqueta → valor.
         if (b.timeline) return (
-          <div key={i} className="card overflow-hidden">
+          <div key={i} className="rounded-2xl bg-surface/55 overflow-hidden">
             {b.timeline.map((t, j) => (
               <div key={j} className="flex items-center justify-between gap-4 px-5 py-3.5 border-b border-border/70 last:border-b-0">
                 <span className="text-body text-ink">{t.label}</span>
