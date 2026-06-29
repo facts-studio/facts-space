@@ -52,15 +52,10 @@ export default function EquipoPage() {
         {/* Columna derecha — ficha de la persona */}
         {m && (
           <aside key={m.id} className="slide-in mt-6 lg:mt-0 lg:sticky lg:top-8 lg:h-[calc(100vh-4rem)] lg:overflow-y-auto lg:border-l lg:border-border lg:pl-7">
-            <div className="flex justify-end -mb-6">
+            <div className="flex justify-end mb-2">
               <button onClick={() => setOpenId(null)} aria-label="Cerrar" className="h-7 w-7 inline-flex items-center justify-center rounded-md text-mutedSoft hover:text-ink hover:bg-surface2/60 transition">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
               </button>
-            </div>
-
-            <div className="rounded-2xl overflow-hidden aspect-[5/4] mb-4">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={m.photo} alt={m.name} className="w-full h-full object-cover" />
             </div>
 
             <h2 className="font-display text-[26px] text-ink leading-tight">{m.name}</h2>
