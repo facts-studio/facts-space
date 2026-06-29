@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { NAV, ADMIN_NAV } from "@/lib/nav";
+import { NAV, SECONDARY_NAV } from "@/lib/nav";
 import { createClient } from "@/lib/supabase/client";
 import FctsMark from "@/components/FctsMark";
 
@@ -56,8 +56,7 @@ export default function Sidebar({ user }) {
       </nav>
 
       <div className="mt-6 pt-6 border-t border-border flex flex-col gap-1">
-        <p className="kicker px-3 mb-1">Gestión</p>
-        {ADMIN_NAV.map((item) => (
+        {SECONDARY_NAV.map((item) => (
           <NavLink key={item.href} {...item} active={isActive(item.href)} />
         ))}
       </div>
