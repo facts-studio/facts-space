@@ -16,9 +16,9 @@ export const ONBOARDING_BODY = {
     { p: "En F*cts no hay jerarquías entre disciplinas. Diseño, desarrollo y comunicación trabajan juntos desde el inicio, porque lo importante no es que algo parezca bueno, sino que lo sea." },
     { p: "Nos movemos entre lo creativo y lo técnico, y en esa fricción es donde aparecen las buenas ideas." },
 
-    { h: "Relación con Unfiltrade®" },
-    { p: "Aunque F*cts es una sociedad independiente, formamos parte del ecosistema de Unfiltrade. Nuestro rol dentro del grupo es claro: somos el estudio que da soporte a toda su infraestructura —desde la estrategia y la comunicación hasta el diseño y el desarrollo de producto." },
-    { p: "Unfiltrade es el holding que reúne los distintos proyectos con los que trabajamos a diario, cada uno con su propio enfoque y propósito:" },
+    { h: "Unfiltrade®, nuestro cliente principal" },
+    { p: "F*cts es una sociedad independiente. Unfiltrade es un holding al que damos servicio integral: somos el estudio que da soporte a toda su infraestructura —desde la estrategia y la comunicación hasta el diseño y el desarrollo de producto." },
+    { p: "El holding reúne los distintos proyectos con los que trabajamos a diario, cada uno con su propio enfoque y propósito. Son nuestros clientes del día a día:" },
     { ul: [
       "TradingLab — Formación de trading real y sin humo.",
       "TradingMind — Psicología y mentalidad aplicada al trading.",
@@ -270,11 +270,21 @@ export const TOOLS = [
   },
 ];
 
-// ── Marcas del holding (Unfiltrade®) ─────────────────────────────────────────
-export const HOLDING = [
-  { id: "tradinglab", name: "TradingLab", desc: "Formación de trading real y sin humo.", url: "" },
-  { id: "tradingmind", name: "TradingMind", desc: "Psicología y mentalidad aplicada al trading.", url: "" },
-  { id: "flickflow", name: "Flickflow", desc: "Herramienta IA de información financiera adaptativa.", url: "" },
-  { id: "benchmark", name: "The Benchmark", desc: "Portal editorial de análisis financiero (Alex Ruiz).", url: "" },
-  { id: "alexruiz", name: "Alex Ruiz", desc: "Marca personal del CEO y figura destacada del sector.", url: "" },
+// ── Clientes de F*cts ────────────────────────────────────────────────────────
+// Unfiltrade® es un holding al que damos servicio; dentro están sus marcas,
+// que son nuestros clientes del día a día.
+export const CLIENTS = [
+  {
+    id: "unfiltrade",
+    name: "Unfiltrade®",
+    kind: "Holding",
+    desc: "Holding al que damos servicio integral: estrategia, comunicación, diseño y desarrollo de producto.",
+    brands: [
+      { id: "tradinglab", name: "TradingLab", desc: "Formación de trading real y sin humo.", url: "" },
+      { id: "tradingmind", name: "TradingMind", desc: "Psicología y mentalidad aplicada al trading.", url: "" },
+      { id: "flickflow", name: "Flickflow", desc: "Herramienta IA de información financiera adaptativa.", url: "" },
+      { id: "benchmark", name: "The Benchmark", desc: "Portal editorial de análisis financiero (Alex Ruiz).", url: "" },
+      { id: "alexruiz", name: "Alex Ruiz", desc: "Marca personal del CEO y figura destacada del sector.", url: "" },
+    ],
+  },
 ];
