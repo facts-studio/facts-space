@@ -1,72 +1,186 @@
+"use client";
+
+import { useMemo, useState } from "react";
 import { EVENT_TYPES } from "@/lib/mock";
-import { EventDot } from "@/components/EventBadge";
 
-const DOW = ["L", "M", "X", "J", "V", "S", "D"];
+const WD = ["L", "M", "X", "J", "V", "S", "D"]; // lunes primero
+const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+const MAX_CHIPS = 3;
+const EMPTY = [];
 
-// Rejilla mensual estática (server component). month: 0-11, year: número.
-export default function CalendarMonth({ year, month, events }) {
-  const first = new Date(year, month, 1);
-  const monthName = first.toLocaleDateString("es-ES", { month: "long", year: "numeric" });
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  // getDay(): 0=domingo → convertir a lunes=0.
-  const startOffset = (first.getDay() + 6) % 7;
+const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-  // Mapa día → eventos (un evento cubre su rango).
-  const byDay = {};
-  for (const e of events) {
-    const s = new Date(e.start + "T00:00:00");
-    const en = new Date(e.end + "T00:00:00");
-    for (let d = new Date(s); d <= en; d.setDate(d.getDate() + 1)) {
-      if (d.getFullYear() === year && d.getMonth() === month) {
-        const day = d.getDate();
-        (byDay[day] ||= []).push(e);
+// Acabado del chip por tipo de evento (clases explícitas para Tailwind).
+const CHIP = {
+  hito: "bg-brand text-white",
+  cumple: "bg-infoSoft text-info",
+  vacaciones: "bg-warnSoft text-warn",
+  festivo: "bg-violetSoft text-violet",
+};
+const DOT = {
+  brand: "bg-brand", info: "bg-info", warn: "bg-warn", violet: "bg-violet",
+};
+
+export default function CalendarMonth({ events = [] }) {
+  const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
+  const todayISO = iso(today);
+  // Arranca en el mes del próximo evento (o el mes actual si no hay).
+  const [cursor, setCursor] = useState(() => {
+    const next = events
+      .map((e) => new Date(e.start + "T00:00:00"))
+      .filter((d) => d >= today)
+      .sort((a, b) => a - b)[0];
+    const base = next || today;
+    return new Date(base.getFullYear(), base.getMonth(), 1);
+  });
+  const [selected, setSelected] = useState(null);
+
+  // Eventos por día (sensible al rango start→end).
+  const byDay = useMemo(() => {
+    const m = new Map();
+    for (const e of events) {
+      const d = new Date(e.start + "T00:00:00");
+      const end = new Date(e.end + "T00:00:00");
+      let guard = 0;
+      while (d <= end && guard < 370) {
+        const k = iso(d);
+        if (!m.has(k)) m.set(k, []);
+        m.get(k).push(e);
+        d.setDate(d.getDate() + 1); guard++;
       }
     }
-  }
+    return m;
+  }, [events]);
 
-  const cells = [];
-  for (let i = 0; i < startOffset; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  const year = cursor.getFullYear();
+  const month = cursor.getMonth();
+  const startOffset = (new Date(year, month, 1).getDay() + 6) % 7;
+  const gridStart = new Date(year, month, 1 - startOffset);
+  const days = Array.from({ length: 42 }, (_, i) => {
+    const d = new Date(gridStart); d.setDate(gridStart.getDate() + i); return d;
+  });
+
+  const selItems = selected ? byDay.get(selected) || EMPTY : EMPTY;
 
   return (
-    <div className="card p-5">
-      <p className="font-display text-[20px] text-ink capitalize mb-4">{monthName}</p>
-      <div className="grid grid-cols-7 gap-1">
-        {DOW.map((d) => (
-          <div key={d} className="text-center text-[10.5px] uppercase tracking-[0.16em] text-mutedSoft pb-2">
-            {d}
+    <div className={selected ? "lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-5 lg:items-start" : ""}>
+      <div>
+        {/* Cabecera de mes */}
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <h2 className="font-display text-[24px] text-ink capitalize leading-none flex items-baseline gap-2">
+            {MESES[month]}
+            <span className="font-sans font-normal text-[14px] text-mutedSoft tabular-nums">{year}</span>
+          </h2>
+          <div className="flex items-center gap-1 shrink-0">
+            <button onClick={() => setCursor(new Date(today.getFullYear(), today.getMonth(), 1))} className="px-3 py-1.5 rounded-lg text-[12.5px] text-inkSoft hover:bg-surface2/60 transition mr-1">Hoy</button>
+            <button onClick={() => setCursor(new Date(year, month - 1, 1))} aria-label="Mes anterior" className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-muted hover:bg-surface2/60 active:scale-95 transition">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+            </button>
+            <button onClick={() => setCursor(new Date(year, month + 1, 1))} aria-label="Mes siguiente" className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-muted hover:bg-surface2/60 active:scale-95 transition">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+            </button>
           </div>
-        ))}
-        {cells.map((day, i) => (
-          <div
-            key={i}
-            className={[
-              "aspect-square rounded-xl p-1.5 flex flex-col",
-              day ? "bg-surface/60" : "",
-            ].join(" ")}
-          >
-            {day && (
-              <>
-                <span className="text-micro text-muted tabular-nums">{day}</span>
-                <div className="mt-1 flex flex-wrap gap-1">
-                  {(byDay[day] || []).slice(0, 4).map((e, j) => (
-                    <EventDot key={j} color={EVENT_TYPES[e.type].color} />
-                  ))}
+        </div>
+
+        {/* Cabecera de días */}
+        <div className="grid grid-cols-7 gap-1 mb-1">
+          {WD.map((w, i) => (
+            <div key={i} className="text-[10px] uppercase tracking-wide text-mutedSoft/70 text-center py-1">{w}</div>
+          ))}
+        </div>
+
+        {/* Rejilla del mes */}
+        <div className="grid grid-cols-7 gap-1 auto-rows-fr min-h-[64vh]">
+          {days.map((d, i) => {
+            const k = iso(d);
+            const inMonth = d.getMonth() === month;
+            const isToday = k === todayISO;
+            const isSel = selected === k;
+            const items = byDay.get(k) || EMPTY;
+            const extra = items.length - MAX_CHIPS;
+            return (
+              <div
+                key={i}
+                onClick={() => setSelected((cur) => (cur === k ? null : k))}
+                className={`h-full min-h-[84px] rounded-xl border p-1.5 flex flex-col gap-1 cursor-pointer transition ${
+                  isSel ? "border-ink/45 bg-surface2/40" : "border-borderStrong/45 hover:border-borderStrong/70"
+                } ${!inMonth ? "opacity-45" : ""}`}
+              >
+                <div className="flex items-center justify-between px-0.5">
+                  <span className={`text-[12px] tabular-nums leading-none inline-flex items-center justify-center ${
+                    isToday ? "h-5 w-5 rounded-full bg-brand text-white font-bold" : inMonth ? "text-ink" : "text-mutedSoft"
+                  }`}>{d.getDate()}</span>
+                  {items.length > 0 && <span className="text-[9.5px] text-mutedSoft tabular-nums">{items.length}</span>}
                 </div>
-              </>
-            )}
-          </div>
-        ))}
+                <div className="flex flex-col gap-0.5 min-w-0">
+                  {items.slice(0, MAX_CHIPS).map((e, j) => (
+                    <span
+                      key={j}
+                      title={e.title}
+                      className={`w-full text-left truncate rounded-md px-1.5 py-0.5 text-[11px] leading-tight ${CHIP[e.type] || "bg-surface2 text-ink"}`}
+                    >
+                      {e.title}
+                    </span>
+                  ))}
+                  {extra > 0 && (
+                    <button
+                      type="button"
+                      onClick={(ev) => { ev.stopPropagation(); setSelected(k); }}
+                      className="w-full text-left px-1.5 text-[10.5px] text-mutedSoft hover:text-ink transition"
+                    >
+                      +{extra} más
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Leyenda */}
+        <div className="flex flex-wrap gap-4 mt-4">
+          {Object.entries(EVENT_TYPES).map(([key, t]) => (
+            <span key={key} className="inline-flex items-center gap-1.5 text-micro text-muted">
+              <span className={`inline-block w-2 h-2 rounded-full ${DOT[t.color]}`} /> {t.label}
+            </span>
+          ))}
+        </div>
       </div>
 
-      {/* Leyenda */}
-      <div className="flex flex-wrap gap-4 mt-5 pt-4 border-t border-border/70">
-        {Object.entries(EVENT_TYPES).map(([k, t]) => (
-          <span key={k} className="inline-flex items-center gap-1.5 text-micro text-muted">
-            <EventDot color={t.color} /> {t.label}
-          </span>
-        ))}
-      </div>
+      {/* Panel del día seleccionado */}
+      {selected && (
+        <aside className="mt-6 lg:mt-0 lg:sticky lg:top-8 rounded-2xl border border-border/60 bg-surface/40 p-4">
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <span className="text-[11px] uppercase tracking-[0.12em] text-mutedSoft capitalize">{fmtSel(selected)}</span>
+            <button onClick={() => setSelected(null)} aria-label="Cerrar" className="h-6 w-6 inline-flex items-center justify-center rounded-md text-mutedSoft hover:text-ink hover:bg-surface2/60 transition">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+            </button>
+          </div>
+          {selItems.length > 0 ? (
+            <ul className="space-y-2">
+              {selItems.map((e, j) => {
+                const t = EVENT_TYPES[e.type];
+                return (
+                  <li key={j} className="flex items-start gap-2.5">
+                    <span className={`mt-1.5 inline-block w-2 h-2 rounded-full shrink-0 ${DOT[t.color]}`} />
+                    <div className="min-w-0">
+                      <p className="text-small text-ink leading-snug">{e.title}</p>
+                      <p className="text-micro text-mutedSoft">{[t.label, e.who].filter(Boolean).join(" · ")}</p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <div className="text-center text-mutedSoft text-[13px] py-6">Nada este día.</div>
+          )}
+        </aside>
+      )}
     </div>
   );
+}
+
+function fmtSel(k) {
+  const [y, m, d] = k.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
 }
