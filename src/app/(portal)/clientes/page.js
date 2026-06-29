@@ -100,9 +100,11 @@ export default function ClientesPage() {
                 ) : (
                   <span className="w-7 h-7 rounded-lg bg-brandSoft text-brand grid place-items-center text-[13px]">✳</span>
                 )}
-                <h3 className="text-title text-ink mt-4 group-hover:text-brand transition-colors">{b.name}</h3>
-                {b.tagline && <p className="text-micro text-mutedSoft italic">«{b.tagline}»</p>}
-                <p className="text-small text-muted leading-relaxed mt-2 line-clamp-2">{b.desc}</p>
+                <div className="mt-auto pt-6">
+                  <h3 className="text-title text-ink group-hover:text-brand transition-colors">{b.name}</h3>
+                  {b.tagline && <p className="text-micro text-mutedSoft italic">«{b.tagline}»</p>}
+                  <p className="text-small text-muted leading-relaxed mt-2 line-clamp-2">{b.desc}</p>
+                </div>
               </button>
             );
           })}
