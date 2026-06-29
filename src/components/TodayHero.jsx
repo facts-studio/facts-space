@@ -74,9 +74,11 @@ export default function TodayHero({ nombre = "equipo", events = [] }) {
     .filter((e) => e.dias >= 0)
     .sort((a, b) => a.dias - b.dias);
 
-  const proxCumple = futuros.find((e) => e.type === "cumple");
-  const proxFestivo = futuros.find((e) => e.type === "festivo");
-  const proxHito = futuros.find((e) => e.type === "hito");
+  // Solo mencionamos lo cercano: cumple/festivo dentro de ~2 semanas, hito ~3.
+  const NEAR_CUMPLE = 14, NEAR_FESTIVO = 14, NEAR_HITO = 21;
+  const proxCumple = futuros.find((e) => e.type === "cumple" && e.dias <= NEAR_CUMPLE);
+  const proxFestivo = futuros.find((e) => e.type === "festivo" && e.dias <= NEAR_FESTIVO);
+  const proxHito = futuros.find((e) => e.type === "hito" && e.dias <= NEAR_HITO);
   const proxEvento = futuros[0];
 
   const fechaRaw = now.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
@@ -103,13 +105,18 @@ export default function TodayHero({ nombre = "equipo", events = [] }) {
     );
   }
   if (proxCumple) {
+    const cumpleHoy = proxCumple.dias === 0;
     partes.push(
-      <><Ico>🎂</Ico> el próximo cumpleaños es el de <Hi>{proxCumple.who}</Hi>, el <Hi>{corto(proxCumple.start)}</Hi></>
+      cumpleHoy ? (
+        <><Ico>🎂</Ico> hoy es el cumple de <Hi>{proxCumple.who}</Hi></>
+      ) : (
+        <><Ico>🎂</Ico> el cumple de <Hi>{proxCumple.who}</Hi> es {rel(proxCumple.dias)} ({corto(proxCumple.start)})</>
+      )
     );
   }
   if (proxFestivo) {
     partes.push(
-      <><Ico>🗓️</Ico> el siguiente festivo será <Hi>«{proxFestivo.title}»</Hi>, el <Hi>{corto(proxFestivo.start)}</Hi></>
+      <><Ico>🗓️</Ico> {proxFestivo.dias === 0 ? <>hoy es festivo: <Hi>«{proxFestivo.title}»</Hi></> : <>el {proxFestivo.dias === 1 ? "mañana" : corto(proxFestivo.start)} es festivo (<Hi>«{proxFestivo.title}»</Hi>)</>}</>
     );
   }
 
@@ -122,14 +129,20 @@ export default function TodayHero({ nombre = "equipo", events = [] }) {
       </h1>
 
       <p className="mt-7 text-[22px] md:text-[30px] leading-[1.4] tracking-[-0.01em] text-mutedSoft max-w-[44ch]">
-        {vac}
-        {partes.map((p, i) => (
-          <span key={i}>
-            {i === 0 ? (deVacaciones.length ? "; " : " ") : ", y "}
-            {p}
-          </span>
-        ))}
-        .
+        {deVacaciones.length === 0 && partes.length === 0 ? (
+          <>Nada en la agenda por ahora. Buen momento para avanzar con calma.</>
+        ) : (
+          <>
+            {vac}
+            {partes.map((p, i) => (
+              <span key={i}>
+                {i === 0 ? "; " : i === partes.length - 1 ? ", y " : ", "}
+                {p}
+              </span>
+            ))}
+            .
+          </>
+        )}
       </p>
 
       {/* Lo más cercano */}
