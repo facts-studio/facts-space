@@ -1,0 +1,200 @@
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* ── Canales de color (RGB) — estética Claude. Conmutan en .dark ── */
+  --ct-bg: 239 238 235;        /* #EFEEEB */
+  --ct-surface: 248 248 246;   /* #F8F8F6 */
+  --ct-surface2: 233 231 225;
+  --ct-sunken: 226 224 218;
+  --ct-paper: 248 248 246;
+  --ct-border: 224 222 215;
+  --ct-borderSoft: 235 233 227;
+  --ct-borderStrong: 206 203 195;
+  --ct-ink: 31 31 30;          /* #1F1F1E */
+  --ct-inkSoft: 55 55 52;
+  --ct-muted: 123 121 116;
+  --ct-mutedSoft: 150 148 140;
+  --ct-accent: 31 31 30;
+  --ct-accentHover: 42 42 42;
+  --ct-accentSoft: 233 231 225;
+  --ct-brand: 18 39 29;        /* #12271D verde de marca */
+  --ct-brandSoft: 224 233 227; /* #E0E9E3 */
+  --ct-brandMid: 47 107 73;    /* #2F6B49 */
+  --ct-success: 63 122 58;
+  --ct-successSoft: 220 231 214;
+  --ct-warn: 176 122 31;
+  --ct-warnSoft: 238 226 198;
+  --ct-info: 56 110 158;
+  --ct-infoSoft: 219 229 240;
+  --ct-validated: 74 94 124;
+  --ct-violet: 138 92 176;
+  --ct-violetSoft: 235 226 246;
+  --ct-queued: 184 112 42;
+  --ct-danger: 196 74 63;
+  --ct-dangerSoft: 241 220 215;
+
+  --hairline: rgba(31, 31, 30, 0.08);
+  --hairline-strong: rgba(31, 31, 30, 0.12);
+  --shadow-1: rgba(31, 31, 30, 0.04);
+  --shadow-2: rgba(31, 31, 30, 0.06);
+  --shadow-3: rgba(31, 31, 30, 0.10);
+  --sans: 'Bricolage Grotesque', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
+  --display: var(--sans);
+  --bg: rgb(var(--ct-bg));
+  --text: rgb(var(--ct-ink));
+  --border-strong: rgb(var(--ct-borderStrong));
+}
+
+.dark {
+  --ct-bg: 30 30 28;           /* #1E1E1C */
+  --ct-surface: 38 38 36;
+  --ct-surface2: 47 47 44;
+  --ct-sunken: 24 24 22;
+  --ct-paper: 38 38 36;
+  --ct-border: 58 58 54;
+  --ct-borderSoft: 46 46 43;
+  --ct-borderStrong: 78 78 72;
+  --ct-ink: 239 238 235;
+  --ct-inkSoft: 214 212 206;
+  --ct-muted: 155 153 145;
+  --ct-mutedSoft: 122 121 116;
+  --ct-accent: 239 238 235;
+  --ct-accentHover: 224 222 215;
+  --ct-accentSoft: 47 47 44;
+  --ct-brand: 122 170 142;
+  --ct-brandSoft: 28 46 38;
+  --ct-brandMid: 122 170 142;
+  --ct-success: 130 184 122;
+  --ct-successSoft: 40 58 38;
+  --ct-warn: 212 165 90;
+  --ct-warnSoft: 64 52 30;
+  --ct-info: 116 168 214;
+  --ct-infoSoft: 38 52 68;
+  --ct-validated: 130 150 185;
+  --ct-violet: 178 142 212;
+  --ct-violetSoft: 56 44 74;
+  --ct-queued: 210 140 80;
+  --ct-danger: 224 120 110;
+  --ct-dangerSoft: 64 36 32;
+  --hairline: rgba(255, 255, 255, 0.09);
+  --hairline-strong: rgba(255, 255, 255, 0.14);
+  --shadow-1: rgba(0, 0, 0, 0.32);
+  --shadow-2: rgba(0, 0, 0, 0.42);
+  --shadow-3: rgba(0, 0, 0, 0.55);
+  color-scheme: dark;
+}
+
+html, body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-feature-settings: 'cv11', 'ss01';
+}
+
+* { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+::selection { background: rgb(var(--ct-brand) / 0.20); color: rgb(var(--ct-ink)); }
+
+/* Display = la sans del sistema (Bricolage). font-synthesis:none evita faux-bold. */
+.font-display {
+  font-family: var(--display);
+  font-weight: 400;
+  font-synthesis: none;
+  letter-spacing: -0.02em;
+}
+.title-italic {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 400;
+  font-synthesis: none;
+  letter-spacing: -0.02em;
+}
+
+@layer components {
+  /* — Botones — */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-[10px] px-3.5 py-2 text-[13px] font-medium transition-[transform,background-color,border-color,color] duration-150 border border-transparent whitespace-nowrap select-none active:scale-[0.98];
+  }
+  .btn:focus-visible {
+    @apply outline-none ring-2 ring-brand/45 ring-offset-2 ring-offset-bg;
+  }
+  .btn-primary {
+    @apply btn bg-ink text-bg border-ink hover:bg-inkSoft hover:border-inkSoft;
+  }
+  .btn-brand {
+    @apply btn bg-brand text-white border-brand hover:brightness-[0.96];
+  }
+  .btn-ghost {
+    @apply btn bg-transparent text-inkSoft border-border hover:bg-surface2/60 hover:border-borderStrong;
+  }
+  .btn-quiet {
+    @apply btn bg-transparent text-muted hover:text-ink hover:bg-surface2/60;
+  }
+  .btn-danger {
+    @apply btn bg-transparent text-danger border-danger/25 hover:bg-dangerSoft/40;
+  }
+
+  /* — Forms — */
+  .input {
+    @apply w-full rounded-[10px] bg-surface border border-border px-3.5 py-2.5 text-[14px] text-ink placeholder:text-mutedSoft transition focus:outline-none focus:border-brand/55 focus:ring-2 focus:ring-brand/15;
+  }
+  .label {
+    @apply block text-[11.5px] uppercase tracking-[0.12em] text-mutedSoft mb-2 font-medium;
+  }
+
+  /* — Superficies — */
+  .card { @apply bg-paper rounded-2xl shadow-card; }
+  .surface-card { @apply bg-paper rounded-2xl shadow-card; }
+  .surface-card-dashed { @apply bg-transparent border border-dashed border-borderStrong rounded-2xl; }
+  .row-card { @apply bg-paper rounded-2xl shadow-card transition hover:shadow-cardHover; }
+
+  /* — Tablas — */
+  .table { @apply w-full text-sm; }
+  .table th { @apply text-left text-[10.5px] uppercase tracking-[0.16em] text-mutedSoft font-medium px-5 py-3.5 border-b border-border; }
+  .table td { @apply px-5 py-4 border-b border-border/70 align-middle; }
+  .table tr:last-child td { @apply border-b-0; }
+
+  /* — Pills — */
+  .pill { @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11.5px] font-medium; }
+  .count-pill { @apply inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-md text-[11px] font-medium tabular-nums; }
+
+  /* — Tipografía de sección — */
+  .section-eyebrow { @apply text-[10.5px] uppercase tracking-[0.16em] text-mutedSoft; }
+  .section-title {
+    @apply font-display text-[28px] md:text-[34px] leading-[1.15] tracking-[-0.02em] text-ink;
+    font-weight: 400; font-synthesis: none;
+  }
+  .section-helper { @apply text-[14.5px] text-muted mt-2 leading-[1.6] max-w-[640px]; }
+  .h-page {
+    @apply font-display text-[40px] md:text-[56px] text-ink leading-[1.0] tracking-[-0.025em];
+    font-weight: 400; font-synthesis: none;
+  }
+  .kicker { @apply text-[10.5px] uppercase tracking-[0.16em] text-mutedSoft; }
+}
+
+@keyframes popIn {
+  0%   { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-up { animation: fadeUp 0.42s cubic-bezier(0.23, 1, 0.32, 1) both; }
+@keyframes fadeOnly { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .fade-up { animation: fadeOnly 0.2s ease both; }
+}
+
+/* Scrollbar custom (marca verde, crema en oscuro) */
+* { scrollbar-width: thin; scrollbar-color: #12271D transparent; }
+*::-webkit-scrollbar { width: 4px; height: 4px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: #12271D; border-radius: 4px; }
+*::-webkit-scrollbar-thumb:hover { background: #0A1812; }
+.dark * { scrollbar-color: #EFEEEB transparent; }
+.dark *::-webkit-scrollbar-thumb { background: #EFEEEB; }
+.dark *::-webkit-scrollbar-thumb:hover { background: #DAD6CC; }

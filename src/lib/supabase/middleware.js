@@ -1,0 +1,68 @@
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse } from "next/server";
+
+// Refresca la sesión y protege rutas. El login es solo para el dominio del equipo.
+export async function updateSession(request) {
+  let response = NextResponse.next({ request });
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          );
+          response = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          );
+        },
+      },
+    }
+  );
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { pathname } = request.nextUrl;
+  const isPublic =
+    pathname === "/login" ||
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/_next") ||
+    pathname === "/favicon.ico";
+
+  // Sin sesión → al login.
+  if (!user && !isPublic) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
+  }
+
+  // Con sesión pero dominio no permitido → fuera.
+  const allowedDomain = process.env.NEXT_PUBLIC_ALLOWED_EMAIL_DOMAIN;
+  if (user && allowedDomain) {
+    const email = user.email || "";
+    if (!email.toLowerCase().endsWith(`@${allowedDomain.toLowerCase()}`)) {
+      await supabase.auth.signOut();
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      url.searchParams.set("error", "domain");
+      return NextResponse.redirect(url);
+    }
+  }
+
+  // Ya logueado y en /login → al portal.
+  if (user && pathname === "/login") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    return NextResponse.redirect(url);
+  }
+
+  return response;
+}

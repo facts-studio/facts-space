@@ -1,0 +1,88 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { NAV, ADMIN_NAV } from "@/lib/nav";
+import { createClient } from "@/lib/supabase/client";
+
+function NavLink({ href, label, icon, active }) {
+  return (
+    <Link
+      href={href}
+      className={[
+        "flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14px] transition-[background-color,color] duration-150",
+        active
+          ? "bg-surface2 text-ink shadow-card"
+          : "text-muted hover:text-ink hover:bg-surface2/60",
+      ].join(" ")}
+    >
+      <span className="w-4 text-center text-[13px] opacity-70">{icon}</span>
+      {label}
+    </Link>
+  );
+}
+
+export default function Sidebar({ user }) {
+  const pathname = usePathname();
+  const isActive = (href) =>
+    href === "/" ? pathname === "/" : pathname.startsWith(href);
+
+  async function signOut() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    window.location.href = "/login";
+  }
+
+  const name = user?.user_metadata?.full_name || user?.email || "Equipo";
+  const avatar = user?.user_metadata?.avatar_url;
+
+  return (
+    <aside className="w-[248px] shrink-0 h-screen sticky top-0 hidden md:flex flex-col border-r border-border px-4 py-6">
+      <div className="px-3 mb-8">
+        <p className="section-eyebrow mb-1">F*cts Studio</p>
+        <p className="font-display text-[20px] text-ink leading-none">
+          Portal <span className="title-italic">interno</span>
+        </p>
+      </div>
+
+      <nav className="flex flex-col gap-1">
+        {NAV.map((item) => (
+          <NavLink key={item.href} {...item} active={isActive(item.href)} />
+        ))}
+      </nav>
+
+      <div className="mt-6 pt-6 border-t border-border flex flex-col gap-1">
+        <p className="kicker px-3 mb-1">Gestión</p>
+        {ADMIN_NAV.map((item) => (
+          <NavLink key={item.href} {...item} active={isActive(item.href)} />
+        ))}
+      </div>
+
+      <div className="mt-auto pt-6">
+        <div className="flex items-center gap-3 px-2">
+          {avatar ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={avatar}
+              alt=""
+              className="w-8 h-8 rounded-full object-cover"
+            />
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-brandSoft text-brand grid place-items-center text-[13px]">
+              {name[0]?.toUpperCase()}
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="text-small text-ink truncate">{name}</p>
+            <button
+              onClick={signOut}
+              className="text-micro text-mutedSoft hover:text-ink transition"
+            >
+              Cerrar sesión
+            </button>
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+}
