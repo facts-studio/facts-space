@@ -93,6 +93,15 @@ export const NEWS = [
   { id: "n3", tone: "info", icon: "✻", tag: "Estudio", title: "Bienvenido, Owen 👋", sub: "Se incorpora al equipo de Motion & 3D.", date: "2026-06-20", cta: null, to: null },
 ];
 
+// Onboarding — recorrido lineal para quien acaba de entrar a F*cts.
+export const ONBOARDING = [
+  { id: "que", num: "01", icon: "✳", cover: "que", title: "Qué es F*cts", desc: "Quiénes somos, qué hacemos y la visión del estudio.", min: 5 },
+  { id: "cultura", num: "02", icon: "❖", cover: "cultura", title: "Cultura y equipo", desc: "Cómo nos relacionamos, valores y quién es quién.", min: 6 },
+  { id: "politicas", num: "03", icon: "♥", cover: "politicas", title: "Políticas internas", desc: "Vacaciones, horarios, gastos y desconexión.", min: 8 },
+  { id: "herramientas", num: "04", icon: "◐", cover: "herramientas", title: "Herramientas", desc: "ClickUp, Drive, Figma, Holded y cómo pedir accesos.", min: 4 },
+  { id: "tareas", num: "05", icon: "✓", cover: "tareas", title: "Tareas de onboarding", desc: "Tu checklist de las primeras dos semanas.", min: 3 },
+];
+
 // Helpers de fecha (formato es-ES).
 export function fmtDate(iso) {
   const d = new Date(iso + "T00:00:00");
