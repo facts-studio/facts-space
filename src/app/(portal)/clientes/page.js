@@ -96,9 +96,9 @@ export default function ClientesPage() {
               >
                 {fav ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={fav} alt="" className="w-7 h-7 rounded-lg" />
+                  <img src={fav} alt="" className="w-10 h-10 rounded-xl" />
                 ) : (
-                  <span className="w-7 h-7 rounded-lg bg-brandSoft text-brand grid place-items-center text-[13px]">✳</span>
+                  <span className="w-10 h-10 rounded-xl bg-brandSoft text-brand grid place-items-center text-[16px]">✳</span>
                 )}
                 <div className="mt-auto pt-6">
                   <h3 className="text-title text-ink group-hover:text-brand transition-colors">{b.name}</h3>
