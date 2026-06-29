@@ -1,5 +1,17 @@
 import Link from "next/link";
 
+// Paletas por tono (tokens del design system).
+const TONES = {
+  brand: { bg: "bg-brandSoft/55", text: "text-brand", bar: "bg-brand" },
+  info: { bg: "bg-infoSoft/55", text: "text-info", bar: "bg-info" },
+  success: { bg: "bg-successSoft/55", text: "text-success", bar: "bg-success" },
+  warn: { bg: "bg-warnSoft/45", text: "text-warn", bar: "bg-warn" },
+  danger: { bg: "bg-dangerSoft/45", text: "text-danger", bar: "bg-danger" },
+  violet: { bg: "bg-violetSoft/50", text: "text-violet", bar: "bg-violet" },
+  muted: { bg: "bg-surface2/60", text: "text-muted", bar: "bg-mutedSoft" },
+};
+const tone = (t) => TONES[t] || TONES.muted;
+
 // Renderiza un array de bloques de contenido (ver src/lib/content.js).
 export default function ContentBlocks({ blocks = [] }) {
   return (
@@ -47,6 +59,87 @@ export default function ContentBlocks({ blocks = [] }) {
         );
         if (b.link) return (
           <Link key={i} href={b.link.href} className="text-body-lg text-brand hover:underline w-fit">{b.link.label}</Link>
+        );
+        // Stats: números grandes (cifras clave).
+        if (b.stats) return (
+          <div key={i} className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {b.stats.map((s, j) => (
+              <div key={j} className="card p-5">
+                <div className="font-display text-[36px] text-ink leading-none tracking-[-0.02em]">{s.n}</div>
+                <div className="text-small text-ink mt-2.5">{s.label}</div>
+                {s.sub && <div className="text-micro text-mutedSoft mt-0.5">{s.sub}</div>}
+              </div>
+            ))}
+          </div>
+        );
+        // Trimestres: tarjeta con días, nivel de carga y barra.
+        if (b.quarters) return (
+          <div key={i} className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {b.quarters.map((q, j) => {
+              const tn = tone(q.tone);
+              return (
+                <div key={j} className="card p-5 flex flex-col gap-3">
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-title text-ink">{q.q}</span>
+                    <span className="text-micro text-mutedSoft">{q.months}</span>
+                  </div>
+                  <div className="font-display text-[26px] text-ink leading-none">
+                    {q.days} <span className="text-small text-muted">días</span>
+                  </div>
+                  <div className={`text-[10.5px] uppercase tracking-[0.12em] font-medium ${tn.text}`}>{q.level}</div>
+                  <div className="h-1.5 rounded-full bg-surface2 overflow-hidden">
+                    <div className={`h-full rounded-full ${tn.bar}`} style={{ width: q.fill }} />
+                  </div>
+                  {q.note && <p className="text-micro text-muted leading-snug">{q.note}</p>}
+                </div>
+              );
+            })}
+          </div>
+        );
+        // Tarjetas tintadas con lista.
+        if (b.cards) return (
+          <div key={i} className="grid sm:grid-cols-3 gap-3">
+            {b.cards.map((c, j) => {
+              const tn = tone(c.tone);
+              return (
+                <div key={j} className={`rounded-2xl p-5 ${tn.bg}`}>
+                  <div className={`text-body font-semibold mb-3 ${tn.text}`}>{c.title}</div>
+                  <ul className="flex flex-col gap-2">
+                    {c.items.map((it, k) => (
+                      <li key={k} className="text-small text-inkSoft leading-snug flex gap-2">
+                        <span className={`${tn.text} shrink-0`}>·</span><span>{it}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+        );
+        // Timeline / filas etiqueta → valor.
+        if (b.timeline) return (
+          <div key={i} className="card overflow-hidden">
+            {b.timeline.map((t, j) => (
+              <div key={j} className="flex items-center justify-between gap-4 px-5 py-3.5 border-b border-border/70 last:border-b-0">
+                <span className="text-body text-ink">{t.label}</span>
+                <span className="text-small text-muted text-right">{t.value}</span>
+              </div>
+            ))}
+          </div>
+        );
+        // Franja semanal (oficina / remoto).
+        if (b.week) return (
+          <div key={i} className="grid grid-cols-5 gap-2">
+            {b.week.map((d, j) => {
+              const tn = tone(d.tone);
+              return (
+                <div key={j} className={`rounded-xl p-3.5 text-center ${tn.bg}`}>
+                  <div className="text-caption uppercase tracking-[0.1em] text-mutedSoft">{d.d}</div>
+                  <div className={`text-small font-medium mt-1.5 ${tn.text}`}>{d.label}</div>
+                </div>
+              );
+            })}
+          </div>
         );
         return null;
       })}

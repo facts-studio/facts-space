@@ -101,8 +101,21 @@ export const POLICIES = [
     updated: "2026-06-20",
     min: 4,
     body: [
+      { stats: [
+        { n: "9–18h", label: "franja común", sub: "orientativa y flexible" },
+        { n: "3 días", label: "en oficina", sub: "lunes a miércoles" },
+        { n: "2 días", label: "en remoto", sub: "jueves y viernes" },
+      ] },
       { p: "Trabajamos con una base común de 9:00 a 18:00, pero es un estándar orientativo. Cada persona puede ajustar su jornada —por ejemplo, empezar antes y salir antes— siempre que mantenga la coherencia con el equipo y los proyectos." },
-      { p: "Los días de oficina son de lunes a miércoles, y los jueves y viernes pueden hacerse en remoto." },
+
+      { h3: "La semana" },
+      { week: [
+        { d: "Lun", label: "Oficina", tone: "brand" },
+        { d: "Mar", label: "Oficina", tone: "brand" },
+        { d: "Mié", label: "Oficina", tone: "brand" },
+        { d: "Jue", label: "Remoto", tone: "info" },
+        { d: "Vie", label: "Remoto", tone: "info" },
+      ] },
       { p: "Este formato busca equilibrio: mantener contacto presencial suficiente para compartir ideas y avanzar juntos, sin perder la flexibilidad que facilita concentrarse o adaptarse a lo personal." },
       { p: "Si un día surge algo —una cita, un compromiso o un imprevisto—, se avisa y se compensa cuando sea conveniente. No hace falta justificar cada detalle, pero sí actuar con responsabilidad y sentido común. La flexibilidad funciona porque todos entendemos que depende de mantener el nivel, los plazos y la comunicación." },
       { note: "Por motivos legales fichamos diariamente en Holded. Este registro no se usa para controlar horarios, sino para cumplir con la normativa laboral. Solo se pide constancia: marcar entrada y salida cada día, sin necesidad de ceñirse exactamente a los horarios." },
@@ -116,44 +129,38 @@ export const POLICIES = [
     updated: "2026-06-20",
     min: 6,
     body: [
-      { p: "Tenemos 22 días hábiles de vacaciones al año (+ cumpleaños 🎂), además de los festivos oficiales." },
+      { stats: [
+        { n: "22", label: "días hábiles", sub: "de vacaciones al año" },
+        { n: "+1", label: "tu cumpleaños 🎂", sub: "día libre extra" },
+        { n: "15", label: "festivos oficiales", sub: "en 2026" },
+      ] },
       { p: "Las vacaciones pueden distribuirse libremente a lo largo del año, siempre que se garantice la cobertura del equipo y se aprueben según la carga de trabajo." },
+
       { h3: "Reparto orientativo por trimestre" },
-      { table: {
-        head: ["Periodo", "Días (orientativos)", "Nivel"],
-        rows: [
-          ["Q1 (Ene–Mar)", "8–10 días", "Carga de trabajo regular"],
-          ["Q2 (Abr–Jun)", "1–3 días", "Carga alta — campañas y eventos"],
-          ["Q3 (Jul–Sep)", "8–10 días", "Carga de trabajo regular"],
-          ["Q4 (Oct–Dic)", "1–3 días*", "Carga alta — campañas, Black Friday y cierre anual"],
-        ],
-      } },
-      { note: "*Las primeras semanas de diciembre pueden estar disponibles para algún día más. Se evitarán vacaciones de ±5 días la semana antes de Navidad. Los días indicados son orientativos para evitar acumulaciones a final de año, no un reparto fijo." },
-      { h3: "🟢 Carga baja (Q1 y Q3)" },
-      { ul: [
-        "Se permiten días sueltos y periodos largos.",
-        "Mayor flexibilidad para distribuir las vacaciones.",
-        "Las solicitudes están sujetas a aprobación por cobertura del equipo.",
+      { quarters: [
+        { q: "Q1", months: "Ene–Mar", days: "8–10", level: "Carga baja", tone: "success", fill: "85%", note: "Carga de trabajo regular." },
+        { q: "Q2", months: "Abr–Jun", days: "1–3", level: "Carga alta", tone: "warn", fill: "25%", note: "Campañas y eventos." },
+        { q: "Q3", months: "Jul–Sep", days: "8–10", level: "Carga baja", tone: "success", fill: "85%", note: "Carga de trabajo regular." },
+        { q: "Q4", months: "Oct–Dic", days: "1–3", level: "Bloqueado", tone: "danger", fill: "15%", note: "Black Friday y cierre anual." },
       ] },
-      { h3: "🔘 Carga alta (Q2)" },
-      { ul: [
-        "Las ausencias se limitan a un máximo de 2 días laborables consecutivos.",
-        "No se permiten periodos largos.",
-        "Todas las solicitudes están sujetas a aprobación por carga de trabajo y cobertura.",
+      { note: "Los días son orientativos para evitar acumulaciones a final de año, no un reparto fijo. Diciembre puede tener algún día más en su primera mitad; se evitarán vacaciones de ±5 días la semana antes de Navidad." },
+
+      { h3: "Cómo funciona según la carga" },
+      { cards: [
+        { tone: "success", title: "🟢 Carga baja · Q1 y Q3", items: ["Días sueltos y periodos largos.", "Más flexibilidad para distribuir.", "Sujeto a aprobación por cobertura."] },
+        { tone: "warn", title: "🔘 Carga alta · Q2", items: ["Máximo 2 días laborables seguidos.", "Sin periodos largos.", "Aprobación por carga y cobertura."] },
+        { tone: "danger", title: "❌ Bloqueado · Q4", items: ["Oct y nov: sin vacaciones.", "Dic: solo 1ª mitad, con aprobación.", "Nada ±5 días antes de Navidad."] },
       ] },
-      { h3: "❌ Periodos bloqueados (Q4)" },
-      { ul: [
-        "Octubre y noviembre → días bloqueados (campañas y lanzamientos).",
-        "Diciembre → si quedan días, se podrán solicitar en la primera mitad del mes, sujetos a aprobación. Se evitarán vacaciones de ±5 días la semana antes de Navidad.",
+
+      { h3: "Antelación para solicitar" },
+      { timeline: [
+        { label: "1–3 días", value: "15 días naturales de antelación" },
+        { label: "Más de 3 días", value: "30 días naturales de antelación" },
+        { label: "Periodos de +5 días", value: "Comunicar antes del 15 de marzo" },
       ] },
-      { h3: "Antelación para solicitudes" },
-      { ul: [
-        "1–3 días → 15 días naturales de antelación.",
-        "Más de 3 días → 30 días naturales de antelación.",
-        "Periodos de más de 5 días → comunicarse antes del 15 de marzo.",
-      ] },
-      { p: "Además, el día del cumpleaños es fiesta 🎂. Si coincide en fin de semana, se puede mover a un día próximo (normalmente el viernes anterior o el lunes siguiente)." },
-      { note: "Las vacaciones se gestionan por Holded, se comunican al responsable de área y se registran en el calendario compartido para mantener visibilidad. El objetivo es simple: que todos sepamos cuándo alguien estará fuera para planificar y evitar bloqueos." },
+
+      { note: "🎂 El día de tu cumpleaños es fiesta. Si cae en fin de semana, se mueve a un día próximo (normalmente el viernes anterior o el lunes siguiente)." },
+      { p: "Se gestionan por Holded, se comunican al responsable de área y se registran en el calendario compartido. El objetivo es simple: que todos sepamos cuándo alguien estará fuera para planificar y evitar bloqueos." },
     ],
   },
   {
@@ -164,8 +171,12 @@ export const POLICIES = [
     updated: "2026-06-18",
     min: 2,
     body: [
-      { p: "Nos comunicamos principalmente por Slack, donde están todos los miembros de Unfiltrade® y colaboradores externos. Los mensajes privados se reservan para temas puntuales o sensibles. Los canales de área o proyecto se usan para mantener al equipo informado y evitar información dispersa." },
-      { p: "El feedback es parte natural del trabajo. Lo damos y lo recibimos con criterio, de forma constructiva y directa. No se trata de tener razón, sino de mejorar el resultado y cuidar cómo llegamos a él." },
+      { p: "Nos comunicamos principalmente por Slack, donde están todos los miembros de Unfiltrade® y colaboradores externos." },
+      { cards: [
+        { tone: "brand", title: "Canales de área / proyecto", items: ["Para mantener al equipo informado.", "Evitan información dispersa.", "Hilos por tema."] },
+        { tone: "info", title: "Mensajes privados", items: ["Solo temas puntuales o sensibles.", "Nada que deba ver el equipo.", "Sin abusar de ellos."] },
+        { tone: "success", title: "Feedback", items: ["Constructivo y directo.", "No es tener razón, es mejorar.", "Cuidamos cómo llegamos a ello."] },
+      ] },
     ],
   },
   {
