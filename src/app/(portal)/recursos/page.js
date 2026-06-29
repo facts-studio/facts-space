@@ -70,7 +70,7 @@ export default function RecursosPage() {
 
         {/* Columna derecha — ficha (estilo archivo, no flotante) */}
         {tool && (
-          <aside key={tool.id} className="slide-in mt-6 lg:mt-0 lg:sticky lg:top-8 lg:border-l lg:border-border lg:pl-7">
+          <aside key={tool.id} className="slide-in mt-6 lg:mt-0 lg:sticky lg:top-8 lg:h-[calc(100vh-4rem)] lg:overflow-y-auto lg:border-l lg:border-border lg:pl-7">
             <div className="flex items-start justify-between gap-3 mb-5">
               <div className="flex items-center gap-3">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
