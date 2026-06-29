@@ -221,49 +221,49 @@ export const POLICY_GROUPS = [
 // ── Herramientas (software compartido) ───────────────────────────────────────
 export const TOOLS = [
   {
-    id: "clickup", name: "ClickUp", url: "https://clickup.com", tag: "Gestión",
+    id: "clickup", name: "ClickUp", url: "https://clickup.com", tag: "Gestión", category: "Gestión y operativa",
     what: "El sistema nervioso de la operación: qué hay que hacer, quién lo hace y para cuándo. Da visibilidad de la carga, dependencias y estado real de cada proyecto.",
     when: ["Para toda tarea o proyecto (de un bug a una landing).", "Para planificar sprints, asignar responsables y marcar deadlines.", "Para seguimiento: bloqueos, entregas parciales, avances."],
     avoid: ["No es repositorio de archivos finales → eso es Drive.", "No es para conversaciones largas sin contexto.", "No sustituye reuniones: las prepara."],
   },
   {
-    id: "drive", name: "Google Drive", url: "https://drive.google.com", tag: "Archivo",
+    id: "drive", name: "Google Drive", url: "https://drive.google.com", tag: "Archivo", category: "Archivo y agenda", icon: "https://fonts.gstatic.com/s/i/productlogos/drive_2020q4/v8/web-48dp/logo_drive_2020q4_color_1x_web_48dp.png",
     what: "El archivo único del estudio: donde vive todo lo que generamos o recibimos. Acceso compartido, control de versiones y continuidad del trabajo.",
     when: ["Entregables, briefs, presentaciones, facturas o documentos de soporte.", "Enlaces compartidos con externos (en carpetas señalizadas)."],
     avoid: ["No es gestor de tareas → eso es ClickUp.", "No es disco personal: nada de copias sueltas.", "No es chat ni lugar para debatir."],
   },
   {
-    id: "figma", name: "Figma", url: "https://figma.com", tag: "Diseño",
+    id: "figma", name: "Figma", url: "https://figma.com", tag: "Diseño", category: "Diseño y producción",
     what: "Diseño colaborativo: landings, UI/UX, docs visuales y prototipos. Comentar, iterar y ver el diseño en vivo antes de producir. Centraliza componentes y guías.",
     when: ["Interfaces, prototipos navegables y documentos visuales.", "Piezas de contenido que requieran iteración rápida."],
     avoid: ["No es el almacén final de assets → eso es Drive.", "No sirve para retoque o animación avanzada → eso es Adobe.", "Evitar el lienzo infinito sin propósito."],
   },
   {
-    id: "adobe", name: "Adobe Suite", url: "https://adobe.com", tag: "Gráfico · A/V",
+    id: "adobe", name: "Adobe Suite", url: "https://adobe.com", tag: "Gráfico · A/V", category: "Diseño y producción",
     what: "Soporte gráfico y audiovisual cuando Figma no llega. Photoshop (retoque, mockups), Illustrator (vectorial, identidades), After Effects (motion), Premiere (vídeo).",
     when: ["Cuando se requiere acabado gráfico, animación o vídeo fuera del alcance de Figma."],
     avoid: ["No sustituye el trabajo colaborativo de Figma en ideación.", "No es repositorio de versiones → los finales van a Drive.", "No se usa sin brief: toda pieza con tarea en ClickUp."],
   },
   {
-    id: "slack", name: "Slack", url: "https://slack.com", tag: "Comunicación",
+    id: "slack", name: "Slack", url: "https://slack.com", tag: "Comunicación", category: "Gestión y operativa",
     what: "Nuestra comunicación interna: coordinar conversaciones rápidas, compartir actualizaciones y mantener la información visible para todos.",
     when: ["Comunicación diaria entre equipos y áreas.", "Avisos rápidos o coordinación puntual.", "Hilos por proyecto o departamento; anuncios generales."],
     avoid: ["No es gestor de tareas → las acciones viven en ClickUp.", "No sustituye Drive: los entregables no se adjuntan aquí.", "No abusar de los privados: mejor en canales abiertos."],
   },
   {
-    id: "holded", name: "Holded", url: "https://holded.com", tag: "Fichaje · RRHH",
+    id: "holded", name: "Holded", url: "https://holded.com", tag: "Fichaje · RRHH", category: "Gestión y operativa", icon: "https://www.holded.com/assets/favicons/apple-touch-icon.png",
     what: "Registro diario de la jornada laboral (por obligación legal). También para solicitar vacaciones o ausencias.",
     when: ["Fichar entrada y salida cada día.", "Solicitar vacaciones (además de avisar al head de área)."],
     avoid: ["No es canal de comunicación ni gestión de tareas.", "No refleja avances de proyectos → eso está en ClickUp.", "No sustituye la conversación con el responsable."],
   },
   {
-    id: "calendar", name: "Google Calendar", url: "https://calendar.google.com", tag: "Agenda",
+    id: "calendar", name: "Google Calendar", url: "https://calendar.google.com", tag: "Agenda", category: "Archivo y agenda", icon: "https://fonts.gstatic.com/s/i/productlogos/calendar_2020q4/v11/web-48dp/logo_calendar_2020q4_color_1x_web_48dp.png",
     what: "Agenda compartida del equipo: reuniones, status, eventos o disponibilidad. Evita solapamientos y mantiene visibilidad de agendas.",
     when: ["Reuniones internas o externas.", "Bloques de disponibilidad (focus time, vacaciones…).", "Eventos de empresa o formaciones."],
     avoid: ["No es gestor de tareas → eso es ClickUp.", "No se usa para guardar documentos ni tomar decisiones."],
   },
   {
-    id: "1password", name: "1Password", url: "https://1password.com", tag: "Seguridad",
+    id: "1password", name: "1Password", url: "https://1password.com", tag: "Seguridad", category: "Seguridad",
     what: "Gestor centralizado de contraseñas para proteger los accesos del estudio y de todas las marcas del ecosistema.",
     when: ["Guardar y usar cualquier acceso profesional.", "Mantener tu vault actualizado según tus permisos de área."],
     avoid: ["Nunca guardar accesos en notas, Slack o email.", "Está prohibido compartir contraseñas fuera de 1Password."],
@@ -271,20 +271,42 @@ export const TOOLS = [
 ];
 
 // ── Clientes de F*cts ────────────────────────────────────────────────────────
-// Unfiltrade® es un holding al que damos servicio; dentro están sus marcas,
-// que son nuestros clientes del día a día.
+// F*cts da servicio a sus clientes. Unfiltrade® es el holding (cliente
+// principal) y, dentro de su ecosistema, sus proyectos. Lista plana.
 export const CLIENTS = [
   {
-    id: "unfiltrade",
-    name: "Unfiltrade®",
-    kind: "Holding",
+    id: "unfiltrade", name: "Unfiltrade®", tagline: "Holding · cliente principal",
     desc: "Holding al que damos servicio integral: estrategia, comunicación, diseño y desarrollo de producto.",
-    brands: [
-      { id: "tradinglab", name: "TradingLab", tagline: "Trading sin filtros", desc: "Academia de trading en español: estrategias validadas, mentorías en vivo, psicología y comunidad de +3.000 alumnos.", url: "https://tradinglab.es" },
-      { id: "tradingmind", name: "TradingMind", tagline: "Tu mente, tu mayor activo", desc: "Academia centrada en la mente del trader: gestión emocional, psicología y estrategia con psicólogos y traders.", url: "https://www.tradingmind.es" },
-      { id: "flickflow", name: "Flickflow", tagline: "Datos financieros filtrados por IA", desc: "Plataforma de inteligencia de mercado en tiempo real: gráficos, eventos económicos y asistente de IA (cripto, acciones, forex).", url: "https://flickflow.com" },
-      { id: "benchmark", name: "The Benchmark", tagline: "Sin humo, sin ruido, sin postureo", desc: "Newsletter semanal de análisis financiero de Alex Ruiz: claro, útil y con criterio.", url: "https://thebenchmark.es" },
-      { id: "alexruiz", name: "Alex Ruiz", tagline: "Marca personal · CEO", desc: "Divulgación y análisis de trading y mercados financieros en YouTube. Figura destacada del sector.", url: "https://www.youtube.com/@AlexRuiiz" },
-    ],
+    links: [], head: "Por definir", drive: "", brandbook: "",
+  },
+  {
+    id: "tradinglab", name: "TradingLab", tagline: "Trading sin filtros",
+    desc: "Academia de trading en español: estrategias validadas, mentorías en vivo, psicología y comunidad de +3.000 alumnos.",
+    links: [{ label: "Web", url: "https://tradinglab.es" }],
+    head: "Por definir", drive: "", brandbook: "",
+  },
+  {
+    id: "tradingmind", name: "TradingMind", tagline: "Tu mente, tu mayor activo",
+    desc: "Academia centrada en la mente del trader: gestión emocional, psicología y estrategia con psicólogos y traders.",
+    links: [{ label: "Web", url: "https://www.tradingmind.es" }],
+    head: "Por definir", drive: "", brandbook: "",
+  },
+  {
+    id: "flickflow", name: "Flickflow", tagline: "Datos financieros filtrados por IA",
+    desc: "Plataforma de inteligencia de mercado en tiempo real: gráficos, eventos económicos y asistente de IA (cripto, acciones, forex).",
+    links: [{ label: "Web", url: "https://flickflow.com" }],
+    head: "Por definir", drive: "", brandbook: "",
+  },
+  {
+    id: "benchmark", name: "The Benchmark", tagline: "Sin humo, sin ruido, sin postureo",
+    desc: "Newsletter semanal de análisis financiero de Alex Ruiz: claro, útil y con criterio.",
+    links: [{ label: "Web", url: "https://thebenchmark.es" }],
+    head: "Por definir", drive: "", brandbook: "",
+  },
+  {
+    id: "alexruiz", name: "Alex Ruiz", tagline: "Marca personal · CEO",
+    desc: "Divulgación y análisis de trading y mercados financieros. Figura destacada del sector.",
+    links: [{ label: "YouTube", url: "https://www.youtube.com/@AlexRuiiz" }],
+    head: "Por definir", drive: "", brandbook: "",
   },
 ];

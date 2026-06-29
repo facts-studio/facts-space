@@ -27,7 +27,7 @@ export default function EquipoPage() {
 
       <div className={m ? "lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-6 lg:items-start" : ""}>
         {/* Cuadrícula de personas — foto protagonista */}
-        <div className={`grid grid-cols-2 sm:grid-cols-3 gap-2 ${m ? "lg:grid-cols-3" : "lg:grid-cols-4 xl:grid-cols-5"}`}>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
           {TEAM.map((p) => {
             const active = p.id === openId;
             return (
