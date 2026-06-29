@@ -64,10 +64,10 @@ export default function TodayHero({ nombre = "equipo", events = [] }) {
   const now = new Date();
   const hoy = startOfDay(now);
 
-  const deVacaciones = events
-    .filter((e) => e.type === "vacaciones" && parse(e.start) <= now && parse(e.end) >= hoy)
-    .map((e) => e.who)
-    .filter(Boolean);
+  const vacHoy = events.filter(
+    (e) => e.type === "vacaciones" && parse(e.start) <= now && parse(e.end) >= hoy
+  );
+  const deVacaciones = vacHoy.map((e) => e.who).filter(Boolean);
 
   const futuros = events
     .map((e) => ({ ...e, dias: diasHasta(e.start, hoy) }))
@@ -76,29 +76,41 @@ export default function TodayHero({ nombre = "equipo", events = [] }) {
 
   const proxCumple = futuros.find((e) => e.type === "cumple");
   const proxFestivo = futuros.find((e) => e.type === "festivo");
+  const proxHito = futuros.find((e) => e.type === "hito");
   const proxEvento = futuros[0];
 
   const fechaRaw = now.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
   const fecha = fechaRaw.charAt(0).toUpperCase() + fechaRaw.slice(1);
 
-  // Una sola frase, fluida. Un único avatar (la persona de vacaciones).
+  // Una sola frase, fluida. Iconos (no fotos) y fechas concretas.
+  const vacEnd = vacHoy[0] && diasHasta(vacHoy[0].end, hoy) > 0 ? corto(vacHoy[0].end) : null;
   const vac =
     deVacaciones.length === 0 ? (
-      <>Hoy no hay nadie de vacaciones</>
+      <><Ico>🏖️</Ico> Hoy no hay nadie de vacaciones</>
     ) : deVacaciones.length === 1 ? (
-      <>Hoy <Face name={deVacaciones[0]} /> está de vacaciones</>
+      <>
+        <Ico>🏖️</Ico> Hoy <Hi>{deVacaciones[0]}</Hi> está de vacaciones
+        {vacEnd && <> hasta el <Hi>{vacEnd}</Hi></>}
+      </>
     ) : (
-      <>Hoy {joinNodes(deVacaciones.map((n) => <Hi>{n}</Hi>))} están de vacaciones</>
+      <><Ico>🏖️</Ico> Hoy {joinNodes(deVacaciones.map((n) => <Hi>{n}</Hi>))} están de vacaciones</>
     );
 
   const partes = [];
+  if (proxHito) {
+    partes.push(
+      <><Ico>🎯</Ico> el próximo hito es <Hi>«{proxHito.title}»</Hi>, el <Hi>{corto(proxHito.start)}</Hi></>
+    );
+  }
   if (proxCumple) {
     partes.push(
-      <>{deVacaciones.length ? "el próximo cumpleaños" : ", aunque el próximo cumpleaños"} es el de <Hi>{proxCumple.who}</Hi>, {rel(proxCumple.dias)}</>
+      <><Ico>🎂</Ico> el próximo cumpleaños es el de <Hi>{proxCumple.who}</Hi>, el <Hi>{corto(proxCumple.start)}</Hi></>
     );
   }
   if (proxFestivo) {
-    partes.push(<>el siguiente festivo será <Hi>«{proxFestivo.title}»</Hi></>);
+    partes.push(
+      <><Ico>🗓️</Ico> el siguiente festivo será <Hi>«{proxFestivo.title}»</Hi>, el <Hi>{corto(proxFestivo.start)}</Hi></>
+    );
   }
 
   return (
