@@ -4,6 +4,7 @@ export const NAV = [
   { href: "/calendario", label: "Calendario", icon: "▦" },
   { href: "/politicas", label: "Políticas", icon: "❡" },
   { href: "/recursos", label: "Recursos", icon: "✦" },
+  { href: "/holding", label: "Holding", icon: "◎" },
 ];
 
 // Accesos secundarios (no son navegación diaria).

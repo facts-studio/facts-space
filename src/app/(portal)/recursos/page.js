@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import PageHeader from "@/components/PageHeader";
-import { TOOLS, HOLDING } from "@/lib/content";
+import { TOOLS } from "@/lib/content";
 
 function favicon(url) {
   try { return `https://www.google.com/s2/favicons?domain=${new URL(url).hostname}&sz=64`; } catch { return null; }
@@ -92,20 +92,6 @@ export default function RecursosPage() {
               <a href={tool.url} target="_blank" rel="noreferrer" className="btn-primary w-full mt-6">Abrir {tool.name} ↗</a>
             </aside>
           )}
-        </div>
-      </section>
-
-      {/* Marcas del holding */}
-      <section>
-        <h2 className="font-display text-[22px] text-ink mb-1">Marcas del holding</h2>
-        <p className="text-small text-muted mb-4">Proyectos del ecosistema Unfiltrade® a los que damos soporte.</p>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2">
-          {HOLDING.map((b) => (
-            <div key={b.id} className="rounded-2xl bg-surface/55 p-5 min-h-[120px] flex flex-col">
-              <h3 className="text-title text-ink mb-1">{b.name}</h3>
-              <p className="text-small text-muted leading-relaxed">{b.desc}</p>
-            </div>
-          ))}
         </div>
       </section>
     </div>
