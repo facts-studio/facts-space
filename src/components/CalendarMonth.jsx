@@ -78,8 +78,8 @@ export default function CalendarMonth({ events = [] }) {
   const selItems = (selected ? byDay.get(selected) || EMPTY : EMPTY).filter((e) => active.has(e.type));
 
   return (
-    <div className={selected ? "lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-5 lg:items-start" : ""}>
-      <div>
+    <div className={`h-[calc(100vh-5rem)] ${selected ? "lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-5 lg:items-stretch" : ""}`}>
+      <div className="flex flex-col min-h-0 h-full">
         {/* Cabecera de mes */}
         <div className="flex items-center justify-between gap-3 mb-3">
           <h2 className="font-display text-[24px] text-ink capitalize leading-none flex items-baseline gap-2">
@@ -133,7 +133,7 @@ export default function CalendarMonth({ events = [] }) {
         </div>
 
         {/* Rejilla del mes */}
-        <div className="grid grid-cols-7 gap-1 auto-rows-fr min-h-[64vh]">
+        <div className="grid grid-cols-7 gap-1 auto-rows-fr flex-1 min-h-0">
           {days.map((d, i) => {
             const k = iso(d);
             const inMonth = d.getMonth() === month;
@@ -183,7 +183,7 @@ export default function CalendarMonth({ events = [] }) {
 
       {/* Panel del día seleccionado */}
       {selected && (
-        <aside className="mt-6 lg:mt-0 lg:sticky lg:top-8 rounded-2xl border border-border/60 bg-surface/40 p-4">
+        <aside className="mt-6 lg:mt-0 lg:h-full lg:overflow-y-auto rounded-2xl border border-border/60 bg-surface/40 p-4">
           <div className="flex items-center justify-between gap-2 mb-3">
             <span className="text-[11px] uppercase tracking-[0.12em] text-mutedSoft capitalize">{fmtSel(selected)}</span>
             <button onClick={() => setSelected(null)} aria-label="Cerrar" className="h-6 w-6 inline-flex items-center justify-center rounded-md text-mutedSoft hover:text-ink hover:bg-surface2/60 transition">
