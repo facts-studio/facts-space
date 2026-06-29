@@ -120,6 +120,20 @@ export default function TodayHero({ nombre = "equipo", events = [] }) {
     );
   }
 
+  // Hay algo "de ahora"? (vacaciones hoy o eventos dentro de la ventana)
+  const hasNow = deVacaciones.length > 0 || partes.length > 0;
+
+  // Relleno: próximos eventos MÁS ALLÁ de la ventana, sin repetir lo ya dicho.
+  const shown = new Set([proxCumple?.id, proxFestivo?.id, proxHito?.id, ...vacHoy.map((e) => e.id)].filter(Boolean));
+  const fill = futuros.filter((e) => e.dias > 0 && !shown.has(e.id)).slice(0, 2);
+
+  const nodeFor = (e) => {
+    if (e.type === "cumple") return <><Ico>🎂</Ico> el cumple de <Hi>{e.who}</Hi> el <Hi>{corto(e.start)}</Hi></>;
+    if (e.type === "festivo") return <><Ico>🗓️</Ico> el festivo <Hi>«{e.title}»</Hi> el <Hi>{corto(e.start)}</Hi></>;
+    if (e.type === "hito") return <><Ico>🎯</Ico> el hito <Hi>«{e.title}»</Hi> el <Hi>{corto(e.start)}</Hi></>;
+    return <><Ico>🏖️</Ico> las vacaciones de <Hi>{e.who}</Hi> el <Hi>{corto(e.start)}</Hi></>;
+  };
+
   return (
     <header className="pb-2 mb-8 fade-up">
       <p className="text-caption uppercase text-mutedSoft mb-5">{fecha}</p>
@@ -129,8 +143,12 @@ export default function TodayHero({ nombre = "equipo", events = [] }) {
       </h1>
 
       <p className="mt-7 text-[22px] md:text-[30px] leading-[1.4] tracking-[-0.01em] text-mutedSoft max-w-[44ch]">
-        {deVacaciones.length === 0 && partes.length === 0 ? (
-          <>Nada en la agenda por ahora. Buen momento para avanzar con calma.</>
+        {!hasNow ? (
+          fill.length > 0 ? (
+            <>Parece que de momento nada por aquí. Lo próximo será {joinNodes(fill.map(nodeFor))}.</>
+          ) : (
+            <>Parece que de momento nada más. Buen momento para avanzar con calma.</>
+          )
         ) : (
           <>
             {vac}
@@ -140,7 +158,11 @@ export default function TodayHero({ nombre = "equipo", events = [] }) {
                 {p}
               </span>
             ))}
-            .
+            {partes.length === 0 && fill.length > 0 ? (
+              <>. Después, lo próximo será {nodeFor(fill[0])}.</>
+            ) : (
+              "."
+            )}
           </>
         )}
       </p>

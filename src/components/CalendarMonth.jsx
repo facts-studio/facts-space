@@ -37,6 +37,16 @@ const CHIP = {
 const DOT = {
   brand: "bg-brand", info: "bg-info", warn: "bg-warn", violet: "bg-violet",
 };
+// Tile del panel del día: fondo suave + borde + acento por tipo.
+const TILE = {
+  brand: "bg-brandSoft/60 border-brand/15",
+  info: "bg-infoSoft/55 border-info/15",
+  warn: "bg-warnSoft/45 border-warn/15",
+  violet: "bg-violetSoft/55 border-violet/15",
+};
+const TEXT = {
+  brand: "text-brand", info: "text-info", warn: "text-warn", violet: "text-violet",
+};
 // Acabado del chip de filtro activo por color (clases explícitas).
 const FILTER_ON = {
   brand: "bg-brandSoft text-brand border-brand/30",
@@ -268,22 +278,27 @@ export default function CalendarMonth({ events = [] }) {
                 const t = EVENT_TYPES[e.type];
                 const person = WITH_PERSON.has(e.type) && e.who ? MEMBER.get(e.who) : null;
                 return (
-                  <li key={j} className="flex items-start gap-2.5">
-                    {person ? (
-                      <span className="mt-0.5"><MiniAvatar member={person} ring="ring-border" /></span>
+                  <li key={j} className={`rounded-xl border p-2.5 flex items-center gap-3 ${TILE[t.color]}`}>
+                    {person?.photo ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={person.photo} alt="" className="w-9 h-9 rounded-full object-cover shrink-0 ring-2 ring-paper" />
                     ) : (
-                      <span className={`mt-1.5 inline-block w-2 h-2 rounded-full shrink-0 ${DOT[t.color]}`} />
+                      <span className={`w-9 h-9 rounded-full grid place-items-center shrink-0 bg-paper ${TEXT[t.color]}`}>
+                        <span className={`w-2.5 h-2.5 rounded-full ${DOT[t.color]}`} />
+                      </span>
                     )}
-                    <div className="min-w-0">
-                      <p className="text-small text-ink leading-snug">{e.title}</p>
-                      <p className="text-micro text-mutedSoft">{[t.label, e.who].filter(Boolean).join(" · ")}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-small text-ink font-medium leading-snug truncate">{e.title}</p>
+                      <p className={`text-micro font-medium ${TEXT[t.color]}`}>
+                        {t.label}{e.who ? <span className="text-mutedSoft font-normal"> · {e.who}</span> : null}
+                      </p>
                     </div>
                   </li>
                 );
               })}
             </ul>
           ) : (
-            <div className="text-center text-mutedSoft text-[13px] py-6">Nada este día.</div>
+            <div className="text-center text-mutedSoft text-[13px] py-8">Nada este día.</div>
           )}
         </aside>
       )}
