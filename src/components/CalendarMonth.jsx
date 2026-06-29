@@ -20,6 +20,13 @@ const CHIP = {
 const DOT = {
   brand: "bg-brand", info: "bg-info", warn: "bg-warn", violet: "bg-violet",
 };
+// Acabado del chip de filtro activo por color (clases explícitas).
+const FILTER_ON = {
+  brand: "bg-brandSoft text-brand border-brand/30",
+  info: "bg-infoSoft text-info border-info/30",
+  warn: "bg-warnSoft text-warn border-warn/30",
+  violet: "bg-violetSoft text-violet border-violet/30",
+};
 
 export default function CalendarMonth({ events = [] }) {
   const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
@@ -34,6 +41,14 @@ export default function CalendarMonth({ events = [] }) {
     return new Date(base.getFullYear(), base.getMonth(), 1);
   });
   const [selected, setSelected] = useState(null);
+  // Filtro por tipo de evento. Todos activos por defecto.
+  const [active, setActive] = useState(() => new Set(Object.keys(EVENT_TYPES)));
+  const toggle = (k) =>
+    setActive((cur) => {
+      const n = new Set(cur);
+      n.has(k) ? n.delete(k) : n.add(k);
+      return n;
+    });
 
   // Eventos por día (sensible al rango start→end).
   const byDay = useMemo(() => {
@@ -60,7 +75,7 @@ export default function CalendarMonth({ events = [] }) {
     const d = new Date(gridStart); d.setDate(gridStart.getDate() + i); return d;
   });
 
-  const selItems = selected ? byDay.get(selected) || EMPTY : EMPTY;
+  const selItems = (selected ? byDay.get(selected) || EMPTY : EMPTY).filter((e) => active.has(e.type));
 
   return (
     <div className={selected ? "lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-5 lg:items-start" : ""}>
@@ -82,6 +97,34 @@ export default function CalendarMonth({ events = [] }) {
           </div>
         </div>
 
+        {/* Filtros por tipo */}
+        <div className="flex flex-wrap items-center gap-1.5 mb-4">
+          {Object.entries(EVENT_TYPES).map(([key, t]) => {
+            const on = active.has(key);
+            return (
+              <button
+                key={key}
+                onClick={() => toggle(key)}
+                aria-pressed={on}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] border transition active:scale-[0.97] ${
+                  on ? FILTER_ON[t.color] : "bg-transparent text-mutedSoft border-borderStrong/50 hover:text-ink hover:border-borderStrong"
+                }`}
+              >
+                <span className={`inline-block w-2 h-2 rounded-full ${on ? DOT[t.color] : "bg-mutedSoft/50"}`} />
+                {t.label}
+              </button>
+            );
+          })}
+          {active.size < Object.keys(EVENT_TYPES).length && (
+            <button
+              onClick={() => setActive(new Set(Object.keys(EVENT_TYPES)))}
+              className="ml-1 text-[12px] text-muted hover:text-ink transition px-2 py-1"
+            >
+              Mostrar todo
+            </button>
+          )}
+        </div>
+
         {/* Cabecera de días */}
         <div className="grid grid-cols-7 gap-1 mb-1">
           {WD.map((w, i) => (
@@ -96,7 +139,7 @@ export default function CalendarMonth({ events = [] }) {
             const inMonth = d.getMonth() === month;
             const isToday = k === todayISO;
             const isSel = selected === k;
-            const items = byDay.get(k) || EMPTY;
+            const items = (byDay.get(k) || EMPTY).filter((e) => active.has(e.type));
             const extra = items.length - MAX_CHIPS;
             return (
               <div
@@ -135,15 +178,6 @@ export default function CalendarMonth({ events = [] }) {
               </div>
             );
           })}
-        </div>
-
-        {/* Leyenda */}
-        <div className="flex flex-wrap gap-4 mt-4">
-          {Object.entries(EVENT_TYPES).map(([key, t]) => (
-            <span key={key} className="inline-flex items-center gap-1.5 text-micro text-muted">
-              <span className={`inline-block w-2 h-2 rounded-full ${DOT[t.color]}`} /> {t.label}
-            </span>
-          ))}
         </div>
       </div>
 
