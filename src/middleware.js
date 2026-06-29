@@ -1,6 +1,10 @@
 import { updateSession } from "@/lib/supabase/middleware";
 
 export async function middleware(request) {
+  // Modo preview: sin auth, para enseñar el entorno antes de conectar Supabase.
+  if (process.env.NEXT_PUBLIC_AUTH_DISABLED === "true") {
+    return;
+  }
   return await updateSession(request);
 }
 

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV, ADMIN_NAV } from "@/lib/nav";
 import { createClient } from "@/lib/supabase/client";
+import FctsMark from "@/components/FctsMark";
 
 function NavLink({ href, label, icon, active }) {
   return (
@@ -38,11 +39,14 @@ export default function Sidebar({ user }) {
 
   return (
     <aside className="w-[248px] shrink-0 h-screen sticky top-0 hidden md:flex flex-col border-r border-border px-4 py-6">
-      <div className="px-3 mb-8">
-        <p className="section-eyebrow mb-1">F*cts Studio</p>
-        <p className="font-display text-[20px] text-ink leading-none">
-          Portal <span className="title-italic">interno</span>
-        </p>
+      <div className="px-3 mb-8 flex items-center gap-3">
+        <FctsMark className="w-7 h-7 text-brand shrink-0" />
+        <div>
+          <p className="section-eyebrow mb-0.5">F*cts Studio</p>
+          <p className="font-display text-[18px] text-ink leading-none">
+            Portal <span className="title-italic">interno</span>
+          </p>
+        </div>
       </div>
 
       <nav className="flex flex-col gap-1">
@@ -74,12 +78,16 @@ export default function Sidebar({ user }) {
           )}
           <div className="min-w-0 flex-1">
             <p className="text-small text-ink truncate">{name}</p>
-            <button
-              onClick={signOut}
-              className="text-micro text-mutedSoft hover:text-ink transition"
-            >
-              Cerrar sesión
-            </button>
+            {process.env.NEXT_PUBLIC_AUTH_DISABLED === "true" ? (
+              <span className="text-micro text-mutedSoft">Modo preview</span>
+            ) : (
+              <button
+                onClick={signOut}
+                className="text-micro text-mutedSoft hover:text-ink transition"
+              >
+                Cerrar sesión
+              </button>
+            )}
           </div>
         </div>
       </div>

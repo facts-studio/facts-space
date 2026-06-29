@@ -2,13 +2,22 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import Sidebar from "@/components/Sidebar";
 
-export default async function PortalLayout({ children }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+const PREVIEW = process.env.NEXT_PUBLIC_AUTH_DISABLED === "true";
+const PREVIEW_USER = {
+  email: "equipo@fcts.studio",
+  user_metadata: { full_name: "Equipo F*cts" },
+};
 
-  if (!user) redirect("/login");
+export default async function PortalLayout({ children }) {
+  let user = PREVIEW ? PREVIEW_USER : null;
+
+  if (!PREVIEW) {
+    const supabase = await createClient();
+    ({
+      data: { user },
+    } = await supabase.auth.getUser());
+    if (!user) redirect("/login");
+  }
 
   return (
     <div className="flex min-h-screen">
