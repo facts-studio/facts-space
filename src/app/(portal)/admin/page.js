@@ -1,11 +1,6 @@
 import PageHeader from "@/components/PageHeader";
-
-const SECTIONS = [
-  { title: "Eventos", desc: "Crear y editar hitos, cumpleaños, vacaciones y festivos." },
-  { title: "Políticas", desc: "Redactar y ordenar las políticas del equipo." },
-  { title: "Recursos", desc: "Gestionar enlaces, programas y categorías." },
-  { title: "Equipo", desc: "Miembros, roles y cumpleaños." },
-];
+import { EventPill, Avatar } from "@/components/EventBadge";
+import { EVENTS, EVENT_TYPES, TEAM, fmtRange, fmtDate } from "@/lib/mock";
 
 export default function AdminPage() {
   return (
@@ -13,19 +8,62 @@ export default function AdminPage() {
       <PageHeader
         eyebrow="Gestión"
         title="Administrar"
-        helper="Desde aquí se edita todo el contenido del portal. Las pantallas de edición llegan en la Fase 1."
+        helper="Edición de todo el contenido del portal. (Demo con datos ficticios.)"
+        action={<button className="btn-primary">+ Nuevo</button>}
       />
-      <div className="grid sm:grid-cols-2 gap-4">
-        {SECTIONS.map((s) => (
-          <div key={s.title} className="card p-5">
-            <div className="flex items-center justify-between mb-1.5">
-              <h2 className="text-title text-ink">{s.title}</h2>
-              <span className="pill bg-surface2 text-mutedSoft">Próximamente</span>
-            </div>
-            <p className="text-small text-muted leading-relaxed">{s.desc}</p>
-          </div>
-        ))}
-      </div>
+
+      {/* Eventos */}
+      <section className="card overflow-hidden mb-6">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <h2 className="text-title text-ink">Eventos</h2>
+          <span className="count-pill bg-surface2 text-muted">{EVENTS.length}</span>
+        </div>
+        <table className="table">
+          <thead>
+            <tr><th>Título</th><th>Tipo</th><th>Fechas</th><th>Persona</th><th></th></tr>
+          </thead>
+          <tbody>
+            {EVENTS.map((e) => (
+              <tr key={e.id}>
+                <td className="text-ink">{e.title}</td>
+                <td><EventPill color={EVENT_TYPES[e.type].color}>{EVENT_TYPES[e.type].label}</EventPill></td>
+                <td className="text-muted tabular-nums">{fmtRange(e.start, e.end)}</td>
+                <td className="text-muted">{e.who || "—"}</td>
+                <td className="text-right"><button className="btn-quiet">Editar</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+
+      {/* Equipo */}
+      <section className="card overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <h2 className="text-title text-ink">Equipo</h2>
+          <span className="count-pill bg-surface2 text-muted">{TEAM.length}</span>
+        </div>
+        <table className="table">
+          <thead>
+            <tr><th>Miembro</th><th>Rol</th><th>Email</th><th>Cumpleaños</th><th></th></tr>
+          </thead>
+          <tbody>
+            {TEAM.map((m) => (
+              <tr key={m.id}>
+                <td>
+                  <div className="flex items-center gap-3">
+                    <Avatar name={m.name} color={m.color} size={28} />
+                    <span className="text-ink">{m.name}</span>
+                  </div>
+                </td>
+                <td className="text-muted">{m.role}</td>
+                <td className="text-muted">{m.email}</td>
+                <td className="text-muted tabular-nums">{fmtDate(m.birthday)}</td>
+                <td className="text-right"><button className="btn-quiet">Editar</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
     </>
   );
 }
