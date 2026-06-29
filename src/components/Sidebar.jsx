@@ -6,6 +6,7 @@ import { NAV, SECONDARY_NAV } from "@/lib/nav";
 import { createClient } from "@/lib/supabase/client";
 import FctsMark from "@/components/FctsMark";
 import ThemeToggle from "@/components/ThemeToggle";
+import NavIcon from "@/components/NavIcon";
 
 function NavLink({ href, label, icon, active }) {
   return (
@@ -18,7 +19,7 @@ function NavLink({ href, label, icon, active }) {
           : "text-muted hover:text-ink hover:bg-surface2/60",
       ].join(" ")}
     >
-      <span className="w-4 text-center text-[13px] opacity-70">{icon}</span>
+      <span className={`shrink-0 ${active ? "opacity-100" : "opacity-70"}`}><NavIcon name={icon} /></span>
       {label}
     </Link>
   );
