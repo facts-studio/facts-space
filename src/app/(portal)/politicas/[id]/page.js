@@ -9,7 +9,7 @@ export default async function PoliticaPage({ params }) {
   if (!p) notFound();
 
   return (
-    <div className="max-w-[760px]">
+    <div>
       <Link href="/politicas" className="text-small text-muted hover:text-ink transition">← Políticas</Link>
       <header className="mt-4 mb-8">
         <div className="text-[28px] mb-3">{p.icon}</div>

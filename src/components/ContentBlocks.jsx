@@ -7,7 +7,7 @@ export default function ContentBlocks({ blocks = [] }) {
       {blocks.map((b, i) => {
         if (b.h) return <h2 key={i} className="font-display text-[24px] text-ink mt-6 first:mt-0">{b.h}</h2>;
         if (b.h3) return <h3 key={i} className="text-title text-ink mt-4">{b.h3}</h3>;
-        if (b.p) return <p key={i} className="text-body-lg text-inkSoft leading-relaxed">{b.p}</p>;
+        if (b.p) return <p key={i} className="text-body-lg text-inkSoft leading-relaxed max-w-[70ch]">{b.p}</p>;
         if (b.ul) return (
           <ul key={i} className="flex flex-col gap-2">
             {b.ul.map((it, j) => (
