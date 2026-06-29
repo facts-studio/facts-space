@@ -204,12 +204,17 @@ export default function CalendarMonth({ events = [] }) {
             const isSel = selected === k;
             const items = (byDay.get(k) || EMPTY).filter(pass);
             const extra = items.length - MAX_CHIPS;
+            const hasFestivo = items.some((e) => e.type === "festivo");
             return (
               <div
                 key={i}
                 onClick={() => setSelected((cur) => (cur === k ? null : k))}
                 className={`h-full min-h-[84px] rounded-xl border p-1.5 flex flex-col gap-1 cursor-pointer transition ${
-                  isSel ? "border-ink/45 bg-surface2/40" : "border-borderStrong/45 hover:border-borderStrong/70"
+                  isSel
+                    ? "border-ink/45 bg-surface2/40"
+                    : hasFestivo
+                      ? "border-violet/20 bg-violetSoft/45 hover:border-violet/35"
+                      : "border-borderStrong/45 hover:border-borderStrong/70"
                 } ${!inMonth ? "opacity-45" : ""}`}
               >
                 <div className="flex items-center justify-between px-0.5">
