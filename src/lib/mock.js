@@ -66,76 +66,20 @@ export const EVENTS = [
   { id: 43, type: "cumple", title: "Cumpleaños Mariola", start: "2026-09-10", end: "2026-09-10", who: "Mariola" },
 ];
 
-export const POLICY_CATEGORIES = [
-  {
-    name: "Empezar aquí",
-    eyebrow: "Onboarding",
-    policies: [
-      { id: "bienvenida", title: "Bienvenido/a a F*cts Studio", summary: "Quiénes somos, cómo trabajamos y qué esperar tus primeras semanas.", updated: "2026-06-10", min: 6 },
-      { id: "herramientas", title: "Herramientas y accesos", summary: "ClickUp, Drive, Holded, Figma y cómo pedir accesos.", updated: "2026-06-12", min: 4 },
-      { id: "comunicacion", title: "Cómo nos comunicamos", summary: "Canales, tono, reuniones y tiempos de respuesta.", updated: "2026-05-28", min: 3 },
-    ],
-  },
-  {
-    name: "Tiempo y descanso",
-    eyebrow: "Personas",
-    policies: [
-      { id: "vacaciones", title: "Política de vacaciones", summary: "Días disponibles, cómo solicitarlos y plazos de aviso.", updated: "2026-06-01", min: 5 },
-      { id: "festivos", title: "Festivos y calendario laboral", summary: "Festivos nacionales, autonómicos y cierres del estudio.", updated: "2026-01-15", min: 2 },
-      { id: "flexibilidad", title: "Horario y flexibilidad", summary: "Franja común, trabajo en remoto y desconexión.", updated: "2026-04-20", min: 3 },
-    ],
-  },
-  {
-    name: "Cómo trabajamos",
-    eyebrow: "Operativa",
-    policies: [
-      { id: "proyectos", title: "Ciclo de vida de un proyecto", summary: "De brief a entrega: fases, roles y checkpoints.", updated: "2026-06-18", min: 8 },
-      { id: "gastos", title: "Gastos y dietas", summary: "Qué se cubre, límites y cómo reportar en Holded.", updated: "2026-03-11", min: 4 },
-    ],
-  },
-];
-
-export const RESOURCE_CATEGORIES = [
-  {
-    name: "Programas y licencias",
-    resources: [
-      { id: 1, title: "Figma", desc: "Diseño UI y design systems", url: "https://figma.com", tag: "Equipo" },
-      { id: 2, title: "Adobe Creative Cloud", desc: "Suite gráfica completa", url: "https://adobe.com", tag: "5 licencias" },
-      { id: 3, title: "ClickUp", desc: "Gestión de proyectos y tareas", url: "https://clickup.com", tag: "Equipo" },
-      { id: 4, title: "Holded", desc: "Facturación y administración", url: "https://holded.com", tag: "Admin" },
-    ],
-  },
-  {
-    name: "Marca y plantillas",
-    resources: [
-      { id: 5, title: "Brand assets F*cts", desc: "Logos, tipografías y paleta", url: "https://drive.google.com", tag: "Drive" },
-      { id: 6, title: "Plantillas de propuesta", desc: "Keynote y Figma listos para usar", url: "https://figma.com", tag: "Figma" },
-      { id: 7, title: "Plantilla de presupuesto", desc: "Hoja de cálculo estándar", url: "https://drive.google.com", tag: "Drive" },
-    ],
-  },
-  {
-    name: "Inspiración y referencias",
-    resources: [
-      { id: 8, title: "Raindrop del estudio", desc: "Bookmarks curados por área", url: "https://raindrop.io", tag: "Raindrop" },
-      { id: 9, title: "Carpeta de referencias", desc: "Moodboards y benchmarks", url: "https://drive.google.com", tag: "Drive" },
-    ],
-  },
-];
-
 // Novedades de empresa (lo que NO es un evento de calendario): comunicados,
 // recursos nuevos, políticas actualizadas. Se mezclan con los próximos eventos
 // en el panel de la derecha.
 export const NEWS = [
-  { id: "n1", tone: "brand", icon: "❡", tag: "Políticas", title: "Nueva política de vacaciones", sub: "Revisada para la temporada de verano.", date: "2026-06-26", cta: "Leer", to: "/politicas" },
-  { id: "n2", tone: "success", icon: "✦", tag: "Recursos", title: "Plantillas de propuesta añadidas", sub: "Keynote y Figma listos para usar.", date: "2026-06-24", cta: "Ver", to: "/recursos" },
-  { id: "n3", tone: "info", icon: "✻", tag: "Estudio", title: "Bienvenido, Owen 👋", sub: "Se incorpora al equipo de Motion & 3D.", date: "2026-06-20", cta: null, to: null },
+  { id: "n1", tone: "brand", icon: "❡", tag: "Políticas", title: "Política de vacaciones actualizada", sub: "Reparto orientativo por trimestres y antelación.", date: "2026-06-26", cta: "Leer", to: "/politicas/vacaciones" },
+  { id: "n2", tone: "success", icon: "✦", tag: "Recursos", title: "Fichas de herramientas", sub: "Para qué sirve cada una y qué evitar.", date: "2026-06-24", cta: "Ver", to: "/recursos" },
+  { id: "n3", tone: "info", icon: "✻", tag: "Onboarding", title: "Nuevo recorrido de onboarding", sub: "Qué es F*cts, cultura, políticas y herramientas.", date: "2026-06-20", cta: "Empezar", to: "/onboarding" },
 ];
 
 // Onboarding — recorrido lineal para quien acaba de entrar a F*cts.
 export const ONBOARDING = [
   { id: "que", num: "01", icon: "✳", cover: "que", title: "Qué es F*cts", desc: "Quiénes somos, qué hacemos y la visión del estudio.", min: 5 },
   { id: "cultura", num: "02", icon: "❖", cover: "cultura", title: "Cultura y equipo", desc: "Cómo nos relacionamos, valores y quién es quién.", min: 6 },
-  { id: "politicas", num: "03", icon: "♥", cover: "politicas", title: "Políticas internas", desc: "Vacaciones, horarios, gastos y desconexión.", min: 8 },
+  { id: "politicas", num: "03", icon: "♥", cover: "politicas", title: "Políticas internas", desc: "Horarios, vacaciones, comunicación y seguridad.", min: 8 },
   { id: "herramientas", num: "04", icon: "◐", cover: "herramientas", title: "Herramientas", desc: "ClickUp, Drive, Figma, Holded y cómo pedir accesos.", min: 4 },
   { id: "tareas", num: "05", icon: "✓", cover: "tareas", title: "Tareas de onboarding", desc: "Tu checklist de las primeras dos semanas.", min: 3 },
 ];

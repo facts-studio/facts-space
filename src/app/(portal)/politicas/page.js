@@ -1,5 +1,8 @@
+import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
-import { POLICY_CATEGORIES, fmtDate } from "@/lib/mock";
+import { POLICIES, POLICY_GROUPS } from "@/lib/content";
+
+const byId = new Map(POLICIES.map((p) => [p.id, p]));
 
 export default function PoliticasPage() {
   return (
@@ -7,30 +10,31 @@ export default function PoliticasPage() {
       <PageHeader
         eyebrow="Cómo trabajamos"
         title="Políticas"
-        helper="Onboarding, política de vacaciones y guías internas del estudio."
+        helper="Horarios, vacaciones, comunicación, organización y seguridad del estudio."
       />
 
       <div className="flex flex-col gap-10">
-        {POLICY_CATEGORIES.map((cat) => (
-          <section key={cat.name}>
+        {POLICY_GROUPS.map((g) => (
+          <section key={g.name}>
             <div className="mb-4">
-              <p className="section-eyebrow mb-1">{cat.eyebrow}</p>
-              <h2 className="font-display text-[22px] text-ink">{cat.name}</h2>
+              <p className="section-eyebrow mb-1">{g.eyebrow}</p>
+              <h2 className="font-display text-[22px] text-ink">{g.name}</h2>
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
-              {cat.policies.map((p) => (
-                <a key={p.id} href="#" className="row-card p-5 group flex flex-col">
-                  <h3 className="text-title text-ink mb-1.5 group-hover:text-brand transition-colors">
-                    {p.title}
-                  </h3>
-                  <p className="text-small text-muted leading-relaxed flex-1">{p.summary}</p>
-                  <div className="flex items-center gap-3 mt-4 text-micro text-mutedSoft">
-                    <span>{p.min} min de lectura</span>
-                    <span className="w-1 h-1 rounded-full bg-borderStrong" />
-                    <span>Act. {fmtDate(p.updated)}</span>
-                  </div>
-                </a>
-              ))}
+              {g.ids.map((id) => {
+                const p = byId.get(id);
+                if (!p) return null;
+                return (
+                  <Link key={id} href={`/politicas/${id}`} className="row-card p-5 group flex flex-col">
+                    <div className="flex items-center gap-2.5 mb-2">
+                      <span className="text-[18px]">{p.icon}</span>
+                      <h3 className="text-title text-ink group-hover:text-brand transition-colors">{p.title}</h3>
+                    </div>
+                    <p className="text-small text-muted leading-relaxed flex-1">{p.summary}</p>
+                    <span className="text-micro text-mutedSoft mt-4">{p.min} min de lectura</span>
+                  </Link>
+                );
+              })}
             </div>
           </section>
         ))}

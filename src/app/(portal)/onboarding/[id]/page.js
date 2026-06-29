@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { COVERS } from "@/components/OnboardingCovers";
+import ContentBlocks from "@/components/ContentBlocks";
 import { ONBOARDING } from "@/lib/mock";
+import { ONBOARDING_BODY } from "@/lib/content";
 
 export default async function OnboardingStepPage({ params }) {
   const { id } = await params;
@@ -27,11 +29,14 @@ export default async function OnboardingStepPage({ params }) {
       <h1 className="section-title mb-3">{step.title}</h1>
       <p className="section-helper">{step.desc}</p>
 
-      <div className="surface-card-dashed p-10 grid place-items-center text-center mt-8">
-        <p className="text-body text-muted max-w-[440px]">
-          Aquí irá el contenido de «{step.title}». Editable desde Administrar en la
-          siguiente fase.
-        </p>
+      <div className="mt-8">
+        {ONBOARDING_BODY[step.id] ? (
+          <ContentBlocks blocks={ONBOARDING_BODY[step.id]} />
+        ) : (
+          <div className="surface-card-dashed p-10 grid place-items-center text-center">
+            <p className="text-body text-muted max-w-[440px]">Contenido pendiente.</p>
+          </div>
+        )}
       </div>
 
       {/* Navegación lineal */}
