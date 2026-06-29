@@ -1,5 +1,9 @@
 "use client";
 
+import { EVENT_TYPES, TEAM } from "@/lib/mock";
+
+const MEMBER = new Map(TEAM.map((m) => [m.name, m]));
+
 function saludo(h) {
   if (h < 6) return "Buenas noches";
   if (h < 13) return "Buenos días";
@@ -12,19 +16,49 @@ const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 const parse = (iso) => new Date(iso + "T00:00:00");
 const diasHasta = (iso, hoy) => Math.round((startOfDay(parse(iso)) - hoy) / DAY);
 const firstName = (s) => (s || "").split(" ")[0];
-const corto = (iso) =>
-  parse(iso).toLocaleDateString("es-ES", { day: "numeric", month: "long" });
+const corto = (iso) => parse(iso).toLocaleDateString("es-ES", { day: "numeric", month: "long" });
 
 function rel(dias) {
   if (dias <= 0) return "hoy";
   if (dias === 1) return "mañana";
   if (dias < 7) return `en ${dias} días`;
   if (dias < 14) return "la semana que viene";
-  return `en ${Math.round(dias / 7)} semanas`;
+  if (dias < 31) return `en ${Math.round(dias / 7)} semanas`;
+  if (dias < 60) return "el mes que viene";
+  return `en ${Math.round(dias / 30)} meses`;
 }
 
-// Palabra clave resaltada (estilo landing cliente Adhōc).
+// Avatar en línea con el texto (escala con el tamaño de fuente).
+function Face({ name }) {
+  const m = MEMBER.get(name);
+  if (!m) return <Hi>{name}</Hi>;
+  return (
+    <span className="inline-flex items-baseline whitespace-nowrap">
+      {m.photo && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={m.photo}
+          alt=""
+          className="inline-block w-[0.95em] h-[0.95em] rounded-full object-cover align-[-0.12em] mr-[0.25em] ring-1 ring-border"
+        />
+      )}
+      <Hi>{name}</Hi>
+    </span>
+  );
+}
 const Hi = ({ children }) => <span className="text-ink font-medium">{children}</span>;
+// Emoji inline, un punto más pequeño que el texto.
+const Ico = ({ children }) => <span className="text-[0.8em] align-[0.04em]">{children}</span>;
+
+// Une elementos con comas y "y" final, conservando nodos React.
+function joinNodes(nodes) {
+  return nodes.map((n, i) => (
+    <span key={i}>
+      {i > 0 && (i === nodes.length - 1 ? " y " : ", ")}
+      {n}
+    </span>
+  ));
+}
 
 export default function TodayHero({ nombre = "equipo", events = [] }) {
   const now = new Date();
@@ -32,69 +66,82 @@ export default function TodayHero({ nombre = "equipo", events = [] }) {
 
   const deVacaciones = events
     .filter((e) => e.type === "vacaciones" && parse(e.start) <= now && parse(e.end) >= hoy)
-    .map((e) => firstName(e.who));
+    .map((e) => e.who)
+    .filter(Boolean);
 
   const futuros = events
     .map((e) => ({ ...e, dias: diasHasta(e.start, hoy) }))
     .filter((e) => e.dias >= 0)
     .sort((a, b) => a.dias - b.dias);
 
-  const proxHito = futuros.find((e) => e.type === "hito");
   const proxCumple = futuros.find((e) => e.type === "cumple");
-  const proxEvento = futuros.find((e) => e.id !== proxHito?.id);
+  const proxFestivo = futuros.find((e) => e.type === "festivo");
+  const proxEvento = futuros[0];
+
+  const fechaRaw = now.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
+  const fecha = fechaRaw.charAt(0).toUpperCase() + fechaRaw.slice(1);
+
+  // Frases con iconos + caras intercaladas.
+  const frases = [];
+  if (deVacaciones.length === 0) {
+    frases.push(<><Ico>🏖️</Ico> hoy no hay nadie de vacaciones</>);
+  } else {
+    frases.push(
+      <>
+        <Ico>🏖️</Ico> hoy {joinNodes(deVacaciones.map((n) => <Face name={n} />))}{" "}
+        {deVacaciones.length === 1 ? "está" : "están"} de vacaciones
+      </>
+    );
+  }
+  if (proxCumple) {
+    frases.push(
+      <>
+        <Ico>🎂</Ico> el próximo cumple es el de <Face name={proxCumple.who} /> ({rel(proxCumple.dias)})
+      </>
+    );
+  }
+  if (proxFestivo) {
+    frases.push(
+      <>
+        <Ico>🗓️</Ico> y el siguiente festivo, <Hi>«{proxFestivo.title}»</Hi> {rel(proxFestivo.dias)}
+      </>
+    );
+  }
 
   return (
     <header className="pb-2 mb-8 fade-up">
-      <p className="text-caption uppercase text-mutedSoft mb-5">
-        {(() => {
-          const f = now.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
-          return f.charAt(0).toUpperCase() + f.slice(1);
-        })()}
-      </p>
+      <p className="text-caption uppercase text-mutedSoft mb-5">{fecha}</p>
 
       <h1 className="font-display text-[44px] md:text-[64px] leading-[1.0] tracking-[-0.03em] text-ink">
-        {saludo(now.getHours())}, {nombre}{" "}
-        <span className="inline-block align-baseline">👋</span>
+        {saludo(now.getHours())}, {nombre} <span className="inline-block align-baseline">👋</span>
       </h1>
 
-      <p className="mt-7 text-[22px] md:text-[31px] leading-[1.35] tracking-[-0.01em] text-mutedSoft max-w-[34ch] md:max-w-[42ch]">
-        {deVacaciones.length === 0 ? (
-          <>Hoy no hay nadie de vacaciones</>
-        ) : deVacaciones.length === 1 ? (
-          <>Hoy <Hi>{deVacaciones[0]}</Hi> está de vacaciones</>
-        ) : (
-          <>Hoy están de vacaciones <Hi>{deVacaciones.join(" y ")}</Hi></>
-        )}
-        {proxHito && (
-          <>
-            {" "}y el próximo hito es <Hi>«{proxHito.title}»</Hi>, {rel(proxHito.dias)}.
-          </>
-        )}
-        {proxCumple && (
-          <> Pronto celebramos el cumple de <Hi>{firstName(proxCumple.who)}</Hi>.</>
-        )}
+      <p className="mt-7 text-[22px] md:text-[30px] leading-[1.4] tracking-[-0.01em] text-mutedSoft max-w-[44ch]">
+        {frases.map((f, i) => (
+          <span key={i}>
+            {i > 0 && ". "}
+            {f}
+          </span>
+        ))}
+        .
       </p>
 
-      {/* Ahora mismo — bloque grande en superficie sutil */}
-      {proxHito && (
+      {/* Lo más cercano */}
+      {proxEvento && (
         <div className="mt-10 rounded-[28px] bg-surface2/65 border border-border/50 p-7 md:p-10">
           <span className="inline-flex items-center gap-2 text-caption uppercase text-brandMid font-semibold">
             <span className="h-1.5 w-1.5 rounded-full bg-brandMid" /> Lo más cercano
           </span>
-          <h2 className="font-display text-[32px] md:text-[46px] leading-[1.02] tracking-[-0.025em] text-ink mt-4 max-w-[640px]">
-            {proxHito.title}
+          <h2 className="font-display text-[28px] md:text-[40px] leading-[1.05] tracking-[-0.025em] text-ink mt-4 flex items-center gap-3 max-w-[640px]">
+            {proxEvento.who && MEMBER.get(proxEvento.who)?.photo && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={MEMBER.get(proxEvento.who).photo} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
+            )}
+            {proxEvento.title}
           </h2>
-          <p className="text-body-lg text-inkSoft/85 mt-4">
-            {proxHito.who ? `${proxHito.who} · ` : ""}
-            {rel(proxHito.dias)} · {corto(proxHito.start)}
+          <p className="text-body-lg text-inkSoft/85 mt-3">
+            {EVENT_TYPES[proxEvento.type].label} · {rel(proxEvento.dias)} · {corto(proxEvento.start)}
           </p>
-          {proxEvento && (
-            <div className="mt-7 text-small text-muted">
-              Después:{" "}
-              <span className="text-ink font-medium">{proxEvento.title}</span>{" "}
-              ({rel(proxEvento.dias)})
-            </div>
-          )}
         </div>
       )}
     </header>
