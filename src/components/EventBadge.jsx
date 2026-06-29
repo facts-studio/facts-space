@@ -16,12 +16,23 @@ export function EventPill({ color, children }) {
   return <span className={`pill ${(STYLES[color] || STYLES.brand).pill}`}>{children}</span>;
 }
 
-export function Avatar({ name, color = "brand", size = 32 }) {
+export function Avatar({ name, color = "brand", size = 32, photo = null }) {
   const s = STYLES[color] || STYLES.brand;
+  if (photo) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={photo}
+        alt={name || ""}
+        className="rounded-full object-cover shrink-0"
+        style={{ width: size, height: size }}
+      />
+    );
+  }
   return (
     <span
-      className={`rounded-full grid place-items-center text-[12px] font-medium ${s.pill}`}
-      style={{ width: size, height: size }}
+      className={`rounded-full grid place-items-center font-medium shrink-0 ${s.pill}`}
+      style={{ width: size, height: size, fontSize: Math.max(9, size * 0.4) }}
     >
       {name?.[0]?.toUpperCase()}
     </span>

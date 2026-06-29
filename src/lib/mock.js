@@ -1,12 +1,15 @@
 // Datos ficticios para previsualizar el sistema completo.
 // En la Fase 1 esto se sustituye por consultas a Supabase.
 
+// photo: en el demo usamos un servicio de avatares (determinista por email).
+// En producción será la foto real subida a Supabase Storage.
+const av = (email) => `https://i.pravatar.cc/80?u=${encodeURIComponent(email)}`;
 export const TEAM = [
-  { id: 1, name: "Álvaro Vigil", role: "Dirección creativa", email: "alvaro@fcts.studio", birthday: "1992-03-14", color: "brand" },
-  { id: 2, name: "Marina Soler", role: "Diseño de marca", email: "marina@fcts.studio", birthday: "1995-07-02", color: "info" },
-  { id: 3, name: "Bruno Esteve", role: "Desarrollo", email: "bruno@fcts.studio", birthday: "1990-11-22", color: "violet" },
-  { id: 4, name: "Lucía Ferrer", role: "Project manager", email: "lucia@fcts.studio", birthday: "1997-01-09", color: "warn" },
-  { id: 5, name: "Owen Marsh", role: "Motion & 3D", email: "owen@fcts.studio", birthday: "1993-09-30", color: "success" },
+  { id: 1, name: "Álvaro Vigil", role: "Dirección creativa", email: "alvaro@fcts.studio", birthday: "1992-03-14", color: "brand", photo: av("alvaro@fcts.studio") },
+  { id: 2, name: "Marina Soler", role: "Diseño de marca", email: "marina@fcts.studio", birthday: "1995-07-02", color: "info", photo: av("marina@fcts.studio") },
+  { id: 3, name: "Bruno Esteve", role: "Desarrollo", email: "bruno@fcts.studio", birthday: "1990-11-22", color: "violet", photo: av("bruno@fcts.studio") },
+  { id: 4, name: "Lucía Ferrer", role: "Project manager", email: "lucia@fcts.studio", birthday: "1997-01-09", color: "warn", photo: av("lucia@fcts.studio") },
+  { id: 5, name: "Owen Marsh", role: "Motion & 3D", email: "owen@fcts.studio", birthday: "1993-09-30", color: "success", photo: av("owen@fcts.studio") },
 ];
 
 // Tipos de evento → color del sistema (tokens del design system).

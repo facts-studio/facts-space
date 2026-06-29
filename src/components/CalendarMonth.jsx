@@ -1,7 +1,24 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { EVENT_TYPES } from "@/lib/mock";
+import { EVENT_TYPES, TEAM } from "@/lib/mock";
+
+const MEMBER = new Map(TEAM.map((m) => [m.name, m]));
+// Tipos con persona asociada → mostramos miniatura.
+const WITH_PERSON = new Set(["cumple", "vacaciones"]);
+
+function MiniAvatar({ member, ring = "ring-white/70" }) {
+  if (!member) return null;
+  if (member.photo) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={member.photo} alt={member.name} className={`w-4 h-4 rounded-full object-cover shrink-0 ring-1 ${ring}`} />;
+  }
+  return (
+    <span className="w-4 h-4 rounded-full bg-white/85 text-ink grid place-items-center text-[8px] font-semibold shrink-0">
+      {member.name[0]}
+    </span>
+  );
+}
 
 const WD = ["L", "M", "X", "J", "V", "S", "D"]; // lunes primero
 const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
@@ -156,15 +173,19 @@ export default function CalendarMonth({ events = [] }) {
                   {items.length > 0 && <span className="text-[9.5px] text-mutedSoft tabular-nums">{items.length}</span>}
                 </div>
                 <div className="flex flex-col gap-0.5 min-w-0">
-                  {items.slice(0, MAX_CHIPS).map((e, j) => (
-                    <span
-                      key={j}
-                      title={e.title}
-                      className={`w-full text-left truncate rounded-lg px-2 py-1.5 text-[11px] leading-tight ${CHIP[e.type] || "bg-surface2 text-ink"}`}
-                    >
-                      {e.title}
-                    </span>
-                  ))}
+                  {items.slice(0, MAX_CHIPS).map((e, j) => {
+                    const person = WITH_PERSON.has(e.type) && e.who ? MEMBER.get(e.who) : null;
+                    return (
+                      <span
+                        key={j}
+                        title={e.title}
+                        className={`w-full flex items-center gap-1.5 rounded-lg px-1.5 py-1 text-[11px] leading-tight ${CHIP[e.type] || "bg-surface2 text-ink"}`}
+                      >
+                        {person && <MiniAvatar member={person} />}
+                        <span className="truncate">{e.title}</span>
+                      </span>
+                    );
+                  })}
                   {extra > 0 && (
                     <button
                       type="button"
@@ -194,9 +215,14 @@ export default function CalendarMonth({ events = [] }) {
             <ul className="space-y-2">
               {selItems.map((e, j) => {
                 const t = EVENT_TYPES[e.type];
+                const person = WITH_PERSON.has(e.type) && e.who ? MEMBER.get(e.who) : null;
                 return (
                   <li key={j} className="flex items-start gap-2.5">
-                    <span className={`mt-1.5 inline-block w-2 h-2 rounded-full shrink-0 ${DOT[t.color]}`} />
+                    {person ? (
+                      <span className="mt-0.5"><MiniAvatar member={person} ring="ring-border" /></span>
+                    ) : (
+                      <span className={`mt-1.5 inline-block w-2 h-2 rounded-full shrink-0 ${DOT[t.color]}`} />
+                    )}
                     <div className="min-w-0">
                       <p className="text-small text-ink leading-snug">{e.title}</p>
                       <p className="text-micro text-mutedSoft">{[t.label, e.who].filter(Boolean).join(" · ")}</p>
