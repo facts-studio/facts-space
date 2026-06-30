@@ -1,4 +1,5 @@
 import Link from "next/link";
+import BirthdayConfetti from "@/components/BirthdayConfetti";
 import TodayHero from "@/components/TodayHero";
 import NovedadesPanel from "@/components/NovedadesPanel";
 import { Avatar } from "@/components/EventBadge";
@@ -13,6 +14,7 @@ const SHORTCUTS = [
 export default function HomePage() {
   return (
     <div className="grid lg:grid-cols-[minmax(0,1fr)_320px] gap-8 lg:gap-12 items-start">
+      <BirthdayConfetti />
       {/* Columna principal */}
       <div className="min-w-0 max-w-[820px]">
         <TodayHero nombre="equipo" events={EVENTS} />

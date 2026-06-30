@@ -358,7 +358,7 @@ export default function CalendarMonth({ events = [] }) {
                 const t = EVENT_TYPES[e.type];
                 const person = WITH_PERSON.has(e.type) && e.who ? MEMBER.get(e.who) : null;
                 return (
-                  <li key={j} className={`rounded-xl border p-2.5 flex items-center gap-3 ${TILE[t.color]}`}>
+                  <li key={j} className={`rounded-lg border p-2.5 flex items-center gap-3 ${TILE[t.color]}`}>
                     {person?.photo ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={person.photo} alt="" className="w-9 h-9 rounded-full object-cover shrink-0 ring-2 ring-paper" />

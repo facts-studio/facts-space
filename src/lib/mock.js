@@ -3,13 +3,13 @@
 
 // Fotos reales en /public/team. Roles "por definir" hasta confirmarlos.
 export const TEAM = [
-  { id: 1, name: "Álvaro", role: "Dirección creativa", email: "alvaro@fcts.studio", birthday: "1990-05-05", color: "brand", photo: "/team/alvaro.jpg" },
-  { id: 2, name: "Alba", role: "Por definir", email: "alba@fcts.studio", birthday: "1990-03-06", color: "info", photo: "/team/alba.jpg" },
-  { id: 3, name: "Carla", role: "Por definir", email: "carla@fcts.studio", birthday: "1990-08-03", color: "violet", photo: "/team/carla.jpg" },
-  { id: 4, name: "Carles", role: "Por definir", email: "carles@fcts.studio", birthday: "1990-07-30", color: "warn", photo: "/team/carles.jpg" },
-  { id: 5, name: "Lucas", role: "Por definir", email: "lucas@fcts.studio", birthday: "1993-09-30", color: "success", photo: "/team/lucas.jpg" },
-  { id: 6, name: "Mariola", role: "Por definir", email: "mariola@fcts.studio", birthday: "1990-09-10", color: "info", photo: "/team/mariola.jpg" },
-  { id: 7, name: "Samu", role: "Por definir", email: "samu@fcts.studio", birthday: "1994-03-03", color: "brand", photo: "/team/samu.jpg" },
+  { id: 1, name: "Álvaro", role: "Director Creativo & Head UX/UI", email: "alvaro@fcts.studio", birthday: "1990-05-05", color: "brand", photo: "/team/alvaro.jpg" },
+  { id: 2, name: "Alba", role: "Copywriter & Trader", email: "alba@fcts.studio", birthday: "1990-03-06", color: "info", photo: "/team/alba.jpg" },
+  { id: 3, name: "Carla", role: "Social Media Manager", email: "carla@fcts.studio", birthday: "1990-08-03", color: "violet", photo: "/team/carla.jpg" },
+  { id: 4, name: "Carles", role: "Product Designer & Front Developer", email: "carles@fcts.studio", birthday: "1990-07-30", color: "warn", photo: "/team/carles.jpg" },
+  { id: 5, name: "Lucas", role: "CCO & Director del Área de Producto", email: "lucas@fcts.studio", birthday: "1993-09-30", color: "success", photo: "/team/lucas.jpg" },
+  { id: 6, name: "Mariola", role: "Graphic Designer", email: "mariola@fcts.studio", birthday: "1990-09-10", color: "info", photo: "/team/mariola.jpg" },
+  { id: 7, name: "Samu", role: "Product Developer", email: "samu@fcts.studio", birthday: "1994-03-03", color: "brand", photo: "/team/samu.jpg" },
 ];
 
 // Tipos de evento → color del sistema (tokens del design system).

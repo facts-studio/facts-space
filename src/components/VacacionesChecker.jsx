@@ -123,7 +123,7 @@ export default function VacacionesChecker() {
 
         <div className="grid lg:grid-cols-[300px_1fr] gap-7 lg:gap-9 items-start">
           {/* Selector de calendario */}
-          <div className="rounded-xl bg-bg border border-border p-4 lg:p-5">
+          <div className="rounded-lg bg-bg border border-border p-4 lg:p-5">
           <div className="flex items-center justify-between mb-3">
             <span className="font-display text-[17px] text-ink capitalize">{MESES[month]} <span className="text-mutedSoft text-[14px] tabular-nums">{year}</span></span>
             <div className="flex items-center gap-1">
@@ -155,12 +155,12 @@ export default function VacacionesChecker() {
                 <div
                   key={i}
                   className={`h-9 flex items-center justify-center ${between ? "bg-surface2" : ""} ${
-                    between && (col === 0 || d.getDate() === 1) ? "rounded-l-lg" : ""
-                  } ${between && (col === 6) ? "rounded-r-lg" : ""}`}
+                    between && (col === 0 || d.getDate() === 1) ? "rounded-l-md" : ""
+                  } ${between && (col === 6) ? "rounded-r-md" : ""}`}
                 >
                   <button
                     onClick={() => pick(d)}
-                    className={`h-9 w-9 rounded-lg text-[13px] tabular-nums transition ${
+                    className={`h-9 w-9 rounded-md text-[13px] tabular-nums transition ${
                       !inM ? "text-mutedSoft/40"
                         : endpoint ? "bg-ink text-bg font-semibold"
                         : between ? "text-ink"
@@ -188,12 +188,12 @@ export default function VacacionesChecker() {
           <div>
             <h3 className="section-eyebrow mb-3">Resultado</h3>
             {!result ? (
-              <div className="rounded-xl border border-dashed border-borderStrong/50 px-4 py-10 text-center">
+              <div className="rounded-lg border border-dashed border-borderStrong/50 px-4 py-10 text-center">
                 <p className="text-small text-mutedSoft">Selecciona una o dos fechas en el calendario para ver el veredicto.</p>
               </div>
             ) : (
               <>
-                <div className={`rounded-xl px-4 py-3.5 mb-5 ${STATUS[result.status].bg}`}>
+                <div className={`rounded-lg px-4 py-3.5 mb-5 ${STATUS[result.status].bg}`}>
                   <div className="flex items-center gap-2.5">
                     <span className={`h-2.5 w-2.5 rounded-full ${STATUS[result.status].dot}`} />
                     <span className={`text-title ${STATUS[result.status].text}`}>{result.title}</span>
