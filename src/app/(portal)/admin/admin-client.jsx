@@ -213,24 +213,39 @@ function PendingRow({ r, who, onDone }) {
   );
 }
 
-// Fila de solicitud resuelta: cambiar estado o eliminar a posteriori.
+// Fila de solicitud resuelta: muestra el tag de estado; al pasar por encima
+// aparecen los controles para cambiar estado o eliminar.
 function RecentRow({ r, who, onDone }) {
   const [pending, run] = useTransition();
   const change = (status) => run(async () => { const res = await setVacationStatus({ id: r.id, status }); if (res.ok) onDone(); });
   const del = () => run(async () => { const res = await deleteVacation(r.id); if (res.ok) onDone(); });
   return (
-    <li className="flex items-center gap-3 py-2.5">
+    <li className="group flex items-center gap-3 py-2.5">
       <span className="flex-1 min-w-0 text-small text-ink truncate">{who} <span className="text-mutedSoft font-normal">· {absenceLabel(r.type)}</span></span>
       <span className="text-micro text-muted tabular-nums capitalize hidden sm:inline">{fmtRange(r.start_date, r.end_date)}</span>
-      <select value={r.status} onChange={(e) => change(e.target.value)} disabled={pending} className="h-8 rounded-lg bg-surface px-2 text-[12.5px] text-ink">
-        <option value="pending">Pendiente</option>
-        <option value="approved">Aprobada</option>
-        <option value="rejected">Rechazada</option>
-        <option value="cancelled">Cancelada</option>
-      </select>
-      <button onClick={del} disabled={pending} aria-label="Eliminar" className="h-8 w-8 grid place-items-center rounded-lg text-mutedSoft hover:text-danger hover:bg-dangerSoft/50 transition">✕</button>
+      <StatusPill status={r.status} className="group-hover:hidden" />
+      <span className="hidden group-hover:flex items-center gap-1.5">
+        <select value={r.status} onChange={(e) => change(e.target.value)} disabled={pending} className="h-7 rounded-lg bg-surface px-2 text-[12px] text-ink">
+          <option value="pending">Pendiente</option>
+          <option value="approved">Aprobada</option>
+          <option value="rejected">Rechazada</option>
+          <option value="cancelled">Cancelada</option>
+        </select>
+        <button onClick={del} disabled={pending} aria-label="Eliminar" className="h-7 w-7 grid place-items-center rounded-lg text-mutedSoft hover:text-danger hover:bg-dangerSoft/50 transition">✕</button>
+      </span>
     </li>
   );
+}
+
+function StatusPill({ status, className = "" }) {
+  const map = {
+    pending: ["Pendiente", "bg-warnSoft/60 text-warn"],
+    approved: ["Aprobada", "bg-successSoft/60 text-success"],
+    rejected: ["Rechazada", "bg-dangerSoft/60 text-danger"],
+    cancelled: ["Cancelada", "bg-surface2 text-muted"],
+  };
+  const [label, cls] = map[status] || [status, "bg-surface2 text-muted"];
+  return <span className={`rounded-full px-2.5 py-0.5 text-micro font-medium ${cls} ${className}`}>{label}</span>;
 }
 
 // ── Empleados ────────────────────────────────────────────────────────────────

@@ -175,30 +175,43 @@ function Ausencias({ requests, onDone }) {
   );
 }
 
+const STATUS_PILL = {
+  pending: ["Pendiente", "bg-warnSoft/60 text-warn"],
+  approved: ["Aprobada", "bg-successSoft/60 text-success"],
+  rejected: ["Rechazada", "bg-dangerSoft/60 text-danger"],
+  cancelled: ["Cancelada", "bg-surface2 text-muted"],
+};
+
 function AusenciaRow({ r, onDone }) {
   const [pending, run] = useTransition();
   const decide = (approve) => run(async () => { const res = await decideVacation({ id: r.id, approve }); if (res.ok) onDone(); });
   const change = (status) => run(async () => { const res = await setVacationStatus({ id: r.id, status }); if (res.ok) onDone(); });
   const del = () => run(async () => { const res = await deleteVacation(r.id); if (res.ok) onDone(); });
+  const [label, cls] = STATUS_PILL[r.status] || [r.status, "bg-surface2 text-muted"];
   return (
-    <li className="flex items-center gap-3 py-2.5">
+    <li className="group flex items-center gap-3 py-2.5">
       <span className="w-[130px] shrink-0 text-small text-ink">{absenceLabel(r.type)}</span>
       <span className="flex-1 text-small text-mutedSoft capitalize">{fmtRange(r.start_date, r.end_date)}</span>
       <span className="w-[70px] text-right text-micro text-mutedSoft tabular-nums">{Number(r.working_days)} lab.</span>
       {r.status === "pending" ? (
-        <>
+        <span className="flex items-center gap-1.5">
           <button onClick={() => decide(false)} disabled={pending} className="btn-ghost h-7 text-[12px]">Rechazar</button>
           <button onClick={() => decide(true)} disabled={pending} className="btn-primary h-7 text-[12px]">Aprobar</button>
-        </>
+        </span>
       ) : (
-        <select value={r.status} onChange={(e) => change(e.target.value)} disabled={pending} className="h-7 rounded-lg bg-surface px-2 text-[12px] text-ink">
-          <option value="pending">Pendiente</option>
-          <option value="approved">Aprobada</option>
-          <option value="rejected">Rechazada</option>
-          <option value="cancelled">Cancelada</option>
-        </select>
+        <>
+          <span className={`rounded-full px-2.5 py-0.5 text-micro font-medium group-hover:hidden ${cls}`}>{label}</span>
+          <span className="hidden group-hover:flex items-center gap-1.5">
+            <select value={r.status} onChange={(e) => change(e.target.value)} disabled={pending} className="h-7 rounded-lg bg-surface px-2 text-[12px] text-ink">
+              <option value="pending">Pendiente</option>
+              <option value="approved">Aprobada</option>
+              <option value="rejected">Rechazada</option>
+              <option value="cancelled">Cancelada</option>
+            </select>
+            <button onClick={del} disabled={pending} aria-label="Eliminar" className="h-7 w-7 grid place-items-center rounded-lg text-mutedSoft hover:text-danger hover:bg-dangerSoft/50 transition">✕</button>
+          </span>
+        </>
       )}
-      <button onClick={del} disabled={pending} aria-label="Eliminar" className="h-7 w-7 grid place-items-center rounded-lg text-mutedSoft hover:text-danger hover:bg-dangerSoft/50 transition">✕</button>
     </li>
   );
 }
