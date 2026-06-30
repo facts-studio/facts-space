@@ -25,7 +25,7 @@ function NavLink({ href, label, icon, active }) {
   );
 }
 
-export default function Sidebar({ user }) {
+export default function Sidebar({ user, isAdmin = false }) {
   const pathname = usePathname();
   const isActive = (href) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -61,6 +61,9 @@ export default function Sidebar({ user }) {
         {SECONDARY_NAV.map((item) => (
           <NavLink key={item.href} {...item} active={isActive(item.href)} />
         ))}
+        {isAdmin && (
+          <NavLink href="/admin" label="Administrar" icon="settings" active={isActive("/admin")} />
+        )}
       </div>
 
       <nav className="mt-auto pt-6 flex flex-col gap-1">

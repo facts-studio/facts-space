@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentEmployee } from "@/lib/data/helpers";
 import Sidebar from "@/components/Sidebar";
 
 const PREVIEW = process.env.NEXT_PUBLIC_AUTH_DISABLED === "true";
@@ -19,9 +20,11 @@ export default async function PortalLayout({ children }) {
     if (!user) redirect("/login");
   }
 
+  const emp = await getCurrentEmployee();
+
   return (
     <div className="flex min-h-screen">
-      <Sidebar user={user} />
+      <Sidebar user={user} isAdmin={Boolean(emp?.is_admin)} />
       <main className="flex-1 min-w-0 px-5 md:px-10 py-8 md:py-10">
         <div className="fade-up">{children}</div>
       </main>

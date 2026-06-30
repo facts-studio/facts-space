@@ -102,7 +102,7 @@ export default function FichajeClient({ entries, festivos = [], vacaciones = [],
     <div className="space-y-3">
       {/* Días sin fichar */}
       {missing.length > 0 && (
-        <div className="card p-4 flex items-center justify-between gap-4 flex-wrap border-warn/30 bg-warnSoft/25">
+        <div className="rounded-2xl bg-warnSoft/30 p-4 flex items-center justify-between gap-4 flex-wrap">
           <p className="text-small text-ink">
             Llevas <b>{missing.length}</b> {missing.length === 1 ? "día laborable" : "días laborables"} sin fichar
             <span className="text-mutedSoft"> · desde el {dayLabel(missing[0])}</span>
@@ -130,7 +130,7 @@ export default function FichajeClient({ entries, festivos = [], vacaciones = [],
       </div>
 
       {/* Historial */}
-      <div className="card p-6">
+      <div className="rounded-2xl bg-surface/55 p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-title text-ink capitalize">{monthLabel}</h2>
           <div className="flex items-center gap-2">
@@ -149,7 +149,7 @@ export default function FichajeClient({ entries, festivos = [], vacaciones = [],
         </div>
 
         {allDays.length === 0 ? (
-          <div className="rounded-2xl border border-borderStrong/40 px-4 py-12 text-center text-[13px] text-mutedSoft mt-3">
+          <div className="rounded-2xl bg-surface2/40 px-4 py-12 text-center text-[13px] text-mutedSoft mt-3">
             Nada que mostrar
           </div>
         ) : (
@@ -242,7 +242,7 @@ function Pill({ kind, children }) {
 
 function Stat({ label, value, capitalize }) {
   return (
-    <div className="card p-5">
+    <div className="rounded-2xl bg-surface/55 p-5">
       <p className={`section-eyebrow mb-2 ${capitalize ? "capitalize" : ""}`}>{label}</p>
       <p className="font-display text-[26px] leading-none text-ink tabular-nums">{value}</p>
     </div>
@@ -265,7 +265,7 @@ function FicharCard({ mode, setMode, date, setDate, fromDate, setFromDate, toDat
   };
 
   return (
-    <div className="card p-6">
+    <div className="rounded-2xl bg-surface/55 p-6">
       <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
         <p className="section-eyebrow">Fichar</p>
         <div className="flex items-center bg-surface2/60 rounded-lg p-0.5">

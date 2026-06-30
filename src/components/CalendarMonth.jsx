@@ -430,7 +430,7 @@ export default function CalendarMonth({ events = [], canRequest = false }) {
 
           {reqMode ? (
             <div className="space-y-3">
-              <div className="rounded-lg bg-surface2/50 border border-border p-3">
+              <div className="rounded-lg bg-surface2/50 p-3">
                 <p className="text-micro text-ink font-medium mb-1.5">Elige el rango en el calendario</p>
                 <p className="text-small text-ink capitalize leading-snug">
                   {reqStart ? fmtSel(reqStart) : "—"}
@@ -501,7 +501,7 @@ export default function CalendarMonth({ events = [], canRequest = false }) {
               {canRequest && (
                 <button
                   onClick={startRequest}
-                  className="group w-full mt-4 h-10 rounded-xl border border-borderStrong/50 bg-surface2/40 text-ink text-[13px] font-medium inline-flex items-center justify-center gap-2 hover:bg-surface2/80 hover:border-borderStrong active:scale-[0.99] transition-[background-color,border-color,transform] duration-150"
+                  className="group w-full mt-4 h-10 rounded-xl bg-surface2/60 text-ink text-[13px] font-medium inline-flex items-center justify-center gap-2 hover:bg-surface2 active:scale-[0.99] transition-[background-color,transform] duration-150"
                 >
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-80 transition-transform duration-150 group-hover:rotate-90">
                     <path d="M12 5v14M5 12h14" />
