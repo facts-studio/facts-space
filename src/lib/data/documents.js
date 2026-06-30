@@ -23,7 +23,7 @@ export async function getAllDocuments() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("documents")
-    .select("id, employee_id, category, title, period, created_at")
+    .select("id, employee_id, category, title, period, created_at, extracted")
     .order("created_at", { ascending: false });
   return data ?? [];
 }

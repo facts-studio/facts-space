@@ -11,18 +11,18 @@ export async function recordDocument({ employeeId = null, category, title = "", 
   if (!me?.is_admin) return { ok: false, error: "Solo administración." };
   if (!category || !storagePath) return { ok: false, error: "Faltan datos." };
   const supabase = await createClient();
-  const { error } = await supabase.from("documents").insert({
+  const { data, error } = await supabase.from("documents").insert({
     employee_id: employeeId || null,
     category,
     title: title.trim(),
     period: period.trim(),
     storage_path: storagePath,
     uploaded_by: me.id,
-  });
+  }).select("id").single();
   if (error) return { ok: false, error: error.message };
   revalidatePath("/admin");
   revalidatePath("/mi-espacio");
-  return { ok: true };
+  return { ok: true, id: data.id };
 }
 
 // Borra un documento (fila + archivo). Solo admin.

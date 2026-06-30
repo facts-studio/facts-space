@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { decideVacation, setVacationStatus, deleteVacation } from "@/lib/actions/vacations";
 import { updateEmployee, validateMonth, addCalendarEvent, deleteCalendarEvent, createEmployee } from "@/lib/actions/admin";
 import { recordDocument, deleteDocument, getDocumentUrl } from "@/lib/actions/documents";
+import { extractInvoice } from "@/lib/actions/extract";
 import { createClient } from "@/lib/supabase/client";
 import { fmtRange, fmtDate } from "@/lib/mock";
 import { formatDuration } from "@/lib/dates";
@@ -85,8 +86,15 @@ function Documentos({ employees, documents, nameById, month, onDone }) {
         employeeId: scope === "empleado" ? employeeId : null,
         category, title, period: category === "nomina" ? period : "", storagePath: path,
       });
-      if (res.ok) { setMsg({ ok: true, text: "Documento subido." }); setFile(null); setTitle(""); onDone(); }
-      else setMsg({ ok: false, text: res.error });
+      if (!res.ok) { setMsg({ ok: false, text: res.error }); return; }
+      if (category === "factura" && res.id) {
+        setMsg({ ok: true, text: "Factura subida. Extrayendo datos…" });
+        const ex = await extractInvoice(res.id);
+        setMsg(ex.ok ? { ok: true, text: "Factura subida y datos extraídos." } : { ok: true, text: `Factura subida. La extracción falló: ${ex.error}` });
+      } else {
+        setMsg({ ok: true, text: "Documento subido." });
+      }
+      setFile(null); setTitle(""); onDone();
     });
   };
 
@@ -149,16 +157,44 @@ function Documentos({ employees, documents, nameById, month, onDone }) {
 
 function HubDocRow({ d, who, onDone }) {
   const [pending, run] = useTransition();
+  const [open2, setOpen2] = useState(false);
   const open = () => run(async () => { const r = await getDocumentUrl(d.id); if (r.ok) window.open(r.url, "_blank"); });
   const del = () => run(async () => { const r = await deleteDocument(d.id); if (r.ok) onDone(); });
+  const extract = () => run(async () => { const r = await extractInvoice(d.id); if (r.ok) onDone(); });
   const label = d.title || (d.category === "nomina" ? `Nómina ${d.period}` : DOC_CATS[d.category] || "Documento");
+  const ex = d.extracted;
+  const isFactura = d.category === "factura";
   return (
-    <li className="flex items-center gap-3 py-2.5">
-      <span className="w-[90px] shrink-0"><span className="rounded-full bg-surface2 px-2 py-0.5 text-micro text-muted">{DOC_CATS[d.category] || d.category}</span></span>
-      <span className="flex-1 min-w-0 text-small text-ink truncate">{label} <span className="text-mutedSoft font-normal">· {who}</span></span>
-      <span className="text-micro text-mutedSoft hidden sm:inline">{fmtDate(d.created_at.slice(0, 10))}</span>
-      <button onClick={open} disabled={pending} className="btn-ghost h-8 text-[12.5px]">Ver</button>
-      <button onClick={del} disabled={pending} aria-label="Eliminar" className="h-8 w-8 grid place-items-center rounded-lg text-mutedSoft hover:text-danger hover:bg-dangerSoft/50 transition">✕</button>
+    <li className={`rounded-xl ${open2 ? "bg-surface2/40" : ""}`}>
+      <div className="flex items-center gap-3 py-2.5 px-1">
+        <span className="w-[90px] shrink-0"><span className="rounded-full bg-surface2 px-2 py-0.5 text-micro text-muted">{DOC_CATS[d.category] || d.category}</span></span>
+        <span className="flex-1 min-w-0 text-small text-ink truncate">
+          {isFactura && ex?.supplier ? `${ex.supplier}` : label}
+          <span className="text-mutedSoft font-normal"> · {who}</span>
+          {isFactura && ex?.total ? <span className="text-mutedSoft font-normal"> · {Number(ex.total).toLocaleString("es-ES")} {ex.currency || "€"}</span> : null}
+        </span>
+        <span className="text-micro text-mutedSoft hidden sm:inline">{fmtDate(d.created_at.slice(0, 10))}</span>
+        {isFactura && <button onClick={() => setOpen2((o) => !o)} className="text-micro text-muted hover:text-ink transition">{ex ? "Datos" : ""}</button>}
+        {isFactura && <button onClick={extract} disabled={pending} className="btn-ghost h-8 text-[12px]">{pending ? "…" : ex ? "Re-extraer" : "Extraer"}</button>}
+        <button onClick={open} disabled={pending} className="btn-ghost h-8 text-[12.5px]">Ver</button>
+        <button onClick={del} disabled={pending} aria-label="Eliminar" className="h-8 w-8 grid place-items-center rounded-lg text-mutedSoft hover:text-danger hover:bg-dangerSoft/50 transition">✕</button>
+      </div>
+      {isFactura && open2 && ex && (
+        <div className="px-3 pb-3 grid sm:grid-cols-3 gap-x-6 gap-y-1.5">
+          {[
+            ["Proveedor", ex.supplier], ["NIF", ex.supplier_tax_id], ["Nº factura", ex.invoice_number],
+            ["Fecha", ex.issue_date], ["Vencimiento", ex.due_date], ["Concepto", ex.concept],
+            ["Base", ex.subtotal != null ? `${Number(ex.subtotal).toLocaleString("es-ES")} ${ex.currency || ""}` : ""],
+            ["IVA", ex.tax != null ? `${Number(ex.tax).toLocaleString("es-ES")} ${ex.currency || ""}` : ""],
+            ["Total", ex.total != null ? `${Number(ex.total).toLocaleString("es-ES")} ${ex.currency || ""}` : ""],
+          ].map(([k, v]) => (
+            <div key={k} className="flex items-start justify-between gap-3 text-micro">
+              <span className="text-mutedSoft">{k}</span>
+              <span className="text-ink text-right break-words">{v || "—"}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </li>
   );
 }
