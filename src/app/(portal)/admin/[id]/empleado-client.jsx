@@ -186,14 +186,57 @@ function FichaForm({ e, employees, onCancel, onSaved }) {
         <div key={title} className="rounded-2xl bg-surface/55 p-6">
           <p className="section-eyebrow mb-4">{title}</p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {fields.map(([k, label, type]) => (
-              <Fld key={k} label={label}>
-                <input type={type} value={form[k] ?? ""} onChange={(ev) => set(k, ev.target.value)} className="h-9 rounded-lg bg-surface px-2.5 text-[13px] text-ink" />
-              </Fld>
-            ))}
+            {fields.map(([k, label, type]) =>
+              k === "photo" ? (
+                <div key={k} className="sm:col-span-2 lg:col-span-3">
+                  <span className="text-micro text-mutedSoft">Foto</span>
+                  <div className="mt-1"><AvatarUpload employeeId={e.id} value={form.photo} onChange={(v) => set("photo", v)} /></div>
+                </div>
+              ) : (
+                <Fld key={k} label={label}>
+                  <input type={type} value={form[k] ?? ""} onChange={(ev) => set(k, ev.target.value)} className="h-9 rounded-lg bg-surface px-2.5 text-[13px] text-ink" />
+                </Fld>
+              )
+            )}
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+// Sube la foto al bucket público "avatars" y devuelve su URL.
+function AvatarUpload({ employeeId, value, onChange }) {
+  const [pending, setPending] = useState(false);
+  const [err, setErr] = useState(null);
+  const upload = async (file) => {
+    if (!file) return;
+    setErr(null);
+    setPending(true);
+    try {
+      const supabase = createClient();
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+      const path = `${employeeId}/${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true, contentType: file.type });
+      if (error) throw error;
+      const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+      onChange(data.publicUrl);
+    } catch (e2) {
+      setErr(e2?.message || "No se pudo subir la imagen.");
+    } finally {
+      setPending(false);
+    }
+  };
+  return (
+    <div className="flex items-center gap-3">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      {value ? <img src={value} alt="" className="w-12 h-12 rounded-full object-cover" /> : <span className="w-12 h-12 rounded-full bg-surface2" />}
+      <label className="btn-ghost h-8 text-[12.5px] cursor-pointer">
+        {pending ? "Subiendo…" : value ? "Cambiar foto" : "Subir foto"}
+        <input type="file" accept="image/*" className="hidden" disabled={pending} onChange={(ev) => upload(ev.target.files?.[0])} />
+      </label>
+      {value && <button type="button" onClick={() => onChange("")} className="text-micro text-mutedSoft hover:text-danger transition">Quitar</button>}
+      {err && <span className="text-micro text-danger">{err}</span>}
     </div>
   );
 }
