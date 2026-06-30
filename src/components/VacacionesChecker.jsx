@@ -68,10 +68,10 @@ function evaluate(start, end) {
     reasons.push({ tone: "ok", text: "Trimestre de carga baja: días sueltos y periodos largos permitidos." });
   }
 
-  let needed = natDays <= 3 ? 15 : 30;
-  if (natDays > 5) {
+  let needed = workDays <= 3 ? 15 : 30;
+  if (workDays > 5) {
     const march15 = new Date(start.getFullYear(), 2, 15);
-    if (today > march15) { reasons.push({ tone: "warn", text: "Periodos de +5 días deben comunicarse antes del 15 de marzo." }); bump("warn"); }
+    if (today > march15) { reasons.push({ tone: "warn", text: "Periodos de +5 días laborables deben comunicarse antes del 15 de marzo." }); bump("warn"); }
     needed = 30;
   }
   if (noticeDays < 0) { reasons.push({ tone: "bad", text: "La fecha de inicio ya ha pasado." }); bump("bad"); }

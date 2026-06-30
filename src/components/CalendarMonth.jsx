@@ -1,7 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { EVENT_TYPES, TEAM } from "@/lib/mock";
+import { workingDaysBetween } from "@/lib/dates";
+import { requestVacation } from "@/lib/actions/vacations";
 
 const MEMBER = new Map(TEAM.map((m) => [m.name, m]));
 // Tipos con persona asociada → mostramos miniatura.
@@ -74,7 +76,7 @@ const FILTER_ON = {
   danger: "bg-dangerSoft text-danger border-danger/30",
 };
 
-export default function CalendarMonth({ events = [] }) {
+export default function CalendarMonth({ events = [], canRequest = false }) {
   const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
   const todayISO = iso(today);
   // Arranca en el mes del próximo evento (o el mes actual si no hay).
@@ -136,6 +138,19 @@ export default function CalendarMonth({ events = [] }) {
   });
 
   const selItems = (selected ? byDay.get(selected) || EMPTY : EMPTY).filter(pass);
+
+  // Festivos (ISO) para descontar del cómputo de días laborables en la solicitud.
+  const festivoSet = useMemo(() => {
+    const s = new Set();
+    for (const e of events) {
+      if (e.type !== "festivo") continue;
+      const d = new Date(e.start + "T00:00:00");
+      const end = new Date(e.end + "T00:00:00");
+      let g = 0;
+      while (d <= end && g < 370) { s.add(iso(d)); d.setDate(d.getDate() + 1); g++; }
+    }
+    return s;
+  }, [events]);
 
   return (
     <div className={`h-[calc(100vh-5rem)] ${selected ? "lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-5 lg:items-stretch" : ""}`}>
@@ -380,6 +395,10 @@ export default function CalendarMonth({ events = [] }) {
           ) : (
             <div className="text-center text-mutedSoft text-[13px] py-8">Nada este día.</div>
           )}
+
+          {canRequest && (
+            <DayRequestForm key={selected} dayISO={selected} festivoSet={festivoSet} />
+          )}
         </aside>
       )}
     </div>
@@ -389,4 +408,66 @@ export default function CalendarMonth({ events = [] }) {
 function fmtSel(k) {
   const [y, m, d] = k.split("-").map(Number);
   return new Date(y, m - 1, d).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
+}
+
+// Formulario de solicitud de vacaciones para el día seleccionado. Se remonta por
+// día (key=dayISO), así su estado se resetea al cambiar de día.
+function DayRequestForm({ dayISO, festivoSet }) {
+  const [open, setOpen] = useState(false);
+  const [end, setEnd] = useState(dayISO);
+  const [note, setNote] = useState("");
+  const [msg, setMsg] = useState(null);
+  const [pending, startTransition] = useTransition();
+
+  const endISO = end && end >= dayISO ? end : dayISO;
+  const wd = workingDaysBetween(dayISO, endISO, festivoSet);
+
+  const submit = () => {
+    setMsg(null);
+    startTransition(async () => {
+      const res = await requestVacation({ startDate: dayISO, endDate: endISO, note });
+      if (res.ok) setMsg({ ok: true, text: `Solicitud enviada · ${res.workingDays} ${res.workingDays === 1 ? "día laborable" : "días laborables"}. Pendiente de aprobación.` });
+      else setMsg({ ok: false, text: res.error });
+    });
+  };
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="btn-brand w-full h-10 mt-4 text-[13px] inline-flex items-center justify-center gap-2"
+      >
+        🏖️ Solicitar vacaciones
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-4 pt-4 border-t border-border/60">
+      <p className="label mb-2">Solicitar vacaciones</p>
+      <div className="space-y-2.5">
+        <div className="flex items-center justify-between gap-3 text-small">
+          <span className="text-mutedSoft">Desde</span>
+          <span className="text-ink capitalize">{fmtSel(dayISO)}</span>
+        </div>
+        <label className="flex items-center justify-between gap-3 text-small">
+          <span className="text-mutedSoft shrink-0">Hasta</span>
+          <input type="date" className="input !h-9 !py-1 max-w-[170px]" min={dayISO} value={endISO} onChange={(e) => setEnd(e.target.value)} />
+        </label>
+        <input className="input !h-9 !py-1" placeholder="Nota (opcional)" value={note} onChange={(e) => setNote(e.target.value)} />
+        <p className="text-micro text-mutedSoft">
+          {wd > 0 ? <>{wd} {wd === 1 ? "día laborable" : "días laborables"} (findes y festivos no cuentan)</> : "Sin días laborables en el rango."}
+        </p>
+        {msg && (
+          <p className={`text-micro ${msg.ok ? "text-success" : "text-danger"}`}>{msg.text}</p>
+        )}
+        <div className="flex items-center gap-2 pt-1">
+          <button onClick={submit} disabled={pending || wd <= 0 || (msg && msg.ok)} className="btn-brand h-9 flex-1 text-[13px] disabled:opacity-50">
+            {pending ? "Enviando…" : msg?.ok ? "Enviada ✓" : "Enviar solicitud"}
+          </button>
+          <button onClick={() => setOpen(false)} className="btn-ghost h-9 text-[13px]">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  );
 }
