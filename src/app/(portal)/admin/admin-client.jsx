@@ -121,38 +121,88 @@ function Equipo({ employees, vacUsed, year, onDone }) {
 
 function EmployeeRow({ e, employees, used, onDone }) {
   const [pending, run] = useTransition();
+  const [open, setOpen] = useState(false);
   const save = (patch) => run(async () => { await updateEmployee({ id: e.id, patch }); onDone(); });
   const remaining = Number(e.vacation_allowance) - used;
   return (
-    <div className={`flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-surface2/40 transition ${e.active ? "" : "opacity-50"}`}>
-      <div className="flex items-center gap-2.5 flex-1 min-w-0">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        {e.photo ? <img src={e.photo} alt="" className="w-7 h-7 rounded-full object-cover" /> : <span className="w-7 h-7 rounded-full bg-surface2" />}
-        <div className="min-w-0">
-          <p className="text-small text-ink truncate">{e.name}</p>
-          <p className="text-micro text-mutedSoft truncate">{e.role}</p>
-        </div>
+    <div className={`rounded-xl ${open ? "bg-surface2/40" : "hover:bg-surface2/40"} transition ${e.active ? "" : "opacity-50"}`}>
+      <div className="flex items-center gap-3 px-3 py-2.5">
+        <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-2.5 flex-1 min-w-0 text-left">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {e.photo ? <img src={e.photo} alt="" className="w-7 h-7 rounded-full object-cover" /> : <span className="w-7 h-7 rounded-full bg-surface2" />}
+          <div className="min-w-0">
+            <p className="text-small text-ink truncate">{e.name}</p>
+            <p className="text-micro text-mutedSoft truncate">{e.role || "—"}</p>
+          </div>
+        </button>
+        <select
+          defaultValue={e.manager_id || ""}
+          onChange={(ev) => save({ manager_id: ev.target.value || null })}
+          className="w-[150px] h-8 rounded-lg bg-surface px-2 text-[12.5px] text-ink"
+        >
+          <option value="">— Sin responsable</option>
+          {employees.filter((m) => m.id !== e.id).map((m) => (
+            <option key={m.id} value={m.id}>{m.name}</option>
+          ))}
+        </select>
+        <input
+          type="number"
+          defaultValue={Number(e.vacation_allowance)}
+          onBlur={(ev) => { const v = Number(ev.target.value); if (v !== Number(e.vacation_allowance)) save({ vacation_allowance: v }); }}
+          className="w-[80px] h-8 rounded-lg bg-surface px-2 text-[12.5px] text-ink text-right"
+        />
+        <span className="w-[90px] text-right text-small tabular-nums text-ink">{remaining} <span className="text-mutedSoft">/ {Number(e.vacation_allowance)}</span></span>
+        <span className="w-[70px] text-center">
+          <input type="checkbox" defaultChecked={e.is_admin} onChange={(ev) => save({ is_admin: ev.target.checked })} />
+        </span>
       </div>
-      <select
-        defaultValue={e.manager_id || ""}
-        onChange={(ev) => save({ manager_id: ev.target.value || null })}
-        className="w-[150px] h-8 rounded-lg bg-surface px-2 text-[12.5px] text-ink"
-      >
-        <option value="">— Sin responsable</option>
-        {employees.filter((m) => m.id !== e.id).map((m) => (
-          <option key={m.id} value={m.id}>{m.name}</option>
+
+      {open && <FichaEditor e={e} pending={pending} onSave={save} />}
+    </div>
+  );
+}
+
+const FICHA_FIELDS = [
+  ["role", "Puesto", "text"],
+  ["contract_type", "Tipo de contrato", "text"],
+  ["start_date", "Fecha de alta", "date"],
+  ["weekly_hours", "Jornada (h/sem)", "number"],
+  ["gross_salary", "Salario bruto anual (€)", "number"],
+  ["dni", "DNI / NIE", "text"],
+  ["nss", "Nº Seguridad Social", "text"],
+  ["iban", "IBAN", "text"],
+  ["phone", "Teléfono", "text"],
+  ["emergency_contact", "Contacto de emergencia", "text"],
+  ["address", "Dirección", "text"],
+];
+
+function FichaEditor({ e, pending, onSave }) {
+  const [form, setForm] = useState(() => {
+    const f = {};
+    for (const [k] of FICHA_FIELDS) f[k] = e[k] ?? "";
+    return f;
+  });
+  const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
+  return (
+    <div className="px-3 pb-3">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-2 border-t border-border/50">
+        {FICHA_FIELDS.map(([k, label, type]) => (
+          <label key={k} className="flex flex-col gap-1">
+            <span className="text-micro text-mutedSoft">{label}</span>
+            <input
+              type={type}
+              value={form[k] ?? ""}
+              onChange={(ev) => set(k, ev.target.value)}
+              className="h-8 rounded-lg bg-surface px-2.5 text-[12.5px] text-ink"
+            />
+          </label>
         ))}
-      </select>
-      <input
-        type="number"
-        defaultValue={Number(e.vacation_allowance)}
-        onBlur={(ev) => { const v = Number(ev.target.value); if (v !== Number(e.vacation_allowance)) save({ vacation_allowance: v }); }}
-        className="w-[80px] h-8 rounded-lg bg-surface px-2 text-[12.5px] text-ink text-right"
-      />
-      <span className="w-[90px] text-right text-small tabular-nums text-ink">{remaining} <span className="text-mutedSoft">/ {Number(e.vacation_allowance)}</span></span>
-      <span className="w-[70px] text-center">
-        <input type="checkbox" defaultChecked={e.is_admin} onChange={(ev) => save({ is_admin: ev.target.checked })} />
-      </span>
+      </div>
+      <div className="flex justify-end mt-2.5">
+        <button onClick={() => onSave(form)} disabled={pending} className="btn-primary h-8 text-[12.5px] disabled:opacity-50">
+          {pending ? "Guardando…" : "Guardar ficha"}
+        </button>
+      </div>
     </div>
   );
 }

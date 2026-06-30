@@ -22,6 +22,13 @@ export async function updateEmployee({ id, patch }) {
   if ("is_admin" in patch) allowed.is_admin = Boolean(patch.is_admin);
   if ("active" in patch) allowed.active = Boolean(patch.active);
   if ("role" in patch) allowed.role = String(patch.role);
+  // Ficha laboral
+  for (const k of ["dni", "nss", "iban", "phone", "address", "emergency_contact", "contract_type"]) {
+    if (k in patch) allowed[k] = String(patch[k] ?? "");
+  }
+  if ("start_date" in patch) allowed.start_date = patch.start_date || null;
+  if ("weekly_hours" in patch) allowed.weekly_hours = Number(patch.weekly_hours) || 0;
+  if ("gross_salary" in patch) allowed.gross_salary = Number(patch.gross_salary) || 0;
 
   const supabase = await createClient();
   const { error } = await supabase.from("employees").update(allowed).eq("id", id);
