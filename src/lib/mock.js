@@ -64,6 +64,7 @@ export const EVENTS = [
   { id: 41, type: "cumple", title: "Cumpleaños Carles", start: "2026-07-30", end: "2026-07-30", who: "Carles" },
   { id: 42, type: "cumple", title: "Cumpleaños Carla", start: "2026-08-03", end: "2026-08-03", who: "Carla" },
   { id: 43, type: "cumple", title: "Cumpleaños Mariola", start: "2026-09-10", end: "2026-09-10", who: "Mariola" },
+  { id: 44, type: "hito", title: "Black Friday", start: "2026-11-27", end: "2026-11-27", who: null },
 ];
 
 // Novedades de empresa (lo que NO es un evento de calendario): comunicados,
