@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { decideVacation } from "@/lib/actions/vacations";
 import { updateEmployee, validateMonth } from "@/lib/actions/admin";
 import { fmtRange } from "@/lib/mock";
+import { absenceLabel } from "@/lib/absences";
 
 const TABS = [
   ["solicitudes", "Solicitudes"],
@@ -85,7 +86,7 @@ function PendingRow({ r, who, onDone }) {
   return (
     <li className="flex items-center justify-between gap-3 rounded-xl bg-surface2/40 px-4 py-3">
       <div className="min-w-0">
-        <p className="text-small text-ink">{who}</p>
+        <p className="text-small text-ink">{who} <span className="text-mutedSoft font-normal">· {absenceLabel(r.type)}</span></p>
         <p className="text-micro text-mutedSoft">
           {fmtRange(r.start_date, r.end_date)} · {Number(r.working_days)} laborables{r.note ? ` · ${r.note}` : ""}
         </p>

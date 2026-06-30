@@ -17,6 +17,7 @@ export const EVENT_TYPES = {
   hito: { label: "Hito", color: "danger" },
   cumple: { label: "Cumpleaños", color: "info" },
   vacaciones: { label: "Vacaciones", color: "warn" },
+  ausencia: { label: "Ausencia", color: "violet" },
   festivo: { label: "Festivo", color: "success" },
 };
 

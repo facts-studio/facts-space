@@ -5,6 +5,7 @@ import { EVENT_TYPES, TEAM } from "@/lib/mock";
 import { workingDaysBetween } from "@/lib/dates";
 import { requestVacation } from "@/lib/actions/vacations";
 import { evaluateVacation } from "@/lib/vacation-policy";
+import { ABSENCE_OPTIONS } from "@/lib/absences";
 
 // Colores del veredicto orientativo de política.
 const POLICY_BANNER = { ok: "bg-successSoft/50 text-success", warn: "bg-warnSoft/45 text-warn", bad: "bg-dangerSoft/45 text-danger" };
@@ -13,7 +14,7 @@ const POLICY_GLYPH = { ok: "✓", warn: "!", bad: "✕" };
 
 const MEMBER = new Map(TEAM.map((m) => [m.name, m]));
 // Tipos con persona asociada → mostramos miniatura.
-const WITH_PERSON = new Set(["cumple", "vacaciones"]);
+const WITH_PERSON = new Set(["cumple", "vacaciones", "ausencia"]);
 
 function MiniAvatar({ member, ring = "ring-white/70" }) {
   if (!member) return null;
@@ -49,6 +50,7 @@ const CHIP = {
   hito: "bg-danger text-white",
   cumple: "bg-infoSoft text-info",
   vacaciones: "bg-warnSoft text-warn",
+  ausencia: "bg-violetSoft text-violet",
   festivo: "bg-successSoft text-success",
 };
 const DOT = {
@@ -59,7 +61,7 @@ const YFILL = {
   brand: "bg-brandSoft", info: "bg-infoSoft", warn: "bg-warnSoft", violet: "bg-violetSoft", success: "bg-successSoft", danger: "bg-dangerSoft",
 };
 // Prioridad de color cuando un día tiene varios eventos.
-const YORDER = ["hito", "festivo", "cumple", "vacaciones"];
+const YORDER = ["hito", "festivo", "cumple", "vacaciones", "ausencia"];
 // Tile del panel del día: fondo suave + borde + acento por tipo.
 const TILE = {
   brand: "bg-brandSoft/60 border-brand/15",
@@ -163,18 +165,20 @@ export default function CalendarMonth({ events = [], canRequest = false }) {
   const [reqStart, setReqStart] = useState(null);
   const [reqEnd, setReqEnd] = useState(null);
   const [reqNote, setReqNote] = useState("");
+  const [reqType, setReqType] = useState("vacaciones");
   const [reqMsg, setReqMsg] = useState(null);
   const [pending, startTransition] = useTransition();
 
   const reqEndEff = reqEnd || reqStart;
   const reqWd = reqStart ? workingDaysBetween(reqStart, reqEndEff, festivoSet) : 0;
-  const reqAssess = reqMode && reqStart ? evaluateVacation(reqStart, reqEndEff, events) : null;
+  const reqAssess = reqMode && reqStart && reqType === "vacaciones" ? evaluateVacation(reqStart, reqEndEff, events) : null;
 
   const startRequest = () => {
     setReqMode(true);
     setReqStart(selected);
     setReqEnd(null);
     setReqNote("");
+    setReqType("vacaciones");
     setReqMsg(null);
   };
   const cancelRequest = () => {
@@ -186,7 +190,7 @@ export default function CalendarMonth({ events = [], canRequest = false }) {
   const submitRequest = () => {
     setReqMsg(null);
     startTransition(async () => {
-      const res = await requestVacation({ startDate: reqStart, endDate: reqEndEff, note: reqNote });
+      const res = await requestVacation({ startDate: reqStart, endDate: reqEndEff, note: reqNote, type: reqType });
       if (res.ok) setReqMsg({ ok: true, text: `Solicitud enviada · ${res.workingDays} ${res.workingDays === 1 ? "día laborable" : "días laborables"}. Pendiente de aprobación.` });
       else setReqMsg({ ok: false, text: res.error });
     });
@@ -440,6 +444,15 @@ export default function CalendarMonth({ events = [], canRequest = false }) {
                   {reqWd > 0 ? <>{reqWd} {reqWd === 1 ? "día laborable" : "días laborables"} · findes y festivos no cuentan</> : "Sin días laborables en el rango."}
                 </p>
               </div>
+              <select
+                value={reqType}
+                onChange={(e) => setReqType(e.target.value)}
+                className="input !h-9 !py-1 w-full"
+              >
+                {ABSENCE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
               {reqAssess && (
                 <div className="space-y-1.5">
                   <div className={`rounded-lg px-2.5 py-1.5 text-micro font-medium ${POLICY_BANNER[reqAssess.status]}`}>

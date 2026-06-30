@@ -14,8 +14,9 @@ async function getFestivos(supabase) {
   return (data ?? []).map((f) => f.start_date);
 }
 
-// Solicitar vacaciones (queda en estado 'pending' hasta que el manager decida).
-export async function requestVacation({ startDate, endDate, note = "" }) {
+// Solicitar una ausencia (queda 'pending' hasta que el manager/admin decida).
+// type: vacaciones | baja | permiso | asuntos_propios | teletrabajo | otro.
+export async function requestVacation({ startDate, endDate, note = "", type = "vacaciones" }) {
   const me = await getCurrentEmployee();
   if (!me) return { ok: false, error: "No has iniciado sesión." };
   if (!startDate) return { ok: false, error: "Falta la fecha de inicio." };
@@ -32,13 +33,27 @@ export async function requestVacation({ startDate, endDate, note = "" }) {
     end_date: end,
     working_days: wd,
     note: note.trim(),
+    type,
     status: "pending",
   });
   if (error) return { ok: false, error: error.message };
 
   revalidatePath("/calendario");
-  revalidatePath("/vacaciones");
+  revalidatePath("/mi-espacio");
   return { ok: true, workingDays: wd };
+}
+
+// Mis ausencias (todas, recientes primero).
+export async function getMyRequests() {
+  const me = await getCurrentEmployee();
+  if (!me) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("vacation_requests")
+    .select("id, type, start_date, end_date, working_days, status, note, created_at")
+    .eq("employee_id", me.id)
+    .order("start_date", { ascending: false });
+  return data ?? [];
 }
 
 // Cancelar una solicitud propia que siga pendiente.

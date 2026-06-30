@@ -14,7 +14,7 @@ export async function getCalendarEvents() {
   const [vac, emps, cal] = await Promise.all([
     supabase
       .from("vacation_requests")
-      .select("id, start_date, end_date, note, employee_id")
+      .select("id, start_date, end_date, note, employee_id, type")
       .eq("status", "approved"),
     supabase.from("employees").select("id, name, birthday, active"),
     supabase.from("calendar_events").select("id, type, title, start_date, end_date"),
@@ -25,12 +25,14 @@ export async function getCalendarEvents() {
 
   const events = [];
 
+  const ABS_LABEL = { vacaciones: "Vacaciones", baja: "Baja", permiso: "Permiso", asuntos_propios: "Asuntos propios", teletrabajo: "Teletrabajo", otro: "Ausencia" };
   for (const v of vac.data ?? []) {
     const who = nameById.get(v.employee_id) ?? null;
+    const isVac = (v.type ?? "vacaciones") === "vacaciones";
     events.push({
       id: `vac-${v.id}`,
-      type: "vacaciones",
-      title: v.note?.trim() || `Vacaciones ${who ?? ""}`.trim(),
+      type: isVac ? "vacaciones" : "ausencia",
+      title: v.note?.trim() || `${ABS_LABEL[v.type] ?? "Ausencia"} ${who ?? ""}`.trim(),
       start: v.start_date,
       end: v.end_date,
       who,

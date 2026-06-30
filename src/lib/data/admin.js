@@ -20,7 +20,7 @@ export async function getPendingVacations() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("vacation_requests")
-    .select("id, start_date, end_date, working_days, note, created_at, employee_id")
+    .select("id, start_date, end_date, working_days, note, created_at, employee_id, type")
     .eq("status", "pending")
     .order("start_date");
   return data ?? [];
@@ -32,7 +32,7 @@ export async function getRecentDecided(limit = 20) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("vacation_requests")
-    .select("id, start_date, end_date, working_days, status, employee_id, decided_at")
+    .select("id, start_date, end_date, working_days, status, employee_id, decided_at, type")
     .neq("status", "pending")
     .order("decided_at", { ascending: false })
     .limit(limit);
@@ -67,6 +67,7 @@ export async function getApprovedVacationDays(year) {
     .from("vacation_requests")
     .select("employee_id, working_days, start_date")
     .eq("status", "approved")
+    .eq("type", "vacaciones")
     .gte("start_date", `${year}-01-01`)
     .lte("start_date", `${year}-12-31`);
   const out = {};

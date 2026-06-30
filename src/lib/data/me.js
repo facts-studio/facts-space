@@ -17,6 +17,7 @@ export async function getMyOverview(employee) {
       .select("working_days")
       .eq("employee_id", employee.id)
       .eq("status", "approved")
+      .eq("type", "vacaciones")
       .gte("start_date", `${year}-01-01`)
       .lte("start_date", `${year}-12-31`),
     supabase
@@ -24,6 +25,7 @@ export async function getMyOverview(employee) {
       .select("start_date, end_date, working_days")
       .eq("employee_id", employee.id)
       .eq("status", "approved")
+      .eq("type", "vacaciones")
       .gte("end_date", today)
       .order("start_date")
       .limit(5),

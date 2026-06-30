@@ -61,15 +61,15 @@ export default function Sidebar({ user, isAdmin = false }) {
         {SECONDARY_NAV.map((item) => (
           <NavLink key={item.href} {...item} active={isActive(item.href)} />
         ))}
-        {isAdmin && (
-          <NavLink href="/admin" label="Administrar" icon="settings" active={isActive("/admin")} />
-        )}
-      </div>
-
-      <nav className="mt-auto pt-6 flex flex-col gap-1">
         {FOOTER_NAV.map((item) => (
           <NavLink key={item.href} {...item} active={isActive(item.href)} />
         ))}
+      </div>
+
+      <nav className="mt-auto pt-6 flex flex-col gap-1">
+        {isAdmin && (
+          <NavLink href="/admin" label="Administrar" icon="settings" active={isActive("/admin")} />
+        )}
       </nav>
 
       <div className="pt-6">

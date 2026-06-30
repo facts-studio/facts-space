@@ -3,15 +3,24 @@
 import { useState } from "react";
 import Link from "next/link";
 import { fmtRange, fmtDate } from "@/lib/mock";
+import { ABSENCE_TYPES } from "@/lib/absences";
 
 const TABS = [
   ["resumen", "Resumen"],
+  ["ausencias", "Ausencias"],
   ["datos", "Datos"],
   ["nominas", "Nóminas"],
   ["documentos", "Documentos"],
 ];
 
-export default function MiEspacioClient({ me, overview, missingCount }) {
+const STATUS = {
+  pending: ["Pendiente", "bg-warnSoft/60 text-warn"],
+  approved: ["Aprobada", "bg-successSoft/60 text-success"],
+  rejected: ["Rechazada", "bg-dangerSoft/60 text-danger"],
+  cancelled: ["Cancelada", "bg-surface2 text-muted"],
+};
+
+export default function MiEspacioClient({ me, overview, missingCount, requests = [] }) {
   const [tab, setTab] = useState("resumen");
   return (
     <div className="space-y-3">
@@ -28,6 +37,7 @@ export default function MiEspacioClient({ me, overview, missingCount }) {
       </div>
 
       {tab === "resumen" && <Resumen me={me} overview={overview} missingCount={missingCount} />}
+      {tab === "ausencias" && <Ausencias requests={requests} />}
       {tab === "datos" && <Datos me={me} />}
       {tab === "nominas" && <Soon title="Nóminas" text="Aquí verás y descargarás tus nóminas cuando administración las publique." />}
       {tab === "documentos" && <Soon title="Documentos" text="Aquí estarán tu contrato y documentos." />}
@@ -66,6 +76,34 @@ function Resumen({ me, overview, missingCount }) {
         <QuickLink href="/fichaje" title="Fichar" desc="Registra tu jornada de hoy." />
         <QuickLink href="/calendario" title="Calendario" desc="Vacaciones y festivos del equipo." />
       </div>
+    </div>
+  );
+}
+
+function Ausencias({ requests }) {
+  return (
+    <div className="rounded-2xl bg-surface/55 p-6">
+      <div className="flex items-center justify-between mb-4">
+        <p className="section-eyebrow">Mis ausencias</p>
+        <Link href="/calendario" className="text-small text-muted hover:text-ink transition">+ Solicitar en el calendario</Link>
+      </div>
+      {requests.length === 0 ? (
+        <p className="text-small text-mutedSoft">No tienes solicitudes. Pídelas desde el calendario.</p>
+      ) : (
+        <ul className="divide-y divide-border/50">
+          {requests.map((r) => {
+            const [sLabel, sCls] = STATUS[r.status] || [r.status, "bg-surface2 text-muted"];
+            return (
+              <li key={r.id} className="flex items-center gap-3 py-2.5">
+                <span className="w-[130px] shrink-0 text-small text-ink">{ABSENCE_TYPES[r.type]?.label || r.type}</span>
+                <span className="flex-1 text-small text-mutedSoft capitalize">{fmtRange(r.start_date, r.end_date)}</span>
+                <span className="w-[90px] text-right text-micro text-mutedSoft tabular-nums">{Number(r.working_days)} lab.</span>
+                <span className={`rounded-full px-2.5 py-0.5 text-micro font-medium ${sCls}`}>{sLabel}</span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }
