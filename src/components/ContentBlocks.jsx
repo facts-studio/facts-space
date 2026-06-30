@@ -45,14 +45,14 @@ export default function ContentBlocks({ blocks = [] }) {
             {b.note}
           </p>
         );
-        // Banda de cifras (sin caja): grandes números con divisores.
+        // Cifras clave: módulo contenido con divisores internos.
         if (b.figures) return (
-          <div key={i} className="flex flex-wrap gap-y-5">
+          <div key={i} className={`rounded-2xl bg-surface/55 grid divide-x divide-border`} style={{ gridTemplateColumns: `repeat(${b.figures.length}, minmax(0, 1fr))` }}>
             {b.figures.map((f, j) => (
-              <div key={j} className="pr-8 mr-8 border-r border-border last:border-r-0 last:mr-0 last:pr-0">
-                <div className="font-display text-[40px] leading-none tracking-[-0.02em] text-ink">{f.n}</div>
-                <div className="text-small text-ink mt-2">{f.label}</div>
-                {f.sub && <div className="text-micro text-mutedSoft">{f.sub}</div>}
+              <div key={j} className="px-5 md:px-7 py-5 md:py-6">
+                <div className="font-display text-[32px] md:text-[40px] leading-none tracking-[-0.02em] text-ink">{f.n}</div>
+                <div className="text-small text-ink mt-2.5">{f.label}</div>
+                {f.sub && <div className="text-micro text-mutedSoft mt-0.5">{f.sub}</div>}
               </div>
             ))}
           </div>
