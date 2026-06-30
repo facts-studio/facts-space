@@ -105,16 +105,18 @@ function Resumen({ e, employees, requests, documents, time, vacUsed, year, onDon
 }
 
 const FICHA_FIELDS = [
+  ["name", "Nombre", "text"], ["email", "Email", "email"], ["birthday", "Cumpleaños", "date"], ["photo", "Foto (URL)", "text"],
   ["role", "Puesto", "text"], ["contract_type", "Tipo de contrato", "text"], ["start_date", "Fecha de alta", "date"],
   ["weekly_hours", "Jornada (h/sem)", "number"], ["gross_salary", "Salario bruto anual (€)", "number"], ["vacation_allowance", "Días vacaciones/año", "number"],
   ["dni", "DNI / NIE", "text"], ["nss", "Nº Seguridad Social", "text"], ["iban", "IBAN", "text"],
   ["phone", "Teléfono", "text"], ["emergency_contact", "Contacto de emergencia", "text"], ["address", "Dirección", "text"],
 ];
 
+// (Alta de empleados: en la lista de Empleados del panel admin.)
 function FichaCard({ e, employees, onDone }) {
   const [edit, setEdit] = useState(false);
   const [pending, run] = useTransition();
-  const [form, setForm] = useState(() => { const f = {}; for (const [k] of FICHA_FIELDS) f[k] = e[k] ?? ""; f.manager_id = e.manager_id || ""; f.is_admin = e.is_admin; return f; });
+  const [form, setForm] = useState(() => { const f = {}; for (const [k] of FICHA_FIELDS) f[k] = e[k] ?? ""; f.manager_id = e.manager_id || ""; f.is_admin = e.is_admin; f.active = e.active; return f; });
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
   const save = () => run(async () => { const r = await updateEmployee({ id: e.id, patch: form }); if (r.ok) { setEdit(false); onDone(); } });
 
@@ -145,9 +147,14 @@ function FichaCard({ e, employees, onDone }) {
               <input type={type} value={form[k] ?? ""} onChange={(ev) => set(k, ev.target.value)} className="h-8 rounded-lg bg-surface px-2.5 text-[12.5px] text-ink" />
             </label>
           ))}
-          <label className="flex items-center gap-2 text-small text-ink mt-1">
-            <input type="checkbox" checked={form.is_admin} onChange={(ev) => set("is_admin", ev.target.checked)} /> Administrador
-          </label>
+          <div className="flex items-center gap-5 mt-1">
+            <label className="flex items-center gap-2 text-small text-ink">
+              <input type="checkbox" checked={form.is_admin} onChange={(ev) => set("is_admin", ev.target.checked)} /> Administrador
+            </label>
+            <label className="flex items-center gap-2 text-small text-ink">
+              <input type="checkbox" checked={form.active} onChange={(ev) => set("active", ev.target.checked)} /> Activo
+            </label>
+          </div>
           <button onClick={save} disabled={pending} className="btn-primary h-8 text-[12.5px] mt-1 disabled:opacity-50">{pending ? "Guardando…" : "Guardar ficha"}</button>
         </div>
       )}

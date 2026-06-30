@@ -22,6 +22,11 @@ export async function updateEmployee({ id, patch }) {
   if ("is_admin" in patch) allowed.is_admin = Boolean(patch.is_admin);
   if ("active" in patch) allowed.active = Boolean(patch.active);
   if ("role" in patch) allowed.role = String(patch.role);
+  // Datos base
+  if ("name" in patch) allowed.name = String(patch.name ?? "").trim();
+  if ("email" in patch) allowed.email = String(patch.email ?? "").trim().toLowerCase();
+  if ("photo" in patch) allowed.photo = String(patch.photo ?? "");
+  if ("birthday" in patch) allowed.birthday = patch.birthday || null;
   // Ficha laboral
   for (const k of ["dni", "nss", "iban", "phone", "address", "emergency_contact", "contract_type"]) {
     if (k in patch) allowed[k] = String(patch[k] ?? "");
@@ -35,7 +40,32 @@ export async function updateEmployee({ id, patch }) {
   if (error) return { ok: false, error: error.message };
   revalidatePath("/admin");
   revalidatePath("/equipo");
+  revalidatePath("/calendario");
   return { ok: true };
+}
+
+// Alta de un empleado nuevo. Se vincula al usuario cuando entra con su email.
+export async function createEmployee({ name, email, role = "" }) {
+  const me = await requireAdmin();
+  if (!me) return { ok: false, error: "Solo administración." };
+  const n = String(name ?? "").trim();
+  const em = String(email ?? "").trim().toLowerCase();
+  if (!n || !em) return { ok: false, error: "Nombre y email son obligatorios." };
+  if (!em.includes("@")) return { ok: false, error: "Email no válido." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("employees")
+    .insert({ name: n, email: em, role: String(role ?? ""), active: true, is_admin: false, vacation_allowance: 22 })
+    .select("id")
+    .single();
+  if (error) {
+    const dup = /duplicate|unique/i.test(error.message) ? "Ya existe un empleado con ese email." : error.message;
+    return { ok: false, error: dup };
+  }
+  revalidatePath("/admin");
+  revalidatePath("/equipo");
+  return { ok: true, id: data.id };
 }
 
 // Calendario laboral: añadir festivo/hito.

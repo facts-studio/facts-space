@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { decideVacation, setVacationStatus, deleteVacation } from "@/lib/actions/vacations";
-import { updateEmployee, validateMonth, addCalendarEvent, deleteCalendarEvent } from "@/lib/actions/admin";
+import { updateEmployee, validateMonth, addCalendarEvent, deleteCalendarEvent, createEmployee } from "@/lib/actions/admin";
 import { fmtRange } from "@/lib/mock";
 import { formatDuration } from "@/lib/dates";
 import { absenceLabel } from "@/lib/absences";
@@ -233,14 +233,16 @@ function RecentRow({ r, who, onDone }) {
   );
 }
 
-// ── Equipo ───────────────────────────────────────────────────────────────────
-function Equipo({ employees, vacUsed, year }) {
+// ── Empleados ────────────────────────────────────────────────────────────────
+function Equipo({ employees, vacUsed, year, onDone }) {
+  const [adding, setAdding] = useState(false);
   return (
     <div className="rounded-2xl bg-surface/55 p-6">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between gap-3 mb-4">
         <p className="section-eyebrow">Empleados · saldo de vacaciones {year}</p>
-        <span className="text-micro text-mutedSoft">Abre una persona para ver y gestionar su ficha</span>
+        <button onClick={() => setAdding((o) => !o)} className="btn-primary h-8 text-[12.5px]">{adding ? "Cancelar" : "+ Añadir empleado"}</button>
       </div>
+      {adding && <AddEmployee onDone={() => { setAdding(false); onDone?.(); }} />}
       <div className="flex flex-col divide-y divide-border/50">
         <div className="flex items-center gap-3 px-3 pb-2 text-micro uppercase tracking-wide text-mutedSoft">
           <span className="flex-1">Persona</span>
@@ -252,6 +254,34 @@ function Equipo({ employees, vacUsed, year }) {
           <EmployeeRow key={e.id} e={e} used={vacUsed[e.id] || 0} />
         ))}
       </div>
+    </div>
+  );
+}
+
+function AddEmployee({ onDone }) {
+  const router = useRouter();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("");
+  const [msg, setMsg] = useState(null);
+  const [pending, run] = useTransition();
+  const submit = () => {
+    setMsg(null);
+    run(async () => {
+      const res = await createEmployee({ name, email, role });
+      if (res.ok) { onDone?.(); router.push(`/admin/${res.id}`); } else setMsg(res.error);
+    });
+  };
+  return (
+    <div className="rounded-xl bg-surface2/40 p-4 mb-4">
+      <div className="flex flex-wrap items-end gap-2">
+        <Field label="Nombre"><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre y apellido" className="h-9 rounded-lg bg-surface px-2.5 text-[13px] text-ink min-w-[180px]" /></Field>
+        <Field label="Email"><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nombre@fcts.studio" className="h-9 rounded-lg bg-surface px-2.5 text-[13px] text-ink min-w-[200px]" /></Field>
+        <Field label="Puesto"><input value={role} onChange={(e) => setRole(e.target.value)} placeholder="Opcional" className="h-9 rounded-lg bg-surface px-2.5 text-[13px] text-ink min-w-[150px]" /></Field>
+        <button onClick={submit} disabled={pending} className="btn-primary h-9 text-[13px] disabled:opacity-50">{pending ? "Creando…" : "Crear"}</button>
+      </div>
+      <p className="text-micro text-mutedSoft mt-2">Se vincula al entrar con su email @fcts.studio. Después completa su ficha.</p>
+      {msg && <p className="text-micro text-danger mt-1.5">{msg}</p>}
     </div>
   );
 }
