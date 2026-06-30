@@ -5,11 +5,11 @@ export const NAV = [
   { href: "/politicas", label: "Políticas", icon: "doc" },
   { href: "/recursos", label: "Recursos", icon: "grid" },
   { href: "/clientes", label: "Clientes", icon: "briefcase" },
+  { href: "/tools", label: "F*cts Tools", icon: "tools" },
 ];
 
 // Accesos secundarios (no son navegación diaria).
 export const SECONDARY_NAV = [
   { href: "/equipo", label: "Equipo", icon: "users" },
   { href: "/onboarding", label: "Onboarding", icon: "sparkles", hint: "Para nuevas incorporaciones" },
-  { href: "/admin", label: "Administrar", icon: "settings" },
 ];
