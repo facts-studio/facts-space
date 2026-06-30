@@ -5,6 +5,10 @@ export const NAV = [
   { href: "/politicas", label: "Políticas", icon: "doc" },
   { href: "/recursos", label: "Recursos", icon: "grid" },
   { href: "/clientes", label: "Clientes", icon: "briefcase" },
+];
+
+// Va anclado al fondo del menú lateral.
+export const FOOTER_NAV = [
   { href: "/tools", label: "F*cts Tools", icon: "tools" },
 ];
 

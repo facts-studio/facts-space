@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { NAV, SECONDARY_NAV } from "@/lib/nav";
+import { NAV, SECONDARY_NAV, FOOTER_NAV } from "@/lib/nav";
 import { createClient } from "@/lib/supabase/client";
 import FctsMark from "@/components/FctsMark";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -63,7 +63,13 @@ export default function Sidebar({ user }) {
         ))}
       </div>
 
-      <div className="mt-auto pt-6">
+      <nav className="mt-auto pt-6 flex flex-col gap-1">
+        {FOOTER_NAV.map((item) => (
+          <NavLink key={item.href} {...item} active={isActive(item.href)} />
+        ))}
+      </nav>
+
+      <div className="pt-6">
         <div className="flex items-center gap-3 px-2">
           {avatar ? (
             // eslint-disable-next-line @next/next/no-img-element

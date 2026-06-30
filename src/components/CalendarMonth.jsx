@@ -493,10 +493,8 @@ export default function CalendarMonth({ events = [], canRequest = false }) {
                   })}
                 </ul>
               ) : (
-                <div className="py-8 text-center">
-                  <span className="inline-block rounded-full border border-borderStrong/40 px-4 py-1.5 text-[12.5px] text-mutedSoft">
-                    Nada este día
-                  </span>
+                <div className="rounded-2xl border border-borderStrong/40 px-4 py-10 text-center text-[13px] text-mutedSoft">
+                  Nada este día
                 </div>
               )}
 
