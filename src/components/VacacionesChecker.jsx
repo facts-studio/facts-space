@@ -123,7 +123,7 @@ export default function VacacionesChecker() {
 
         <div className="grid lg:grid-cols-[300px_1fr] gap-7 lg:gap-9 items-start">
           {/* Selector de calendario */}
-          <div className="lg:pr-9 lg:border-r lg:border-border">
+          <div className="rounded-xl bg-bg border border-border p-4 lg:p-5">
           <div className="flex items-center justify-between mb-3">
             <span className="font-display text-[17px] text-ink capitalize">{MESES[month]} <span className="text-mutedSoft text-[14px] tabular-nums">{year}</span></span>
             <div className="flex items-center gap-1">
