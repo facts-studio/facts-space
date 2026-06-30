@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { updateEmployee, validateMonth } from "@/lib/actions/admin";
 import { decideVacation, setVacationStatus, deleteVacation } from "@/lib/actions/vacations";
-import { recordDocument, deleteDocument, getDocumentUrl } from "@/lib/actions/documents";
+import { deleteDocument, getDocumentUrl } from "@/lib/actions/documents";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { fmtRange, fmtDate } from "@/lib/mock";
@@ -350,59 +350,17 @@ function Horario({ e, time, month, onDone }) {
   );
 }
 
-function Docs({ e, documents, category, month, onDone }) {
-  const [title, setTitle] = useState("");
-  const [period, setPeriod] = useState(month);
-  const [cat, setCat] = useState(category);
-  const [file, setFile] = useState(null);
-  const [msg, setMsg] = useState(null);
-  const [pending, run] = useTransition();
+function Docs({ documents, category, onDone }) {
   const isNomina = category === "nomina";
-
-  const submit = () => {
-    setMsg(null);
-    if (!file) { setMsg({ ok: false, text: "Elige un archivo." }); return; }
-    run(async () => {
-      const safe = file.name.replace(/[^a-zA-Z0-9.\-_]/g, "_");
-      const useCat = isNomina ? "nomina" : cat;
-      const path = `${e.id}/${useCat}/${Date.now()}-${safe}`;
-      const supabase = createClient();
-      const up = await supabase.storage.from("hr-docs").upload(path, file, { upsert: false });
-      if (up.error) { setMsg({ ok: false, text: up.error.message }); return; }
-      const res = await recordDocument({ employeeId: e.id, category: useCat, title, period: isNomina ? period : "", storagePath: path });
-      if (res.ok) { setMsg({ ok: true, text: "Subido." }); setFile(null); setTitle(""); onDone(); } else setMsg({ ok: false, text: res.error });
-    });
-  };
-
   return (
-    <div className="space-y-3">
-      <div className="rounded-2xl bg-surface/55 p-6">
-        <p className="section-eyebrow mb-4">Subir {isNomina ? "nómina" : "documento"}</p>
-        <div className="flex flex-wrap items-end gap-2">
-          {isNomina ? (
-            <Fld label="Mes"><input type="month" value={period} onChange={(ev) => setPeriod(ev.target.value)} className="h-9 rounded-lg bg-surface px-2 text-[13px] text-ink" /></Fld>
-          ) : (
-            <>
-              <Fld label="Tipo">
-                <select value={cat} onChange={(ev) => setCat(ev.target.value)} className="h-9 rounded-lg bg-surface px-2 text-[13px] text-ink">
-                  <option value="contrato">Contrato</option>
-                  <option value="documento">Documento</option>
-                </select>
-              </Fld>
-              <Fld label="Título"><input value={title} onChange={(ev) => setTitle(ev.target.value)} placeholder="Título" className="h-9 rounded-lg bg-surface px-2.5 text-[13px] text-ink" /></Fld>
-            </>
-          )}
-          <Fld label="Archivo"><input type="file" accept="application/pdf,image/*" onChange={(ev) => setFile(ev.target.files?.[0] || null)} className="text-[12px] text-muted" /></Fld>
-          <button onClick={submit} disabled={pending} className="btn-primary h-9 text-[13px] disabled:opacity-50">{pending ? "Subiendo…" : "Subir"}</button>
-        </div>
-        {msg && <p className={`text-micro mt-2 ${msg.ok ? "text-success" : "text-danger"}`}>{msg.text}</p>}
+    <div className="rounded-2xl bg-surface/55 p-6">
+      <div className="flex items-center justify-between mb-4">
+        <p className="section-eyebrow">{isNomina ? "Nóminas" : "Documentos"}</p>
+        <span className="text-micro text-mutedSoft">Se suben desde Admin › Documentos</span>
       </div>
-      <div className="rounded-2xl bg-surface/55 p-6">
-        <p className="section-eyebrow mb-4">{isNomina ? "Nóminas" : "Documentos"}</p>
-        {documents.length === 0 ? <p className="text-small text-mutedSoft">Nada todavía.</p> : (
-          <ul className="divide-y divide-border/50">{documents.map((d) => <DocLine key={d.id} d={d} onDone={onDone} admin />)}</ul>
-        )}
-      </div>
+      {documents.length === 0 ? <p className="text-small text-mutedSoft">Nada todavía.</p> : (
+        <ul className="divide-y divide-border/50">{documents.map((d) => <DocLine key={d.id} d={d} onDone={onDone} admin />)}</ul>
+      )}
     </div>
   );
 }
