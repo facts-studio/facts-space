@@ -127,12 +127,21 @@ export default function TodayHero({ nombre = "equipo", events = [] }) {
   const shown = new Set([proxCumple?.id, proxFestivo?.id, proxHito?.id, ...vacHoy.map((e) => e.id)].filter(Boolean));
   const fill = futuros.filter((e) => e.dias > 0 && !shown.has(e.id)).slice(0, 2);
 
-  const nodeFor = (e) => {
-    if (e.type === "cumple") return <><Ico>🎂</Ico> el cumple de <Hi>{e.who}</Hi> el <Hi>{corto(e.start)}</Hi></>;
-    if (e.type === "festivo") return <><Ico>🗓️</Ico> el festivo <Hi>«{e.title}»</Hi> el <Hi>{corto(e.start)}</Hi></>;
-    if (e.type === "hito") return <><Ico>🎯</Ico> el hito <Hi>«{e.title}»</Hi> el <Hi>{corto(e.start)}</Hi></>;
-    return <><Ico>🏖️</Ico> las vacaciones de <Hi>{e.who}</Hi> el <Hi>{corto(e.start)}</Hi></>;
+  // skipIcon: omite el emoji cuando el evento anterior es del mismo tipo (no
+  // repetir 🏖️ 🏖️ seguidos).
+  const ICON = { cumple: "🎂", festivo: "🗓️", hito: "🎯", vacaciones: "🏖️" };
+  const nodeFor = (e, skipIcon = false) => {
+    const ico = skipIcon ? null : <><Ico>{ICON[e.type]}</Ico> </>;
+    if (e.type === "cumple") return <>{ico}el cumple de <Hi>{e.who}</Hi> el <Hi>{corto(e.start)}</Hi></>;
+    if (e.type === "festivo") return <>{ico}el festivo <Hi>«{e.title}»</Hi> el <Hi>{corto(e.start)}</Hi></>;
+    if (e.type === "hito") return <>{ico}el hito <Hi>«{e.title}»</Hi> el <Hi>{corto(e.start)}</Hi></>;
+    return <>{ico}las vacaciones de <Hi>{e.who}</Hi> el <Hi>{corto(e.start)}</Hi></>;
   };
+
+  // Concordancia de "será/serán": plural si hay más de un evento o si el único
+  // es de tipo vacaciones ("las vacaciones … serán").
+  const seraVerbo = (items) =>
+    items.length > 1 || (items.length === 1 && items[0].type === "vacaciones") ? "serán" : "será";
 
   // Entradilla y cierre que van variando (deterministas por fecha).
   const hasContent = hasNow || fill.length > 0;
@@ -178,13 +187,13 @@ export default function TodayHero({ nombre = "equipo", events = [] }) {
               </span>
             ))}
             {partes.length === 0 && fill.length > 0 ? (
-              <>. Después, lo próximo será {nodeFor(fill[0])}.</>
+              <>. Después, lo próximo {seraVerbo([fill[0]])} {nodeFor(fill[0], fill[0].type === "vacaciones")}.</>
             ) : (
               "."
             )}
           </>
         ) : fill.length > 0 ? (
-          <>Lo próximo será {joinNodes(fill.map(nodeFor))}.</>
+          <>Lo próximo {seraVerbo(fill)} {joinNodes(fill.map((e, i) => nodeFor(e, i > 0 && fill[i - 1].type === e.type)))}.</>
         ) : (
           <>Parece que de momento nada más. Buen momento para avanzar con calma.</>
         )}

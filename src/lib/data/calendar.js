@@ -14,16 +14,19 @@ export async function getCalendarEvents() {
   const [vac, emps, cal] = await Promise.all([
     supabase
       .from("vacation_requests")
-      .select("id, start_date, end_date, note, employees(name)")
+      .select("id, start_date, end_date, note, employee_id")
       .eq("status", "approved"),
-    supabase.from("employees").select("id, name, birthday").eq("active", true),
+    supabase.from("employees").select("id, name, birthday, active"),
     supabase.from("calendar_events").select("id, type, title, start_date, end_date"),
   ]);
+
+  // Nombre por id (vacation_requests tiene 2 FKs a employees → no usamos embed).
+  const nameById = new Map((emps.data ?? []).map((m) => [m.id, m.name]));
 
   const events = [];
 
   for (const v of vac.data ?? []) {
-    const who = v.employees?.name ?? null;
+    const who = nameById.get(v.employee_id) ?? null;
     events.push({
       id: `vac-${v.id}`,
       type: "vacaciones",
@@ -49,7 +52,7 @@ export async function getCalendarEvents() {
   // (el calendario navega por años).
   const years = [new Date().getFullYear(), new Date().getFullYear() + 1];
   for (const m of emps.data ?? []) {
-    if (!m.birthday) continue;
+    if (!m.birthday || m.active === false) continue;
     const md = m.birthday.slice(5); // "MM-DD"
     for (const y of years) {
       const d = `${y}-${md}`;
