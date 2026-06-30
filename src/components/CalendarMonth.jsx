@@ -38,17 +38,17 @@ function monthDays(y, m) {
 
 // Acabado del chip por tipo de evento (clases explícitas para Tailwind).
 const CHIP = {
-  hito: "bg-brand text-white",
+  hito: "bg-danger text-white",
   cumple: "bg-infoSoft text-info",
   vacaciones: "bg-warnSoft text-warn",
-  festivo: "bg-violetSoft text-violet",
+  festivo: "bg-successSoft text-success",
 };
 const DOT = {
-  brand: "bg-brand", info: "bg-info", warn: "bg-warn", violet: "bg-violet",
+  brand: "bg-brand", info: "bg-info", warn: "bg-warn", violet: "bg-violet", success: "bg-success", danger: "bg-danger",
 };
 // Relleno suave por color para la vista anual.
 const YFILL = {
-  brand: "bg-brandSoft", info: "bg-infoSoft", warn: "bg-warnSoft", violet: "bg-violetSoft",
+  brand: "bg-brandSoft", info: "bg-infoSoft", warn: "bg-warnSoft", violet: "bg-violetSoft", success: "bg-successSoft", danger: "bg-dangerSoft",
 };
 // Prioridad de color cuando un día tiene varios eventos.
 const YORDER = ["hito", "festivo", "cumple", "vacaciones"];
@@ -58,9 +58,11 @@ const TILE = {
   info: "bg-infoSoft/55 border-info/15",
   warn: "bg-warnSoft/45 border-warn/15",
   violet: "bg-violetSoft/55 border-violet/15",
+  success: "bg-successSoft/55 border-success/15",
+  danger: "bg-dangerSoft/45 border-danger/15",
 };
 const TEXT = {
-  brand: "text-brand", info: "text-info", warn: "text-warn", violet: "text-violet",
+  brand: "text-brand", info: "text-info", warn: "text-warn", violet: "text-violet", success: "text-success", danger: "text-danger",
 };
 // Acabado del chip de filtro activo por color (clases explícitas).
 const FILTER_ON = {
@@ -68,6 +70,8 @@ const FILTER_ON = {
   info: "bg-infoSoft text-info border-info/30",
   warn: "bg-warnSoft text-warn border-warn/30",
   violet: "bg-violetSoft text-violet border-violet/30",
+  success: "bg-successSoft text-success border-success/30",
+  danger: "bg-dangerSoft text-danger border-danger/30",
 };
 
 export default function CalendarMonth({ events = [] }) {
@@ -260,7 +264,7 @@ export default function CalendarMonth({ events = [] }) {
                     : isSel
                       ? "border-ink/45 bg-surface2/40"
                       : hasFestivo
-                        ? "border-violet/20 bg-violetSoft/45 hover:border-violet/35"
+                        ? "border-success/20 bg-successSoft/45 hover:border-success/35"
                         : "border-borderStrong/45 hover:border-borderStrong/70"
                 } ${!inMonth ? "opacity-45" : ""}`}
               >

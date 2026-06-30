@@ -6,6 +6,7 @@ const STYLES = {
   warn: { dot: "bg-warn", pill: "bg-warnSoft text-warn" },
   violet: { dot: "bg-violet", pill: "bg-violetSoft text-violet" },
   success: { dot: "bg-success", pill: "bg-successSoft text-success" },
+  danger: { dot: "bg-danger", pill: "bg-dangerSoft text-danger" },
 };
 
 export function EventDot({ color }) {

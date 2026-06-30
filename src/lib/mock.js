@@ -14,10 +14,10 @@ export const TEAM = [
 
 // Tipos de evento → color del sistema (tokens del design system).
 export const EVENT_TYPES = {
-  hito: { label: "Hito", color: "brand" },
+  hito: { label: "Hito", color: "danger" },
   cumple: { label: "Cumpleaños", color: "info" },
   vacaciones: { label: "Vacaciones", color: "warn" },
-  festivo: { label: "Festivo", color: "violet" },
+  festivo: { label: "Festivo", color: "success" },
 };
 
 export const EVENTS = [
