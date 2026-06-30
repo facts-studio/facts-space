@@ -453,7 +453,7 @@ export default function CalendarMonth({ events = [], canRequest = false }) {
                       </li>
                     ))}
                   </ul>
-                  <p className="text-micro text-mutedSoft leading-snug">Orientativo: puedes solicitarlas igualmente; la aprobación final es de tu responsable.</p>
+                  <p className="text-micro text-mutedSoft leading-snug">Orientativo: puedes solicitarla igualmente, pero según la carga es posible que tu responsable no pueda aprobarla.</p>
                 </div>
               )}
               <input className="input !h-9 !py-1" placeholder="Nota (opcional)" value={reqNote} onChange={(e) => setReqNote(e.target.value)} />

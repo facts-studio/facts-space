@@ -75,6 +75,10 @@ export function evaluateVacation(startISO, endISO, events = []) {
   else if (off.length === 1) reasons.push({ tone: "ok", text: `Solo ${off[0]} coincide esos días.` });
   else reasons.push({ tone: "ok", text: "Nadie más del equipo está fuera esos días." });
 
-  const titles = { ok: "Viable 🎉", warn: "Viable con condiciones", bad: "No recomendable" };
+  const titles = {
+    ok: "Sin impedimentos previstos",
+    warn: "Puede haber impedimentos",
+    bad: "Difícil de aprobar",
+  };
   return { status, title: titles[status], natDays, workDays, reasons };
 }
