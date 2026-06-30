@@ -46,6 +46,8 @@ export default function EmpleadoClient({ employee, employees, requests, document
 }
 
 function Resumen({ e, employees, requests, documents, time, vacUsed, year, onDone }) {
+  const [edit, setEdit] = useState(false);
+  if (edit) return <FichaForm e={e} employees={employees} onCancel={() => setEdit(false)} onSaved={() => { setEdit(false); onDone(); }} />;
   const allowance = Number(e.vacation_allowance);
   const monthMs = time.reduce((s, t) => s + durMs(t), 0);
   const nominas = documents.filter((d) => d.category === "nomina").slice(0, 3);
@@ -66,7 +68,7 @@ function Resumen({ e, employees, requests, documents, time, vacUsed, year, onDon
   return (
     <div className="grid lg:grid-cols-[300px_minmax(0,1fr)] gap-3 items-start">
       <div className="space-y-3">
-        <FichaCard e={e} employees={employees} onDone={onDone} />
+        <FichaCard e={e} employees={employees} onEdit={() => setEdit(true)} />
       </div>
 
       <div className="space-y-3">
@@ -104,60 +106,94 @@ function Resumen({ e, employees, requests, documents, time, vacUsed, year, onDon
   );
 }
 
-const FICHA_FIELDS = [
-  ["name", "Nombre", "text"], ["email", "Email", "email"], ["birthday", "Cumpleaños", "date"], ["photo", "Foto (URL)", "text"],
-  ["role", "Puesto", "text"], ["contract_type", "Tipo de contrato", "text"], ["start_date", "Fecha de alta", "date"],
-  ["weekly_hours", "Jornada (h/sem)", "number"], ["gross_salary", "Salario bruto anual (€)", "number"], ["vacation_allowance", "Días vacaciones/año", "number"],
-  ["dni", "DNI / NIE", "text"], ["nss", "Nº Seguridad Social", "text"], ["iban", "IBAN", "text"],
-  ["phone", "Teléfono", "text"], ["emergency_contact", "Contacto de emergencia", "text"], ["address", "Dirección", "text"],
-];
-
-// (Alta de empleados: en la lista de Empleados del panel admin.)
-function FichaCard({ e, employees, onDone }) {
-  const [edit, setEdit] = useState(false);
-  const [pending, run] = useTransition();
-  const [form, setForm] = useState(() => { const f = {}; for (const [k] of FICHA_FIELDS) f[k] = e[k] ?? ""; f.manager_id = e.manager_id || ""; f.is_admin = e.is_admin; f.active = e.active; return f; });
-  const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
-  const save = () => run(async () => { const r = await updateEmployee({ id: e.id, patch: form }); if (r.ok) { setEdit(false); onDone(); } });
-
+// Tarjeta lateral de solo lectura (organización). El botón "Editar" abre el
+// formulario completo de ficha.
+function FichaCard({ e, employees, onEdit }) {
   return (
     <div className="rounded-2xl bg-surface/55 p-6">
       <div className="flex items-center justify-between mb-4">
         <p className="section-eyebrow">Ficha</p>
-        <button onClick={() => setEdit((o) => !o)} className="text-micro text-muted hover:text-ink transition">{edit ? "Cancelar" : "Editar"}</button>
+        <button onClick={onEdit} className="text-micro text-muted hover:text-ink transition">Editar</button>
       </div>
-      {!edit ? (
-        <dl className="flex flex-col gap-2.5">
-          <Row k="Responsable" v={employees.find((m) => m.id === e.manager_id)?.name || "—"} />
-          <Row k="Admin" v={e.is_admin ? "Sí" : "No"} />
-          <Row k="Activo" v={e.active ? "Sí" : "No"} />
-        </dl>
-      ) : (
-        <div className="flex flex-col gap-2.5">
-          <label className="flex flex-col gap-1">
-            <span className="text-micro text-mutedSoft">Responsable</span>
-            <select value={form.manager_id} onChange={(ev) => set("manager_id", ev.target.value)} className="h-8 rounded-lg bg-surface px-2 text-[12.5px] text-ink">
+      <dl className="flex flex-col gap-2.5">
+        <Row k="Responsable" v={employees.find((m) => m.id === e.manager_id)?.name || "—"} />
+        <Row k="Admin" v={e.is_admin ? "Sí" : "No"} />
+        <Row k="Activo" v={e.active ? "Sí" : "No"} />
+      </dl>
+    </div>
+  );
+}
+
+// Ficha legal completa, agrupada, editable. Cubre todos los campos.
+const FICHA_GROUPS = [
+  ["Datos personales", [
+    ["name", "Nombre", "text"], ["email", "Email", "email"], ["birthday", "Cumpleaños", "date"],
+    ["phone", "Teléfono", "text"], ["dni", "DNI / NIE", "text"], ["nss", "Nº Seguridad Social", "text"],
+    ["iban", "IBAN", "text"], ["address", "Dirección", "text"], ["emergency_contact", "Contacto de emergencia", "text"],
+    ["photo", "Foto (URL)", "text"],
+  ]],
+  ["Contrato", [
+    ["role", "Puesto", "text"], ["contract_type", "Tipo de contrato", "text"], ["start_date", "Fecha de alta", "date"],
+    ["weekly_hours", "Jornada (h/sem)", "number"], ["gross_salary", "Salario bruto anual (€)", "number"],
+    ["vacation_allowance", "Días vacaciones/año", "number"],
+  ]],
+];
+
+function FichaForm({ e, employees, onCancel, onSaved }) {
+  const [pending, run] = useTransition();
+  const [msg, setMsg] = useState(null);
+  const [form, setForm] = useState(() => {
+    const f = {};
+    for (const [, fields] of FICHA_GROUPS) for (const [k] of fields) f[k] = e[k] ?? "";
+    f.manager_id = e.manager_id || ""; f.is_admin = e.is_admin; f.active = e.active;
+    return f;
+  });
+  const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
+  const save = () => run(async () => {
+    setMsg(null);
+    const r = await updateEmployee({ id: e.id, patch: form });
+    if (r.ok) onSaved(); else setMsg(r.error);
+  });
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="section-eyebrow">Editar ficha de {e.name}</p>
+        <div className="flex items-center gap-2">
+          <button onClick={onCancel} className="btn-ghost h-8 text-[12.5px]">Cancelar</button>
+          <button onClick={save} disabled={pending} className="btn-primary h-8 text-[12.5px] disabled:opacity-50">{pending ? "Guardando…" : "Guardar ficha"}</button>
+        </div>
+      </div>
+      {msg && <p className="text-micro text-danger">{msg}</p>}
+
+      <div className="rounded-2xl bg-surface/55 p-6">
+        <p className="section-eyebrow mb-4">Organización</p>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <Fld label="Responsable">
+            <select value={form.manager_id} onChange={(ev) => set("manager_id", ev.target.value)} className="h-9 rounded-lg bg-surface px-2 text-[13px] text-ink">
               <option value="">— Sin responsable</option>
               {employees.filter((m) => m.id !== e.id).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
-          </label>
-          {FICHA_FIELDS.map(([k, label, type]) => (
-            <label key={k} className="flex flex-col gap-1">
-              <span className="text-micro text-mutedSoft">{label}</span>
-              <input type={type} value={form[k] ?? ""} onChange={(ev) => set(k, ev.target.value)} className="h-8 rounded-lg bg-surface px-2.5 text-[12.5px] text-ink" />
-            </label>
-          ))}
-          <div className="flex items-center gap-5 mt-1">
-            <label className="flex items-center gap-2 text-small text-ink">
-              <input type="checkbox" checked={form.is_admin} onChange={(ev) => set("is_admin", ev.target.checked)} /> Administrador
-            </label>
-            <label className="flex items-center gap-2 text-small text-ink">
-              <input type="checkbox" checked={form.active} onChange={(ev) => set("active", ev.target.checked)} /> Activo
-            </label>
+          </Fld>
+          <div className="flex items-end gap-5">
+            <label className="flex items-center gap-2 text-small text-ink"><input type="checkbox" checked={form.is_admin} onChange={(ev) => set("is_admin", ev.target.checked)} /> Admin</label>
+            <label className="flex items-center gap-2 text-small text-ink"><input type="checkbox" checked={form.active} onChange={(ev) => set("active", ev.target.checked)} /> Activo</label>
           </div>
-          <button onClick={save} disabled={pending} className="btn-primary h-8 text-[12.5px] mt-1 disabled:opacity-50">{pending ? "Guardando…" : "Guardar ficha"}</button>
         </div>
-      )}
+      </div>
+
+      {FICHA_GROUPS.map(([title, fields]) => (
+        <div key={title} className="rounded-2xl bg-surface/55 p-6">
+          <p className="section-eyebrow mb-4">{title}</p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {fields.map(([k, label, type]) => (
+              <Fld key={k} label={label}>
+                <input type={type} value={form[k] ?? ""} onChange={(ev) => set(k, ev.target.value)} className="h-9 rounded-lg bg-surface px-2.5 text-[13px] text-ink" />
+              </Fld>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
