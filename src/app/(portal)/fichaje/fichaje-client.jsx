@@ -58,11 +58,8 @@ export default function FichajeClient({ entries, month, todayISO }) {
         <Stat label="Jornadas registradas" value={String(entries.length)} />
       </div>
 
-      {/* Formularios */}
-      <div className="grid lg:grid-cols-2 gap-3">
-        <ManualForm todayISO={todayISO} onDone={() => router.refresh()} />
-        <AutofillForm month={month} todayISO={todayISO} onDone={() => router.refresh()} />
-      </div>
+      {/* Fichar: manual o autorrellenar (mismo formulario) */}
+      <FicharCard month={month} todayISO={todayISO} onDone={() => router.refresh()} />
 
       {/* Historial */}
       <div className="card p-6">
@@ -128,61 +125,69 @@ function EntryChip({ entry, onDone }) {
   );
 }
 
-function ManualForm({ todayISO, onDone }) {
+function FicharCard({ month, todayISO, onDone }) {
+  const [mode, setMode] = useState("manual"); // "manual" | "auto"
   const [date, setDate] = useState(todayISO);
-  const [start, setStart] = useState("09:00");
-  const [end, setEnd] = useState("18:00");
-  const [msg, setMsg] = useState(null);
-  const [pending, run] = useTransition();
-  const submit = () => {
-    setMsg(null);
-    run(async () => {
-      const res = await addEntry({ date, start, end });
-      if (res.ok) { setMsg({ ok: true, text: "Fichaje añadido." }); onDone(); }
-      else setMsg({ ok: false, text: res.error });
-    });
-  };
-  return (
-    <div className="card p-6">
-      <p className="section-eyebrow mb-3">Añadir fichaje</p>
-      <div className="flex flex-wrap items-end gap-2">
-        <Labeled label="Día"><input type="date" className={field} value={date} onChange={(e) => setDate(e.target.value)} /></Labeled>
-        <Labeled label="Entrada"><input type="time" className={field} value={start} onChange={(e) => setStart(e.target.value)} /></Labeled>
-        <Labeled label="Salida"><input type="time" className={field} value={end} onChange={(e) => setEnd(e.target.value)} /></Labeled>
-        <button onClick={submit} disabled={pending} className="btn-primary h-9 text-[13px] disabled:opacity-50">{pending ? "…" : "Añadir"}</button>
-      </div>
-      {msg && <p className={`text-micro mt-2 ${msg.ok ? "text-success" : "text-danger"}`}>{msg.text}</p>}
-    </div>
-  );
-}
-
-function AutofillForm({ month, todayISO, onDone }) {
   const [fromDate, setFromDate] = useState(`${month}-01`);
   const [toDate, setToDate] = useState(todayISO);
   const [start, setStart] = useState("09:00");
   const [end, setEnd] = useState("18:00");
   const [msg, setMsg] = useState(null);
   const [pending, run] = useTransition();
+
   const submit = () => {
     setMsg(null);
     run(async () => {
-      const res = await autofillTime({ fromDate, toDate, start, end });
-      if (res.ok) { setMsg({ ok: true, text: `Añadidos ${res.count} días (saltados findes, festivos, cumpleaños y vacaciones).` }); onDone(); }
-      else setMsg({ ok: false, text: res.error });
+      const res =
+        mode === "manual"
+          ? await addEntry({ date, start, end })
+          : await autofillTime({ fromDate, toDate, start, end });
+      if (res.ok) {
+        setMsg({ ok: true, text: mode === "manual" ? "Fichaje añadido." : `Añadidos ${res.count} días.` });
+        onDone();
+      } else setMsg({ ok: false, text: res.error });
     });
   };
+
   return (
     <div className="card p-6">
-      <p className="section-eyebrow mb-3">Autorrellenar</p>
+      <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+        <p className="section-eyebrow">Fichar</p>
+        <div className="flex items-center bg-surface2/60 rounded-lg p-0.5">
+          {[["manual", "Manual"], ["auto", "Autorrellenar"]].map(([v, l]) => (
+            <button
+              key={v}
+              onClick={() => { setMode(v); setMsg(null); }}
+              className={`px-3 py-1 rounded-md text-[12.5px] transition ${mode === v ? "bg-bg text-ink shadow-sm font-medium" : "text-muted hover:text-ink"}`}
+            >
+              {l}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="flex flex-wrap items-end gap-2">
-        <Labeled label="Desde"><input type="date" className={field} value={fromDate} onChange={(e) => setFromDate(e.target.value)} /></Labeled>
-        <Labeled label="Hasta"><input type="date" className={field} value={toDate} onChange={(e) => setToDate(e.target.value)} /></Labeled>
+        {mode === "manual" ? (
+          <Labeled label="Día"><input type="date" className={field} value={date} onChange={(e) => setDate(e.target.value)} /></Labeled>
+        ) : (
+          <>
+            <Labeled label="Desde"><input type="date" className={field} value={fromDate} onChange={(e) => setFromDate(e.target.value)} /></Labeled>
+            <Labeled label="Hasta"><input type="date" className={field} value={toDate} onChange={(e) => setToDate(e.target.value)} /></Labeled>
+          </>
+        )}
         <Labeled label="Entrada"><input type="time" className={field} value={start} onChange={(e) => setStart(e.target.value)} /></Labeled>
         <Labeled label="Salida"><input type="time" className={field} value={end} onChange={(e) => setEnd(e.target.value)} /></Labeled>
-        <button onClick={submit} disabled={pending} className="btn-primary h-9 text-[13px] disabled:opacity-50">{pending ? "…" : "Rellenar"}</button>
+        <button onClick={submit} disabled={pending} className="btn-primary h-9 text-[13px] disabled:opacity-50">
+          {pending ? "…" : mode === "manual" ? "Añadir" : "Rellenar"}
+        </button>
       </div>
-      <p className="text-micro text-mutedSoft mt-2 leading-snug">Rellena los días sin fichar con ese horario, saltando findes, festivos, tu cumpleaños y tus vacaciones aprobadas.</p>
-      {msg && <p className={`text-micro mt-1.5 ${msg.ok ? "text-success" : "text-danger"}`}>{msg.text}</p>}
+
+      {mode === "auto" && (
+        <p className="text-micro text-mutedSoft mt-2 leading-snug">
+          Rellena los días sin fichar del rango con ese horario, saltando findes, festivos, tu cumpleaños y tus vacaciones aprobadas.
+        </p>
+      )}
+      {msg && <p className={`text-micro mt-2 ${msg.ok ? "text-success" : "text-danger"}`}>{msg.text}</p>}
     </div>
   );
 }
