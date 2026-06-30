@@ -11,23 +11,33 @@ export default async function PoliticaPage({ params }) {
 
   const withChecker = id === "vacaciones";
 
-  return (
-    <div>
+  const Head = (
+    <>
       <Link href="/politicas" className="text-small text-muted hover:text-ink transition">← Políticas</Link>
       <header className="mt-4 mb-8">
         <div className="text-[28px] mb-3">{p.icon}</div>
         <h1 className="section-title">{p.title}</h1>
         <p className="section-helper">{p.summary}</p>
       </header>
+    </>
+  );
 
-      {withChecker ? (
-        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-8 lg:items-start">
-          <div className="min-w-0"><ContentBlocks blocks={p.body} /></div>
-          <VacacionesChecker />
+  if (withChecker) {
+    return (
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-8 lg:items-start">
+        <div className="min-w-0">
+          {Head}
+          <ContentBlocks blocks={p.body} />
         </div>
-      ) : (
-        <ContentBlocks blocks={p.body} />
-      )}
+        <VacacionesChecker />
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {Head}
+      <ContentBlocks blocks={p.body} />
     </div>
   );
 }
