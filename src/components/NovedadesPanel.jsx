@@ -51,7 +51,7 @@ export default function NovedadesPanel({ news = [] }) {
   const items = news.slice(0, 3);
 
   return (
-    <aside className="lg:sticky lg:top-8 space-y-2.5">
+    <aside className="lg:sticky lg:top-0 space-y-2.5">
       <div className="flex items-center gap-2 mb-1.5">
         <span className="text-caption uppercase tracking-[0.16em] text-mutedSoft">Novedades</span>
         <span className="text-caption text-mutedSoft tabular-nums">{items.length}</span>
