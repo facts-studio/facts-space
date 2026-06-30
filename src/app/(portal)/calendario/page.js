@@ -1,6 +1,7 @@
 import CalendarMonth from "@/components/CalendarMonth";
-import { EVENTS } from "@/lib/mock";
+import { getCalendarEvents } from "@/lib/data/calendar";
 
-export default function CalendarioPage() {
-  return <CalendarMonth events={EVENTS} />;
+export default async function CalendarioPage() {
+  const events = await getCalendarEvents();
+  return <CalendarMonth events={events} />;
 }

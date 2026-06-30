@@ -2,8 +2,9 @@ import Link from "next/link";
 import BirthdayConfetti from "@/components/BirthdayConfetti";
 import TodayHero from "@/components/TodayHero";
 import NovedadesPanel from "@/components/NovedadesPanel";
-import { EVENTS, NEWS, LINKS } from "@/lib/mock";
+import { NEWS, LINKS } from "@/lib/mock";
 import { CLIENTS } from "@/lib/content";
+import { getCalendarEvents } from "@/lib/data/calendar";
 
 function favicon(url) {
   try { return `https://www.google.com/s2/favicons?domain=${new URL(url).hostname}&sz=64`; } catch { return null; }
@@ -23,13 +24,14 @@ const SHORTCUTS = [
   { href: "/recursos", title: "Recursos", desc: "Programas, brand assets y enlaces.", icon: "✦" },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const events = await getCalendarEvents();
   return (
     <div className="grid lg:grid-cols-[minmax(0,1fr)_320px] gap-8 lg:gap-12 items-start">
       <BirthdayConfetti />
       {/* Columna principal */}
       <div className="min-w-0 max-w-[820px]">
-        <TodayHero nombre="equipo" events={EVENTS} />
+        <TodayHero nombre="equipo" events={events} />
 
         <div className="grid sm:grid-cols-3 gap-4 mb-4">
           {SHORTCUTS.map((s) => (
@@ -77,7 +79,7 @@ export default function HomePage() {
       </div>
 
       {/* Columna derecha — Novedades */}
-      <NovedadesPanel news={NEWS} events={EVENTS} />
+      <NovedadesPanel news={NEWS} events={events} />
     </div>
   );
 }
