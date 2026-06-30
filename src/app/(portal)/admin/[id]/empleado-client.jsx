@@ -203,6 +203,10 @@ function FichaForm({ e, employees, onCancel, onSaved }) {
                   <span className="text-micro text-mutedSoft">Foto</span>
                   <div className="mt-1"><AvatarUpload employeeId={e.id} value={form.photo} onChange={(v) => set("photo", v)} /></div>
                 </div>
+              ) : k === "bank_name" ? (
+                <Fld key={k} label={label}>
+                  <BankField value={form.bank_name ?? ""} onChange={(v) => set("bank_name", v)} />
+                </Fld>
               ) : (
                 <Fld key={k} label={label}>
                   {type === "select" ? (
@@ -444,6 +448,38 @@ function Stat({ label, value, sub }) {
     </div>
   );
 }
+// Bancos más usados en España + opción personalizada.
+const BANKS = [
+  "CaixaBank", "BBVA", "Banco Santander", "Banco Sabadell", "Bankinter", "ING",
+  "Unicaja Banco", "Kutxabank", "Abanca", "Ibercaja", "Cajamar", "Openbank",
+  "EVO Banco", "Deutsche Bank España", "Laboral Kutxa", "Caixa d'Enginyers",
+  "Revolut", "N26", "Wise",
+];
+function BankField({ value, onChange }) {
+  const known = value === "" || BANKS.includes(value);
+  const [other, setOther] = useState(!known);
+  const cls = "h-9 rounded-lg bg-surface px-2 text-[13px] text-ink";
+  return (
+    <div className="flex flex-col gap-1.5">
+      <select
+        value={other ? "__custom" : value}
+        onChange={(e) => {
+          if (e.target.value === "__custom") { setOther(true); onChange(""); }
+          else { setOther(false); onChange(e.target.value); }
+        }}
+        className={cls}
+      >
+        <option value="">—</option>
+        {BANKS.map((b) => <option key={b} value={b}>{b}</option>)}
+        <option value="__custom">Otro (personalizar)…</option>
+      </select>
+      {other && (
+        <input value={value} onChange={(e) => onChange(e.target.value)} placeholder="Nombre del banco" className={`${cls} px-2.5`} />
+      )}
+    </div>
+  );
+}
+
 function Fld({ label, children }) {
   return <label className="flex flex-col gap-1"><span className="text-micro text-mutedSoft">{label}</span>{children}</label>;
 }
