@@ -34,6 +34,12 @@ const TONE = {
   warn: { dot: "bg-warn", text: "text-warn" },
   bad: { dot: "bg-danger", text: "text-danger" },
 };
+// Banner de estado del veredicto (fondo suave por color).
+const STATUS = {
+  ok: { bg: "bg-successSoft/50", dot: "bg-success", text: "text-success" },
+  warn: { bg: "bg-warnSoft/45", dot: "bg-warn", text: "text-warn" },
+  bad: { bg: "bg-dangerSoft/45", dot: "bg-danger", text: "text-danger" },
+};
 
 function evaluate(start, end) {
   if (!start) return null;
@@ -106,14 +112,18 @@ export default function VacacionesChecker() {
   };
 
   return (
-    <section className="mt-12 pt-8 border-t border-border">
-      <h2 className="section-eyebrow mb-1.5">Comprobador</h2>
-      <p className="font-display text-[22px] text-ink mb-1">¿Puedo pedir estos días?</p>
-      <p className="text-small text-muted mb-6 max-w-[52ch]">Elige las fechas en el calendario y te decimos si es viable según la política (carga del trimestre, periodos bloqueados, antelación y cobertura del equipo).</p>
+    <section className="mt-12">
+      <div className="rounded-2xl bg-surface/55 p-6 md:p-8">
+        {/* Cabecera del módulo */}
+        <header className="mb-6">
+          <p className="section-eyebrow mb-1.5">Comprobador de vacaciones</p>
+          <h2 className="font-display text-[22px] text-ink">¿Puedo pedir estos días?</h2>
+          <p className="text-small text-muted mt-1 max-w-[60ch]">Elige las fechas y comprobamos la viabilidad según la política: carga del trimestre, periodos bloqueados, antelación y cobertura del equipo.</p>
+        </header>
 
-      <div className="grid lg:grid-cols-[320px_1fr] gap-8 items-start">
-        {/* Selector de calendario */}
-        <div>
+        <div className="grid lg:grid-cols-[300px_1fr] gap-7 lg:gap-9 items-start">
+          {/* Selector de calendario */}
+          <div className="lg:pr-9 lg:border-r lg:border-border">
           <div className="flex items-center justify-between mb-3">
             <span className="font-display text-[17px] text-ink capitalize">{MESES[month]} <span className="text-mutedSoft text-[14px] tabular-nums">{year}</span></span>
             <div className="flex items-center gap-1">
@@ -174,28 +184,34 @@ export default function VacacionesChecker() {
           )}
         </div>
 
-        {/* Veredicto */}
-        <div>
-          {!result ? (
-            <p className="text-small text-mutedSoft">Selecciona una fecha para ver si es viable.</p>
-          ) : (
-            <>
-              <div className="flex items-center gap-2.5 mb-1">
-                <span className={`h-2.5 w-2.5 rounded-full ${TONE[result.status].dot}`} />
-                <span className={`text-title ${TONE[result.status].text}`}>{result.title}</span>
+          {/* Veredicto */}
+          <div>
+            <h3 className="section-eyebrow mb-3">Resultado</h3>
+            {!result ? (
+              <div className="rounded-xl border border-dashed border-borderStrong/50 px-4 py-10 text-center">
+                <p className="text-small text-mutedSoft">Selecciona una o dos fechas en el calendario para ver el veredicto.</p>
               </div>
-              <p className="text-micro text-mutedSoft mb-4">{result.natDays} {result.natDays === 1 ? "día natural" : "días naturales"} · {result.workDays} laborables</p>
-              <ul className="flex flex-col gap-2.5">
-                {result.reasons.map((r, i) => (
-                  <li key={i} className="flex gap-2.5 text-small text-inkSoft leading-snug">
-                    <span className={`mt-[0.15em] shrink-0 ${TONE[r.tone].text}`}>{r.tone === "ok" ? "✓" : r.tone === "warn" ? "!" : "✕"}</span>
-                    <span>{r.text}</span>
-                  </li>
-                ))}
-              </ul>
-              <p className="text-micro text-mutedSoft mt-5 leading-relaxed">Orientativo. La aprobación final depende del responsable de área según la carga real.</p>
-            </>
-          )}
+            ) : (
+              <>
+                <div className={`rounded-xl px-4 py-3.5 mb-5 ${STATUS[result.status].bg}`}>
+                  <div className="flex items-center gap-2.5">
+                    <span className={`h-2.5 w-2.5 rounded-full ${STATUS[result.status].dot}`} />
+                    <span className={`text-title ${STATUS[result.status].text}`}>{result.title}</span>
+                  </div>
+                  <p className="text-micro text-ink/70 mt-1">{result.natDays} {result.natDays === 1 ? "día natural" : "días naturales"} · {result.workDays} laborables</p>
+                </div>
+                <ul className="flex flex-col gap-2.5">
+                  {result.reasons.map((r, i) => (
+                    <li key={i} className="flex gap-2.5 text-small text-inkSoft leading-snug">
+                      <span className={`mt-[0.15em] shrink-0 ${TONE[r.tone].text}`}>{r.tone === "ok" ? "✓" : r.tone === "warn" ? "!" : "✕"}</span>
+                      <span>{r.text}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-micro text-mutedSoft mt-5 leading-relaxed">Orientativo. La aprobación final depende del responsable de área según la carga real.</p>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </section>

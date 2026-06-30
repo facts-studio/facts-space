@@ -57,31 +57,37 @@ export default function ContentBlocks({ blocks = [] }) {
             ))}
           </div>
         );
-        // Barra de carga anual: un único gráfico con segmentos por trimestre.
+        // Carga anual: tabla limpia por trimestre.
         if (b.loadbar) return (
-          <div key={i} className="rounded-2xl bg-surface/55 p-5 md:p-6">
-            <div className="flex gap-1.5">
-              {b.loadbar.map((q, j) => (
-                <div key={j} className="flex-1">
-                  <div className={`h-2.5 rounded-full ${tone(q.tone).bar}`} />
-                </div>
-              ))}
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-4 mt-4">
-              {b.loadbar.map((q, j) => {
-                const tn = tone(q.tone);
-                return (
-                  <div key={j}>
-                    <div className="flex items-baseline justify-between">
-                      <span className="text-body font-medium text-ink">{q.q}</span>
-                      <span className="text-micro text-mutedSoft">{q.months}</span>
-                    </div>
-                    <div className="font-display text-[22px] text-ink leading-none mt-1">{q.days} <span className="text-small text-muted">días</span></div>
-                    <div className={`text-[10.5px] uppercase tracking-[0.1em] font-medium mt-1.5 ${tn.text}`}>{q.level}</div>
-                  </div>
-                );
-              })}
-            </div>
+          <div key={i} className="rounded-2xl bg-surface/55 overflow-hidden">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="text-[10.5px] uppercase tracking-[0.14em] text-mutedSoft">
+                  <th className="font-medium px-5 py-3">Trimestre</th>
+                  <th className="font-medium px-3 py-3 hidden sm:table-cell">Meses</th>
+                  <th className="font-medium px-3 py-3">Días</th>
+                  <th className="font-medium px-5 py-3 text-right">Carga</th>
+                </tr>
+              </thead>
+              <tbody>
+                {b.loadbar.map((q, j) => {
+                  const tn = tone(q.tone);
+                  return (
+                    <tr key={j} className="border-t border-border">
+                      <td className="px-5 py-3.5 text-body text-ink font-medium">{q.q}</td>
+                      <td className="px-3 py-3.5 text-small text-muted hidden sm:table-cell">{q.months}</td>
+                      <td className="px-3 py-3.5 text-body text-ink tabular-nums">{q.days} días</td>
+                      <td className="px-5 py-3.5 text-right">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11.5px] font-medium ${tn.bg} ${tn.text}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${tn.bar}`} />
+                          {q.level}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         );
         // Lista de definición (filas hairline, sin caja).
