@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentEmployee } from "@/lib/data/helpers";
-import { madridDateISO, madridTime } from "@/lib/dates";
+import { madridDateISO, madridTime, monthEndISO } from "@/lib/dates";
 
 // Exporta el registro de jornada de un mes en CSV (separador ';' y decimales con
 // coma para Excel en español; BOM para acentos). Solo el propio empleado o, si
@@ -14,7 +14,7 @@ export async function GET(request) {
   const month = (searchParams.get("month") || madridDateISO().slice(0, 7)).slice(0, 7);
   const employeeId = (me.is_admin && searchParams.get("employee")) || me.id;
   const from = `${month}-01`;
-  const to = `${month}-31`;
+  const to = monthEndISO(month);
 
   const supabase = await createClient();
   const { data } = await supabase

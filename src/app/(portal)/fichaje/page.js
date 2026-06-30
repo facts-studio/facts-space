@@ -2,7 +2,7 @@ import PageHeader from "@/components/PageHeader";
 import FichajeClient from "./fichaje-client";
 import { getCurrentEmployee } from "@/lib/data/helpers";
 import { getTimeEntries, getDayMarks, getMissingWorkdays } from "@/lib/data/time";
-import { madridDateISO } from "@/lib/dates";
+import { madridDateISO, monthEndISO } from "@/lib/dates";
 
 export default async function FichajePage({ searchParams }) {
   const me = await getCurrentEmployee();
@@ -23,9 +23,10 @@ export default async function FichajePage({ searchParams }) {
   const month = sp?.month && /^\d{4}-\d{2}$/.test(sp.month) ? sp.month : todayISO.slice(0, 7);
   const curMonth = todayISO.slice(0, 7);
 
+  const monthEnd = monthEndISO(month);
   const [entries, marks, missing] = await Promise.all([
-    getTimeEntries(me.id, `${month}-01`, `${month}-31`),
-    getDayMarks(me, `${month}-01`, `${month}-31`),
+    getTimeEntries(me.id, `${month}-01`, monthEnd),
+    getDayMarks(me, `${month}-01`, monthEnd),
     getMissingWorkdays(me, `${curMonth}-01`, todayISO),
   ]);
 

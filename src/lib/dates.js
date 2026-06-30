@@ -31,6 +31,13 @@ export function workingDaysBetween(startISO, endISO, holidays = []) {
 // Año natural de una fecha ISO.
 export const yearOf = (iso) => Number(iso.slice(0, 4));
 
+// Último día del mes "YYYY-MM" en ISO (evita fechas inválidas como -31).
+export function monthEndISO(month) {
+  const [y, m] = month.split("-").map(Number);
+  const last = new Date(y, m, 0).getDate();
+  return `${month}-${String(last).padStart(2, "0")}`;
+}
+
 // Fecha local de España (Europe/Madrid) en ISO "YYYY-MM-DD". El servidor corre
 // en UTC; el registro de jornada debe usar la hora local del centro de trabajo.
 export function madridDateISO(d = new Date()) {
