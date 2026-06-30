@@ -73,6 +73,51 @@ export async function cancelVacation(id) {
   return { ok: true };
 }
 
+// Cambiar el estado de una solicitud a posteriori (manager del solicitante o admin).
+export async function setVacationStatus({ id, status }) {
+  const me = await getCurrentEmployee();
+  if (!me) return { ok: false, error: "No has iniciado sesión." };
+  if (!["pending", "approved", "rejected", "cancelled"].includes(status)) return { ok: false, error: "Estado inválido." };
+  const supabase = await createClient();
+  const { data: req } = await supabase
+    .from("vacation_requests")
+    .select("employee_id, employees:employee_id(manager_id)")
+    .eq("id", id)
+    .maybeSingle();
+  if (!req) return { ok: false, error: "Solicitud no encontrada." };
+  if (req.employees?.manager_id !== me.id && !me.is_admin) return { ok: false, error: "Sin permiso." };
+
+  const patch = { status };
+  if (status === "approved" || status === "rejected") { patch.decided_by = me.id; patch.decided_at = new Date().toISOString(); }
+  else { patch.decided_by = null; patch.decided_at = null; }
+  const { error } = await supabase.from("vacation_requests").update(patch).eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin");
+  revalidatePath("/calendario");
+  revalidatePath("/mi-espacio");
+  return { ok: true };
+}
+
+// Eliminar una solicitud (manager del solicitante o admin).
+export async function deleteVacation(id) {
+  const me = await getCurrentEmployee();
+  if (!me) return { ok: false, error: "No has iniciado sesión." };
+  const supabase = await createClient();
+  const { data: req } = await supabase
+    .from("vacation_requests")
+    .select("employee_id, employees:employee_id(manager_id)")
+    .eq("id", id)
+    .maybeSingle();
+  if (!req) return { ok: false, error: "Solicitud no encontrada." };
+  if (req.employees?.manager_id !== me.id && !me.is_admin) return { ok: false, error: "Sin permiso." };
+  const { error } = await supabase.from("vacation_requests").delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin");
+  revalidatePath("/calendario");
+  revalidatePath("/mi-espacio");
+  return { ok: true };
+}
+
 // Decidir (aprobar/rechazar) una solicitud de un reporte directo. La RLS ya
 // impide decidir solicitudes que no sean de tu equipo; aquí revalidamos además
 // que somos el manager o admin.

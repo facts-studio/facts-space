@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { decideVacation } from "@/lib/actions/vacations";
+import { decideVacation, setVacationStatus, deleteVacation } from "@/lib/actions/vacations";
 import { updateEmployee, validateMonth, addCalendarEvent, deleteCalendarEvent } from "@/lib/actions/admin";
 import { fmtRange } from "@/lib/mock";
 import { formatDuration } from "@/lib/dates";
@@ -11,7 +11,7 @@ import { absenceLabel } from "@/lib/absences";
 
 const TABS = [
   ["aprobaciones", "Aprobaciones"],
-  ["equipo", "Equipo"],
+  ["equipo", "Empleados"],
   ["calendario", "Calendario"],
   ["informes", "Informes"],
 ];
@@ -132,15 +132,15 @@ function Informes({ employees, vacUsed, timeHours, month, year }) {
         <p className="section-eyebrow capitalize">Resumen · vacaciones {year} · horas {monthLabel}</p>
         <button onClick={exportCsv} className="text-small text-muted hover:text-ink transition">↓ CSV</button>
       </div>
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center gap-3 px-1 pb-1.5 text-micro uppercase tracking-wide text-mutedSoft">
+      <div className="flex flex-col divide-y divide-border/50">
+        <div className="flex items-center gap-3 px-1 pb-2 text-micro uppercase tracking-wide text-mutedSoft">
           <span className="flex-1">Persona</span>
           <span className="w-[120px] text-right">Vac. restantes</span>
           <span className="w-[110px] text-right">Vac. usadas</span>
           <span className="w-[110px] text-right">Horas mes</span>
         </div>
         {rows.map((r) => (
-          <div key={r.name} className="flex items-center gap-3 px-1 py-2 rounded-lg hover:bg-surface2/40 transition">
+          <div key={r.name} className="flex items-center gap-3 px-1 py-2.5 hover:bg-surface2/40 transition">
             <span className="flex-1 text-small text-ink">{r.name}</span>
             <span className="w-[120px] text-right text-small tabular-nums text-ink">{r.remaining} <span className="text-mutedSoft">/ {r.allowance}</span></span>
             <span className="w-[110px] text-right text-small tabular-nums text-mutedSoft">{r.used}</span>
@@ -185,11 +185,7 @@ function Solicitudes({ pending, recent, nameById, onDone }) {
         ) : (
           <ul className="divide-y divide-border/50">
             {recent.map((r) => (
-              <li key={r.id} className="flex items-center justify-between gap-3 py-2.5">
-                <span className="text-small text-ink">{nameById.get(r.employee_id)}</span>
-                <span className="text-micro text-muted tabular-nums">{fmtRange(r.start_date, r.end_date)}</span>
-                <StatusPill status={r.status} />
-              </li>
+              <RecentRow key={r.id} r={r} who={nameById.get(r.employee_id)} onDone={onDone} />
             ))}
           </ul>
         )}
@@ -217,16 +213,36 @@ function PendingRow({ r, who, onDone }) {
   );
 }
 
+// Fila de solicitud resuelta: cambiar estado o eliminar a posteriori.
+function RecentRow({ r, who, onDone }) {
+  const [pending, run] = useTransition();
+  const change = (status) => run(async () => { const res = await setVacationStatus({ id: r.id, status }); if (res.ok) onDone(); });
+  const del = () => run(async () => { const res = await deleteVacation(r.id); if (res.ok) onDone(); });
+  return (
+    <li className="flex items-center gap-3 py-2.5">
+      <span className="flex-1 min-w-0 text-small text-ink truncate">{who} <span className="text-mutedSoft font-normal">· {absenceLabel(r.type)}</span></span>
+      <span className="text-micro text-muted tabular-nums capitalize hidden sm:inline">{fmtRange(r.start_date, r.end_date)}</span>
+      <select value={r.status} onChange={(e) => change(e.target.value)} disabled={pending} className="h-8 rounded-lg bg-surface px-2 text-[12.5px] text-ink">
+        <option value="pending">Pendiente</option>
+        <option value="approved">Aprobada</option>
+        <option value="rejected">Rechazada</option>
+        <option value="cancelled">Cancelada</option>
+      </select>
+      <button onClick={del} disabled={pending} aria-label="Eliminar" className="h-8 w-8 grid place-items-center rounded-lg text-mutedSoft hover:text-danger hover:bg-dangerSoft/50 transition">✕</button>
+    </li>
+  );
+}
+
 // ── Equipo ───────────────────────────────────────────────────────────────────
 function Equipo({ employees, vacUsed, year }) {
   return (
     <div className="rounded-2xl bg-surface/55 p-6">
       <div className="flex items-center justify-between mb-4">
-        <p className="section-eyebrow">Equipo · saldo de vacaciones {year}</p>
+        <p className="section-eyebrow">Empleados · saldo de vacaciones {year}</p>
         <span className="text-micro text-mutedSoft">Abre una persona para ver y gestionar su ficha</span>
       </div>
-      <div className="flex flex-col gap-1.5">
-        <div className="flex items-center gap-3 px-3 pb-1.5 text-micro uppercase tracking-wide text-mutedSoft">
+      <div className="flex flex-col divide-y divide-border/50">
+        <div className="flex items-center gap-3 px-3 pb-2 text-micro uppercase tracking-wide text-mutedSoft">
           <span className="flex-1">Persona</span>
           <span className="w-[90px] text-right">Saldo</span>
           <span className="w-[50px]" />
@@ -269,7 +285,7 @@ function Fichaje({ employees, timeStats, month, onDone }) {
   return (
     <div className="rounded-2xl bg-surface/55 p-6">
       <p className="section-eyebrow mb-4 capitalize">Registro horario · {monthLabel}</p>
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col divide-y divide-border/50">
         {employees.filter((e) => e.active).map((e) => {
           const s = timeStats[e.id] || { total: 0, pending: 0 };
           return <FichajeRow key={e.id} e={e} stats={s} month={month} onDone={onDone} />;
@@ -300,13 +316,3 @@ function FichajeRow({ e, stats, month, onDone }) {
   );
 }
 
-// ── Util ─────────────────────────────────────────────────────────────────────
-function StatusPill({ status }) {
-  const map = {
-    approved: ["Aprobada", "bg-successSoft/60 text-success"],
-    rejected: ["Rechazada", "bg-dangerSoft/60 text-danger"],
-    cancelled: ["Cancelada", "bg-surface2 text-muted"],
-  };
-  const [label, cls] = map[status] || [status, "bg-surface2 text-muted"];
-  return <span className={`rounded-full px-2.5 py-0.5 text-micro font-medium ${cls}`}>{label}</span>;
-}

@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { updateEmployee, validateMonth } from "@/lib/actions/admin";
-import { decideVacation } from "@/lib/actions/vacations";
+import { decideVacation, setVacationStatus, deleteVacation } from "@/lib/actions/vacations";
 import { recordDocument, deleteDocument, getDocumentUrl } from "@/lib/actions/documents";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -12,13 +12,6 @@ import { absenceLabel } from "@/lib/absences";
 
 const durMs = (e) => (e.clock_out ? new Date(e.clock_out) - new Date(e.clock_in) : 0);
 const TABS = [["resumen", "Resumen"], ["nominas", "Nóminas"], ["ausencias", "Ausencias"], ["horario", "Control horario"], ["documentos", "Documentos"]];
-
-const STATUS = {
-  pending: ["Pendiente", "bg-warnSoft/60 text-warn"],
-  approved: ["Aprobada", "bg-successSoft/60 text-success"],
-  rejected: ["Rechazada", "bg-dangerSoft/60 text-danger"],
-  cancelled: ["Cancelada", "bg-surface2 text-muted"],
-};
 
 export default function EmpleadoClient({ employee, employees, requests, documents, time, vacUsed, month, year }) {
   const router = useRouter();
@@ -178,18 +171,27 @@ function Ausencias({ requests, onDone }) {
 function AusenciaRow({ r, onDone }) {
   const [pending, run] = useTransition();
   const decide = (approve) => run(async () => { const res = await decideVacation({ id: r.id, approve }); if (res.ok) onDone(); });
-  const [sLabel, sCls] = STATUS[r.status] || [r.status, "bg-surface2 text-muted"];
+  const change = (status) => run(async () => { const res = await setVacationStatus({ id: r.id, status }); if (res.ok) onDone(); });
+  const del = () => run(async () => { const res = await deleteVacation(r.id); if (res.ok) onDone(); });
   return (
     <li className="flex items-center gap-3 py-2.5">
       <span className="w-[130px] shrink-0 text-small text-ink">{absenceLabel(r.type)}</span>
       <span className="flex-1 text-small text-mutedSoft capitalize">{fmtRange(r.start_date, r.end_date)}</span>
-      <span className="w-[80px] text-right text-micro text-mutedSoft tabular-nums">{Number(r.working_days)} lab.</span>
+      <span className="w-[70px] text-right text-micro text-mutedSoft tabular-nums">{Number(r.working_days)} lab.</span>
       {r.status === "pending" ? (
-        <span className="flex items-center gap-1.5">
+        <>
           <button onClick={() => decide(false)} disabled={pending} className="btn-ghost h-7 text-[12px]">Rechazar</button>
           <button onClick={() => decide(true)} disabled={pending} className="btn-primary h-7 text-[12px]">Aprobar</button>
-        </span>
-      ) : <span className={`rounded-full px-2.5 py-0.5 text-micro font-medium ${sCls}`}>{sLabel}</span>}
+        </>
+      ) : (
+        <select value={r.status} onChange={(e) => change(e.target.value)} disabled={pending} className="h-7 rounded-lg bg-surface px-2 text-[12px] text-ink">
+          <option value="pending">Pendiente</option>
+          <option value="approved">Aprobada</option>
+          <option value="rejected">Rechazada</option>
+          <option value="cancelled">Cancelada</option>
+        </select>
+      )}
+      <button onClick={del} disabled={pending} aria-label="Eliminar" className="h-7 w-7 grid place-items-center rounded-lg text-mutedSoft hover:text-danger hover:bg-dangerSoft/50 transition">✕</button>
     </li>
   );
 }

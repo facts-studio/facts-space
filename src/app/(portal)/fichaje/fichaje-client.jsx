@@ -196,7 +196,7 @@ function DayRow({ iso, kind, entries, onFichar, onDone }) {
               return (
                 <span
                   key={e.id}
-                  className="absolute top-0 h-full rounded-full bg-ink/75"
+                  className="absolute top-0 h-full rounded-full bg-ink/35"
                   style={{ left: `${clamp(((s - WIN_START) / WIN_SPAN) * 100)}%`, width: `${clamp(((en - s) / WIN_SPAN) * 100)}%` }}
                   title={`${madridTime(e.clock_in)}–${e.clock_out ? madridTime(e.clock_out) : "—"}`}
                 />
