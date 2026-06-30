@@ -27,8 +27,12 @@ export async function updateEmployee({ id, patch }) {
   if ("email" in patch) allowed.email = String(patch.email ?? "").trim().toLowerCase();
   if ("photo" in patch) allowed.photo = String(patch.photo ?? "");
   if ("birthday" in patch) allowed.birthday = patch.birthday || null;
-  // Ficha laboral
-  for (const k of ["dni", "nss", "iban", "phone", "address", "emergency_contact", "contract_type"]) {
+  // Ficha laboral + datos legales completos
+  for (const k of [
+    "dni", "nss", "iban", "phone", "address", "emergency_contact", "contract_type",
+    "last_name", "nationality", "gender", "marital_status", "id_doc_type",
+    "mobile", "city", "postal_code", "province", "country", "bank_name", "swift",
+  ]) {
     if (k in patch) allowed[k] = String(patch[k] ?? "");
   }
   if ("start_date" in patch) allowed.start_date = patch.start_date || null;

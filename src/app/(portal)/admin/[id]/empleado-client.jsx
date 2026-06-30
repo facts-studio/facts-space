@@ -124,13 +124,24 @@ function FichaCard({ e, employees, onEdit }) {
   );
 }
 
-// Ficha legal completa, agrupada, editable. Cubre todos los campos.
+// Ficha legal completa, agrupada, editable. Campo: [key, label, type, options?].
+const GENDER = ["", "Masculino", "Femenino", "Otro"];
+const MARITAL = ["", "Soltero/a", "Casado/a", "Pareja de hecho", "Divorciado/a", "Viudo/a"];
+const IDDOC = ["", "DNI", "NIE", "Pasaporte"];
 const FICHA_GROUPS = [
-  ["Datos personales", [
-    ["name", "Nombre", "text"], ["email", "Email", "email"], ["birthday", "Cumpleaños", "date"],
-    ["phone", "Teléfono", "text"], ["dni", "DNI / NIE", "text"], ["nss", "Nº Seguridad Social", "text"],
-    ["iban", "IBAN", "text"], ["address", "Dirección", "text"], ["emergency_contact", "Contacto de emergencia", "text"],
+  ["Datos de filiación", [
+    ["name", "Nombre", "text"], ["last_name", "Apellidos", "text"], ["birthday", "Fecha de nacimiento", "date"],
+    ["nationality", "Nacionalidad", "text"], ["gender", "Género", "select", GENDER], ["marital_status", "Estado civil", "select", MARITAL],
+    ["id_doc_type", "Tipo de documento", "select", IDDOC], ["dni", "Nº de documento", "text"], ["nss", "Nº Seguridad Social (NAF)", "text"],
+  ]],
+  ["Datos de contacto", [
+    ["email", "Email de la empresa", "email"], ["phone", "Teléfono", "text"], ["mobile", "Móvil", "text"],
+    ["address", "Dirección", "text"], ["postal_code", "Código postal", "text"], ["city", "Ciudad", "text"],
+    ["province", "Provincia", "text"], ["country", "País", "text"], ["emergency_contact", "Contacto de emergencia", "text"],
     ["photo", "Foto (URL)", "text"],
+  ]],
+  ["Datos bancarios", [
+    ["bank_name", "Banco", "text"], ["iban", "IBAN", "text"], ["swift", "SWIFT/BIC", "text"],
   ]],
   ["Contrato", [
     ["role", "Puesto", "text"], ["contract_type", "Tipo de contrato", "text"], ["start_date", "Fecha de alta", "date"],
@@ -186,7 +197,7 @@ function FichaForm({ e, employees, onCancel, onSaved }) {
         <div key={title} className="rounded-2xl bg-surface/55 p-6">
           <p className="section-eyebrow mb-4">{title}</p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {fields.map(([k, label, type]) =>
+            {fields.map(([k, label, type, options]) =>
               k === "photo" ? (
                 <div key={k} className="sm:col-span-2 lg:col-span-3">
                   <span className="text-micro text-mutedSoft">Foto</span>
@@ -194,7 +205,13 @@ function FichaForm({ e, employees, onCancel, onSaved }) {
                 </div>
               ) : (
                 <Fld key={k} label={label}>
-                  <input type={type} value={form[k] ?? ""} onChange={(ev) => set(k, ev.target.value)} className="h-9 rounded-lg bg-surface px-2.5 text-[13px] text-ink" />
+                  {type === "select" ? (
+                    <select value={form[k] ?? ""} onChange={(ev) => set(k, ev.target.value)} className="h-9 rounded-lg bg-surface px-2 text-[13px] text-ink">
+                      {options.map((o) => <option key={o} value={o}>{o || "—"}</option>)}
+                    </select>
+                  ) : (
+                    <input type={type} value={form[k] ?? ""} onChange={(ev) => set(k, ev.target.value)} className="h-9 rounded-lg bg-surface px-2.5 text-[13px] text-ink" />
+                  )}
                 </Fld>
               )
             )}
