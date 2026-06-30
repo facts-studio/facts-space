@@ -13,7 +13,7 @@ function memberEvents(events, name) {
     .map((e) => ({ ...e, done: new Date(e.end + "T00:00:00") < today }));
 }
 
-export default function EquipoView({ team, events }) {
+export default function EquipoView({ team, events, vacUsed = {}, year }) {
   const [openId, setOpenId] = useState(null);
   const m = team.find((x) => x.id === openId) || null;
 
@@ -70,6 +70,15 @@ export default function EquipoView({ team, events }) {
                 <div className="flex items-center justify-between gap-4">
                   <dt className="text-small text-mutedSoft">Cumpleaños</dt>
                   <dd className="text-small text-ink">🎂 {fmtDate(m.birthday)}</dd>
+                </div>
+              )}
+              {m.vacation_allowance != null && (
+                <div className="flex items-center justify-between gap-4">
+                  <dt className="text-small text-mutedSoft">Vacaciones {year}</dt>
+                  <dd className="text-small text-ink tabular-nums">
+                    {Number(m.vacation_allowance) - (vacUsed[m.id] || 0)} restantes
+                    <span className="text-mutedSoft"> · {vacUsed[m.id] || 0} de {Number(m.vacation_allowance)}</span>
+                  </dd>
                 </div>
               )}
             </dl>
