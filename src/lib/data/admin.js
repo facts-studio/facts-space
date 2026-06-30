@@ -75,4 +75,35 @@ export async function getApprovedVacationDays(year) {
   return out;
 }
 
+// Eventos del calendario laboral (festivos/hitos) del año, para gestionarlos.
+export async function getCalendarManaged(year) {
+  if (!isConfigured()) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("calendar_events")
+    .select("id, type, title, start_date, end_date")
+    .gte("start_date", `${year}-01-01`)
+    .lte("start_date", `${year}-12-31`)
+    .order("start_date");
+  return data ?? [];
+}
+
+// Horas trabajadas (ms) por empleado en un mes.
+export async function getTimeHoursByEmployee(month) {
+  if (!isConfigured()) return {};
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("time_entries")
+    .select("employee_id, clock_in, clock_out")
+    .eq("voided", false)
+    .gte("work_date", `${month}-01`)
+    .lte("work_date", monthEndISO(month));
+  const out = {};
+  for (const e of data ?? []) {
+    const ms = e.clock_out ? new Date(e.clock_out) - new Date(e.clock_in) : 0;
+    out[e.employee_id] = (out[e.employee_id] || 0) + ms;
+  }
+  return out;
+}
+
 export { getCurrentEmployee };

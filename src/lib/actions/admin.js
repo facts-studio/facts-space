@@ -38,6 +38,32 @@ export async function updateEmployee({ id, patch }) {
   return { ok: true };
 }
 
+// Calendario laboral: añadir festivo/hito.
+export async function addCalendarEvent({ type = "festivo", title, startDate, endDate }) {
+  const me = await requireAdmin();
+  if (!me) return { ok: false, error: "Solo administración." };
+  if (!title || !startDate) return { ok: false, error: "Faltan título o fecha." };
+  const supabase = await createClient();
+  const { error } = await supabase.from("calendar_events").insert({
+    type, title: title.trim(), start_date: startDate, end_date: endDate || startDate,
+  });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin");
+  revalidatePath("/calendario");
+  return { ok: true };
+}
+
+export async function deleteCalendarEvent(id) {
+  const me = await requireAdmin();
+  if (!me) return { ok: false, error: "Solo administración." };
+  const supabase = await createClient();
+  const { error } = await supabase.from("calendar_events").delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin");
+  revalidatePath("/calendario");
+  return { ok: true };
+}
+
 // Marca como validados todos los fichajes pendientes de un empleado en un mes.
 export async function validateMonth({ employeeId, month }) {
   const me = await requireAdmin();
