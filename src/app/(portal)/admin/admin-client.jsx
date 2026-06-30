@@ -5,18 +5,21 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { decideVacation, setVacationStatus, deleteVacation } from "@/lib/actions/vacations";
 import { updateEmployee, validateMonth, addCalendarEvent, deleteCalendarEvent, createEmployee } from "@/lib/actions/admin";
-import { fmtRange } from "@/lib/mock";
+import { recordDocument, deleteDocument, getDocumentUrl } from "@/lib/actions/documents";
+import { createClient } from "@/lib/supabase/client";
+import { fmtRange, fmtDate } from "@/lib/mock";
 import { formatDuration } from "@/lib/dates";
 import { absenceLabel } from "@/lib/absences";
 
 const TABS = [
   ["aprobaciones", "Aprobaciones"],
   ["equipo", "Empleados"],
+  ["documentos", "Documentos"],
   ["calendario", "Calendario"],
   ["informes", "Informes"],
 ];
 
-export default function AdminClient({ employees, pending, recent, timeStats, vacUsed, calendarEvents = [], timeHours = {}, month, year }) {
+export default function AdminClient({ employees, pending, recent, timeStats, vacUsed, calendarEvents = [], timeHours = {}, documents = [], month, year }) {
   const router = useRouter();
   const refresh = () => router.refresh();
   const [tab, setTab] = useState("aprobaciones");
@@ -46,9 +49,117 @@ export default function AdminClient({ employees, pending, recent, timeStats, vac
         </div>
       )}
       {tab === "equipo" && <Equipo employees={employees} vacUsed={vacUsed} year={year} onDone={refresh} />}
+      {tab === "documentos" && <Documentos employees={employees} documents={documents} nameById={nameById} month={month} onDone={refresh} />}
       {tab === "calendario" && <Calendario events={calendarEvents} year={year} onDone={refresh} />}
       {tab === "informes" && <Informes employees={employees} vacUsed={vacUsed} timeHours={timeHours} month={month} year={year} />}
     </div>
+  );
+}
+
+// ── Documentos (hub: empresa + empleados) ────────────────────────────────────
+const DOC_CATS = { nomina: "Nómina", contrato: "Contrato", factura: "Factura", legal: "Legal", documento: "Documento" };
+
+function Documentos({ employees, documents, nameById, month, onDone }) {
+  const [scope, setScope] = useState("empleado"); // empleado | empresa
+  const [employeeId, setEmployeeId] = useState(employees[0]?.id || "");
+  const [category, setCategory] = useState("nomina");
+  const [period, setPeriod] = useState(month);
+  const [title, setTitle] = useState("");
+  const [file, setFile] = useState(null);
+  const [msg, setMsg] = useState(null);
+  const [filter, setFilter] = useState("all");
+  const [pending, run] = useTransition();
+
+  const submit = () => {
+    setMsg(null);
+    if (!file) { setMsg({ ok: false, text: "Elige un archivo." }); return; }
+    if (scope === "empleado" && !employeeId) { setMsg({ ok: false, text: "Elige empleado." }); return; }
+    run(async () => {
+      const safe = file.name.replace(/[^a-zA-Z0-9.\-_]/g, "_");
+      const base = scope === "empleado" ? employeeId : "empresa";
+      const path = `${base}/${category}/${Date.now()}-${safe}`;
+      const supabase = createClient();
+      const up = await supabase.storage.from("hr-docs").upload(path, file, { upsert: false });
+      if (up.error) { setMsg({ ok: false, text: up.error.message }); return; }
+      const res = await recordDocument({
+        employeeId: scope === "empleado" ? employeeId : null,
+        category, title, period: category === "nomina" ? period : "", storagePath: path,
+      });
+      if (res.ok) { setMsg({ ok: true, text: "Documento subido." }); setFile(null); setTitle(""); onDone(); }
+      else setMsg({ ok: false, text: res.error });
+    });
+  };
+
+  const list = documents.filter((d) => filter === "all" || d.category === filter);
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-2xl bg-surface/55 p-6">
+        <p className="section-eyebrow mb-4">Subir documento</p>
+        <div className="flex flex-wrap items-end gap-2">
+          <Field label="Ámbito">
+            <select value={scope} onChange={(e) => setScope(e.target.value)} className="h-9 rounded-lg bg-surface px-2 text-[13px] text-ink">
+              <option value="empleado">Empleado</option>
+              <option value="empresa">Empresa</option>
+            </select>
+          </Field>
+          {scope === "empleado" && (
+            <Field label="Empleado">
+              <select value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} className="h-9 rounded-lg bg-surface px-2 text-[13px] text-ink min-w-[150px]">
+                {employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+              </select>
+            </Field>
+          )}
+          <Field label="Categoría">
+            <select value={category} onChange={(e) => setCategory(e.target.value)} className="h-9 rounded-lg bg-surface px-2 text-[13px] text-ink">
+              {Object.entries(DOC_CATS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          </Field>
+          {category === "nomina" ? (
+            <Field label="Mes"><input type="month" value={period} onChange={(e) => setPeriod(e.target.value)} className="h-9 rounded-lg bg-surface px-2 text-[13px] text-ink" /></Field>
+          ) : (
+            <Field label="Título"><input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Título" className="h-9 rounded-lg bg-surface px-2.5 text-[13px] text-ink" /></Field>
+          )}
+          <Field label="Archivo"><input type="file" accept="application/pdf,image/*" onChange={(e) => setFile(e.target.files?.[0] || null)} className="text-[12px] text-muted" /></Field>
+          <button onClick={submit} disabled={pending} className="btn-primary h-9 text-[13px] disabled:opacity-50">{pending ? "Subiendo…" : "Subir"}</button>
+        </div>
+        {msg && <p className={`text-micro mt-2 ${msg.ok ? "text-success" : "text-danger"}`}>{msg.text}</p>}
+        <p className="text-micro text-mutedSoft mt-2">Los documentos de empleado (nómina, contrato…) aparecen automáticamente en su ficha y en su “Mi espacio”.</p>
+      </div>
+
+      <div className="rounded-2xl bg-surface/55 p-6">
+        <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+          <p className="section-eyebrow">Todos los documentos ({list.length})</p>
+          <select value={filter} onChange={(e) => setFilter(e.target.value)} className="h-8 rounded-lg bg-surface px-2 text-[12.5px] text-ink">
+            <option value="all">Todas las categorías</option>
+            {Object.entries(DOC_CATS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+        </div>
+        {list.length === 0 ? (
+          <p className="text-small text-mutedSoft">Sin documentos.</p>
+        ) : (
+          <ul className="divide-y divide-border/50">
+            {list.map((d) => <HubDocRow key={d.id} d={d} who={d.employee_id ? nameById.get(d.employee_id) : "Empresa"} onDone={onDone} />)}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function HubDocRow({ d, who, onDone }) {
+  const [pending, run] = useTransition();
+  const open = () => run(async () => { const r = await getDocumentUrl(d.id); if (r.ok) window.open(r.url, "_blank"); });
+  const del = () => run(async () => { const r = await deleteDocument(d.id); if (r.ok) onDone(); });
+  const label = d.title || (d.category === "nomina" ? `Nómina ${d.period}` : DOC_CATS[d.category] || "Documento");
+  return (
+    <li className="flex items-center gap-3 py-2.5">
+      <span className="w-[90px] shrink-0"><span className="rounded-full bg-surface2 px-2 py-0.5 text-micro text-muted">{DOC_CATS[d.category] || d.category}</span></span>
+      <span className="flex-1 min-w-0 text-small text-ink truncate">{label} <span className="text-mutedSoft font-normal">· {who}</span></span>
+      <span className="text-micro text-mutedSoft hidden sm:inline">{fmtDate(d.created_at.slice(0, 10))}</span>
+      <button onClick={open} disabled={pending} className="btn-ghost h-8 text-[12.5px]">Ver</button>
+      <button onClick={del} disabled={pending} aria-label="Eliminar" className="h-8 w-8 grid place-items-center rounded-lg text-mutedSoft hover:text-danger hover:bg-dangerSoft/50 transition">✕</button>
+    </li>
   );
 }
 

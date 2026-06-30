@@ -6,13 +6,13 @@ import { getCurrentEmployee } from "@/lib/data/helpers";
 
 // Registra en BD un documento ya subido a Storage (la subida del archivo la hace
 // el cliente con el navegador; aquí solo guardamos la fila). Solo admin.
-export async function recordDocument({ employeeId, category, title = "", period = "", storagePath }) {
+export async function recordDocument({ employeeId = null, category, title = "", period = "", storagePath }) {
   const me = await getCurrentEmployee();
   if (!me?.is_admin) return { ok: false, error: "Solo administración." };
-  if (!employeeId || !category || !storagePath) return { ok: false, error: "Faltan datos." };
+  if (!category || !storagePath) return { ok: false, error: "Faltan datos." };
   const supabase = await createClient();
   const { error } = await supabase.from("documents").insert({
-    employee_id: employeeId,
+    employee_id: employeeId || null,
     category,
     title: title.trim(),
     period: period.trim(),

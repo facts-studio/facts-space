@@ -10,6 +10,7 @@ import {
   getCalendarManaged,
   getTimeHoursByEmployee,
 } from "@/lib/data/admin";
+import { getAllDocuments } from "@/lib/data/documents";
 import { madridDateISO } from "@/lib/dates";
 
 export default async function AdminPage() {
@@ -36,6 +37,7 @@ export default async function AdminPage() {
     getCalendarManaged(year),
     getTimeHoursByEmployee(month),
   ]);
+  const documents = await getAllDocuments();
 
   return (
     <div>
@@ -48,6 +50,7 @@ export default async function AdminPage() {
         vacUsed={vacUsed}
         calendarEvents={calendarEvents}
         timeHours={timeHours}
+        documents={documents}
         month={month}
         year={year}
       />
