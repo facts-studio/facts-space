@@ -75,6 +75,53 @@ export async function getApprovedVacationDays(year) {
   return out;
 }
 
+// Ficha de un empleado por id.
+export async function getEmployeeById(id) {
+  if (!isConfigured() || !id) return null;
+  const supabase = await createClient();
+  const { data } = await supabase.from("employees").select("*").eq("id", id).maybeSingle();
+  return data ?? null;
+}
+
+// Solicitudes/ausencias de un empleado (recientes primero).
+export async function getEmployeeRequests(employeeId) {
+  if (!isConfigured() || !employeeId) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("vacation_requests")
+    .select("id, type, start_date, end_date, working_days, status, note, created_at")
+    .eq("employee_id", employeeId)
+    .order("start_date", { ascending: false });
+  return data ?? [];
+}
+
+// Documentos de un empleado.
+export async function getEmployeeDocuments(employeeId) {
+  if (!isConfigured() || !employeeId) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("documents")
+    .select("id, employee_id, category, title, period, created_at")
+    .eq("employee_id", employeeId)
+    .order("created_at", { ascending: false });
+  return data ?? [];
+}
+
+// Fichajes de un empleado en un mes.
+export async function getEmployeeTime(employeeId, month) {
+  if (!isConfigured() || !employeeId) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("time_entries")
+    .select("id, clock_in, clock_out, work_date, status")
+    .eq("employee_id", employeeId)
+    .eq("voided", false)
+    .gte("work_date", `${month}-01`)
+    .lte("work_date", monthEndISO(month))
+    .order("clock_in");
+  return data ?? [];
+}
+
 // Eventos del calendario laboral (festivos/hitos) del año, para gestionarlos.
 export async function getCalendarManaged(year) {
   if (!isConfigured()) return [];

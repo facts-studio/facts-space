@@ -1,24 +1,22 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { decideVacation } from "@/lib/actions/vacations";
 import { updateEmployee, validateMonth, addCalendarEvent, deleteCalendarEvent } from "@/lib/actions/admin";
-import { recordDocument, deleteDocument, getDocumentUrl } from "@/lib/actions/documents";
-import { createClient } from "@/lib/supabase/client";
-import { fmtRange, fmtDate } from "@/lib/mock";
+import { fmtRange } from "@/lib/mock";
 import { formatDuration } from "@/lib/dates";
 import { absenceLabel } from "@/lib/absences";
 
 const TABS = [
   ["aprobaciones", "Aprobaciones"],
   ["equipo", "Equipo"],
-  ["documentos", "Documentos"],
   ["calendario", "Calendario"],
   ["informes", "Informes"],
 ];
 
-export default function AdminClient({ employees, pending, recent, timeStats, vacUsed, documents = [], calendarEvents = [], timeHours = {}, month, year }) {
+export default function AdminClient({ employees, pending, recent, timeStats, vacUsed, calendarEvents = [], timeHours = {}, month, year }) {
   const router = useRouter();
   const refresh = () => router.refresh();
   const [tab, setTab] = useState("aprobaciones");
@@ -48,7 +46,6 @@ export default function AdminClient({ employees, pending, recent, timeStats, vac
         </div>
       )}
       {tab === "equipo" && <Equipo employees={employees} vacUsed={vacUsed} year={year} onDone={refresh} />}
-      {tab === "documentos" && <Documentos employees={employees} documents={documents} nameById={nameById} month={month} onDone={refresh} />}
       {tab === "calendario" && <Calendario events={calendarEvents} year={year} onDone={refresh} />}
       {tab === "informes" && <Informes employees={employees} vacUsed={vacUsed} timeHours={timeHours} month={month} year={year} />}
     </div>
@@ -155,94 +152,6 @@ function Informes({ employees, vacUsed, timeHours, month, year }) {
   );
 }
 
-// ── Documentos (nóminas, contratos, otros) ───────────────────────────────────
-function Documentos({ employees, documents, nameById, month, onDone }) {
-  const [employeeId, setEmployeeId] = useState(employees[0]?.id || "");
-  const [category, setCategory] = useState("nomina");
-  const [period, setPeriod] = useState(month);
-  const [title, setTitle] = useState("");
-  const [file, setFile] = useState(null);
-  const [msg, setMsg] = useState(null);
-  const [pending, run] = useTransition();
-
-  const submit = () => {
-    setMsg(null);
-    if (!employeeId || !file) { setMsg({ ok: false, text: "Elige empleado y archivo." }); return; }
-    run(async () => {
-      const safe = file.name.replace(/[^a-zA-Z0-9.\-_]/g, "_");
-      const path = `${employeeId}/${category}/${Date.now()}-${safe}`;
-      const supabase = createClient();
-      const up = await supabase.storage.from("hr-docs").upload(path, file, { upsert: false });
-      if (up.error) { setMsg({ ok: false, text: up.error.message }); return; }
-      const res = await recordDocument({ employeeId, category, title, period: category === "nomina" ? period : "", storagePath: path });
-      if (res.ok) { setMsg({ ok: true, text: "Documento subido." }); setFile(null); setTitle(""); onDone(); }
-      else setMsg({ ok: false, text: res.error });
-    });
-  };
-
-  const list = employeeId ? documents.filter((d) => d.employee_id === employeeId) : documents;
-
-  return (
-    <div className="space-y-3">
-      <div className="rounded-2xl bg-surface/55 p-6">
-        <p className="section-eyebrow mb-4">Subir documento</p>
-        <div className="flex flex-wrap items-end gap-2">
-          <Field label="Empleado">
-            <select value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} className="h-9 rounded-lg bg-surface px-2 text-[13px] text-ink min-w-[160px]">
-              {employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
-            </select>
-          </Field>
-          <Field label="Tipo">
-            <select value={category} onChange={(e) => setCategory(e.target.value)} className="h-9 rounded-lg bg-surface px-2 text-[13px] text-ink">
-              <option value="nomina">Nómina</option>
-              <option value="contrato">Contrato</option>
-              <option value="documento">Documento</option>
-            </select>
-          </Field>
-          {category === "nomina" ? (
-            <Field label="Mes"><input type="month" value={period} onChange={(e) => setPeriod(e.target.value)} className="h-9 rounded-lg bg-surface px-2 text-[13px] text-ink" /></Field>
-          ) : (
-            <Field label="Título"><input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="p. ej. Contrato 2026" className="h-9 rounded-lg bg-surface px-2.5 text-[13px] text-ink" /></Field>
-          )}
-          <Field label="Archivo (PDF)"><input type="file" accept="application/pdf,image/*" onChange={(e) => setFile(e.target.files?.[0] || null)} className="text-[12px] text-muted" /></Field>
-          <button onClick={submit} disabled={pending} className="btn-primary h-9 text-[13px] disabled:opacity-50">{pending ? "Subiendo…" : "Subir"}</button>
-        </div>
-        {msg && <p className={`text-micro mt-2 ${msg.ok ? "text-success" : "text-danger"}`}>{msg.text}</p>}
-      </div>
-
-      <div className="rounded-2xl bg-surface/55 p-6">
-        <p className="section-eyebrow mb-4">Documentos {employeeId ? `· ${nameById.get(employeeId)}` : ""}</p>
-        {list.length === 0 ? (
-          <p className="text-small text-mutedSoft">Sin documentos.</p>
-        ) : (
-          <ul className="divide-y divide-border/50">
-            {list.map((d) => <DocRow key={d.id} d={d} who={nameById.get(d.employee_id)} onDone={onDone} />)}
-          </ul>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function DocRow({ d, who, onDone }) {
-  const [pending, run] = useTransition();
-  const open = () => run(async () => { const r = await getDocumentUrl(d.id); if (r.ok) window.open(r.url, "_blank"); });
-  const del = () => run(async () => { const r = await deleteDocument(d.id); if (r.ok) onDone(); });
-  const label = d.title || (d.category === "nomina" ? `Nómina ${d.period}` : d.category === "contrato" ? "Contrato" : "Documento");
-  return (
-    <li className="flex items-center justify-between gap-3 py-2.5">
-      <div className="min-w-0">
-        <p className="text-small text-ink truncate">{label} <span className="text-mutedSoft font-normal">· {who}</span></p>
-        <p className="text-micro text-mutedSoft">{fmtDate(d.created_at.slice(0, 10))}</p>
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <button onClick={open} disabled={pending} className="btn-ghost h-8 text-[12.5px]">Ver</button>
-        <button onClick={del} disabled={pending} className="h-8 w-8 grid place-items-center rounded-lg text-mutedSoft hover:text-danger hover:bg-dangerSoft/50 transition">✕</button>
-      </div>
-    </li>
-  );
-}
-
 function Field({ label, children }) {
   return (
     <label className="flex flex-col gap-1">
@@ -309,111 +218,48 @@ function PendingRow({ r, who, onDone }) {
 }
 
 // ── Equipo ───────────────────────────────────────────────────────────────────
-function Equipo({ employees, vacUsed, year, onDone }) {
+function Equipo({ employees, vacUsed, year }) {
   return (
     <div className="rounded-2xl bg-surface/55 p-6">
-      <p className="section-eyebrow mb-4">Equipo · saldo de vacaciones {year}</p>
+      <div className="flex items-center justify-between mb-4">
+        <p className="section-eyebrow">Equipo · saldo de vacaciones {year}</p>
+        <span className="text-micro text-mutedSoft">Abre una persona para ver y gestionar su ficha</span>
+      </div>
       <div className="flex flex-col gap-1.5">
-        <div className="flex items-center gap-3 px-1 pb-1.5 text-micro uppercase tracking-wide text-mutedSoft">
+        <div className="flex items-center gap-3 px-3 pb-1.5 text-micro uppercase tracking-wide text-mutedSoft">
           <span className="flex-1">Persona</span>
-          <span className="w-[150px]">Responsable</span>
-          <span className="w-[80px] text-right">Días/año</span>
           <span className="w-[90px] text-right">Saldo</span>
-          <span className="w-[70px] text-center">Admin</span>
+          <span className="w-[50px]" />
+          <span className="w-[10px]" />
         </div>
         {employees.map((e) => (
-          <EmployeeRow key={e.id} e={e} employees={employees} used={vacUsed[e.id] || 0} onDone={onDone} />
+          <EmployeeRow key={e.id} e={e} used={vacUsed[e.id] || 0} />
         ))}
       </div>
     </div>
   );
 }
 
-function EmployeeRow({ e, employees, used, onDone }) {
-  const [pending, run] = useTransition();
-  const [open, setOpen] = useState(false);
-  const save = (patch) => run(async () => { await updateEmployee({ id: e.id, patch }); onDone(); });
+function EmployeeRow({ e, used }) {
   const remaining = Number(e.vacation_allowance) - used;
   return (
-    <div className={`rounded-xl ${open ? "bg-surface2/40" : "hover:bg-surface2/40"} transition ${e.active ? "" : "opacity-50"}`}>
-      <div className="flex items-center gap-3 px-3 py-2.5">
-        <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-2.5 flex-1 min-w-0 text-left">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          {e.photo ? <img src={e.photo} alt="" className="w-7 h-7 rounded-full object-cover" /> : <span className="w-7 h-7 rounded-full bg-surface2" />}
-          <div className="min-w-0">
-            <p className="text-small text-ink truncate">{e.name}</p>
-            <p className="text-micro text-mutedSoft truncate">{e.role || "—"}</p>
-          </div>
-        </button>
-        <select
-          defaultValue={e.manager_id || ""}
-          onChange={(ev) => save({ manager_id: ev.target.value || null })}
-          className="w-[150px] h-8 rounded-lg bg-surface px-2 text-[12.5px] text-ink"
-        >
-          <option value="">— Sin responsable</option>
-          {employees.filter((m) => m.id !== e.id).map((m) => (
-            <option key={m.id} value={m.id}>{m.name}</option>
-          ))}
-        </select>
-        <input
-          type="number"
-          defaultValue={Number(e.vacation_allowance)}
-          onBlur={(ev) => { const v = Number(ev.target.value); if (v !== Number(e.vacation_allowance)) save({ vacation_allowance: v }); }}
-          className="w-[80px] h-8 rounded-lg bg-surface px-2 text-[12.5px] text-ink text-right"
-        />
-        <span className="w-[90px] text-right text-small tabular-nums text-ink">{remaining} <span className="text-mutedSoft">/ {Number(e.vacation_allowance)}</span></span>
-        <span className="w-[70px] text-center">
-          <input type="checkbox" defaultChecked={e.is_admin} onChange={(ev) => save({ is_admin: ev.target.checked })} />
-        </span>
+    <Link
+      href={`/admin/${e.id}`}
+      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-surface2/40 transition ${e.active ? "" : "opacity-50"}`}
+    >
+      <div className="flex items-center gap-2.5 flex-1 min-w-0">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {e.photo ? <img src={e.photo} alt="" className="w-7 h-7 rounded-full object-cover" /> : <span className="w-7 h-7 rounded-full bg-surface2" />}
+        <div className="min-w-0">
+          <p className="text-small text-ink truncate">{e.name}</p>
+          <p className="text-micro text-mutedSoft truncate">{e.role || "—"}</p>
+        </div>
       </div>
-
-      {open && <FichaEditor e={e} pending={pending} onSave={save} />}
-    </div>
-  );
-}
-
-const FICHA_FIELDS = [
-  ["role", "Puesto", "text"],
-  ["contract_type", "Tipo de contrato", "text"],
-  ["start_date", "Fecha de alta", "date"],
-  ["weekly_hours", "Jornada (h/sem)", "number"],
-  ["gross_salary", "Salario bruto anual (€)", "number"],
-  ["dni", "DNI / NIE", "text"],
-  ["nss", "Nº Seguridad Social", "text"],
-  ["iban", "IBAN", "text"],
-  ["phone", "Teléfono", "text"],
-  ["emergency_contact", "Contacto de emergencia", "text"],
-  ["address", "Dirección", "text"],
-];
-
-function FichaEditor({ e, pending, onSave }) {
-  const [form, setForm] = useState(() => {
-    const f = {};
-    for (const [k] of FICHA_FIELDS) f[k] = e[k] ?? "";
-    return f;
-  });
-  const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
-  return (
-    <div className="px-3 pb-3">
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-2 border-t border-border/50">
-        {FICHA_FIELDS.map(([k, label, type]) => (
-          <label key={k} className="flex flex-col gap-1">
-            <span className="text-micro text-mutedSoft">{label}</span>
-            <input
-              type={type}
-              value={form[k] ?? ""}
-              onChange={(ev) => set(k, ev.target.value)}
-              className="h-8 rounded-lg bg-surface px-2.5 text-[12.5px] text-ink"
-            />
-          </label>
-        ))}
-      </div>
-      <div className="flex justify-end mt-2.5">
-        <button onClick={() => onSave(form)} disabled={pending} className="btn-primary h-8 text-[12.5px] disabled:opacity-50">
-          {pending ? "Guardando…" : "Guardar ficha"}
-        </button>
-      </div>
-    </div>
+      <span className="w-[90px] text-right text-small tabular-nums text-ink">{remaining} <span className="text-mutedSoft">/ {Number(e.vacation_allowance)}</span></span>
+      {e.is_admin && <span className="text-micro text-mutedSoft w-[50px] text-center">Admin</span>}
+      {!e.is_admin && <span className="w-[50px]" />}
+      <span className="text-mutedSoft">›</span>
+    </Link>
   );
 }
 
