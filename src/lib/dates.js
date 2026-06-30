@@ -52,6 +52,23 @@ export function madridTime(value) {
   }).format(d);
 }
 
+// Convierte una fecha+hora locales de España (dateISO "YYYY-MM-DD", "HH:MM") al
+// instante UTC correcto, teniendo en cuenta el horario de verano (CET/CEST).
+export function madridToUTC(dateISO, timeHM) {
+  const [y, m, d] = dateISO.split("-").map(Number);
+  const [hh, mi] = timeHM.split(":").map(Number);
+  const utcGuess = Date.UTC(y, m - 1, d, hh, mi);
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Madrid",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: false,
+  }).formatToParts(new Date(utcGuess));
+  const p = {};
+  for (const part of parts) p[part.type] = part.value;
+  const shown = Date.UTC(+p.year, p.month - 1, +p.day, +(p.hour === "24" ? 0 : p.hour), +p.minute);
+  return new Date(utcGuess - (shown - utcGuess));
+}
+
 // Formatea una duración en ms como "Xh Ym" (o "Ym" si <1h).
 export function formatDuration(ms) {
   if (!ms || ms < 0) ms = 0;

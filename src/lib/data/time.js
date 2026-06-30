@@ -17,18 +17,3 @@ export async function getTimeEntries(employeeId, fromISO, toISO) {
   return data ?? [];
 }
 
-// Jornada abierta (sin clock_out) del empleado, si la hay.
-export async function getOpenEntry(employeeId) {
-  if (!isConfigured() || !employeeId) return null;
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("time_entries")
-    .select("id, clock_in")
-    .eq("employee_id", employeeId)
-    .is("clock_out", null)
-    .eq("voided", false)
-    .order("clock_in", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  return data ?? null;
-}
