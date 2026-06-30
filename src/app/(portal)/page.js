@@ -2,8 +2,20 @@ import Link from "next/link";
 import BirthdayConfetti from "@/components/BirthdayConfetti";
 import TodayHero from "@/components/TodayHero";
 import NovedadesPanel from "@/components/NovedadesPanel";
-import { Avatar } from "@/components/EventBadge";
-import { EVENTS, NEWS, TEAM } from "@/lib/mock";
+import { EVENTS, NEWS, LINKS } from "@/lib/mock";
+import { CLIENTS } from "@/lib/content";
+
+function favicon(url) {
+  try { return `https://www.google.com/s2/favicons?domain=${new URL(url).hostname}&sz=64`; } catch { return null; }
+}
+
+// Enlaces de interés = generales + webs de clientes.
+const INTEREST = [
+  ...LINKS,
+  ...CLIENTS.filter((c) => c.links?.[0]?.url).map((c) => ({
+    id: c.id, title: c.name, desc: "Cliente", url: c.links[0].url,
+  })),
+];
 
 const SHORTCUTS = [
   { href: "/calendario", title: "Calendario", desc: "Hitos, cumpleaños, vacaciones y festivos.", icon: "▦" },
@@ -33,22 +45,33 @@ export default function HomePage() {
           ))}
         </div>
 
-        {/* Equipo */}
+        {/* Enlaces de interés */}
         <section className="card p-6">
           <div className="flex items-center justify-between mb-5">
-            <h2 className="text-title text-ink">El equipo</h2>
-            <span className="count-pill bg-surface2 text-muted">{TEAM.length}</span>
+            <h2 className="text-title text-ink">Enlaces de interés</h2>
+            <span className="count-pill bg-surface2 text-muted">{INTEREST.length}</span>
           </div>
-          <ul className="grid sm:grid-cols-2 gap-x-8 gap-y-4">
-            {TEAM.map((m) => (
-              <li key={m.id} className="flex items-center gap-3">
-                <Avatar name={m.name} color={m.color} photo={m.photo} />
-                <div className="min-w-0">
-                  <p className="text-small text-ink truncate">{m.name}</p>
-                  <p className="text-micro text-mutedSoft truncate">{m.role}</p>
-                </div>
-              </li>
-            ))}
+          <ul className="grid sm:grid-cols-2 gap-2">
+            {INTEREST.map((l) => {
+              const fav = favicon(l.url);
+              return (
+                <li key={l.id}>
+                  <a href={l.url} target="_blank" rel="noreferrer" className="group flex items-center gap-3 rounded-xl px-2.5 py-2 -mx-0.5 hover:bg-surface2/60 transition">
+                    {fav ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={fav} alt="" className="w-7 h-7 rounded-lg shrink-0" />
+                    ) : (
+                      <span className="w-7 h-7 rounded-lg bg-brandSoft text-brand grid place-items-center text-[12px] shrink-0">↗</span>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-small text-ink truncate group-hover:text-brand transition-colors">{l.title}</p>
+                      <p className="text-micro text-mutedSoft truncate">{l.desc}</p>
+                    </div>
+                    <span className="text-mutedSoft text-[13px] opacity-0 group-hover:opacity-100 transition">↗</span>
+                  </a>
+                </li>
+              );
+            })}
           </ul>
         </section>
       </div>

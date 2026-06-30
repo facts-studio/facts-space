@@ -1,20 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { EVENT_TYPES } from "@/lib/mock";
-
-const DAY = 86400000;
-const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-const parse = (iso) => new Date(iso + "T00:00:00");
-
-function rel(dias) {
-  if (dias < 0) return null;
-  if (dias === 0) return "hoy";
-  if (dias === 1) return "mañana";
-  if (dias < 7) return `en ${dias} días`;
-  if (dias < 14) return "la semana que viene";
-  return `en ${Math.round(dias / 7)} semanas`;
-}
+import NavIcon from "@/components/NavIcon";
 
 // Chip de icono por tono (clases explícitas para Tailwind).
 const TONE = {
@@ -24,14 +11,13 @@ const TONE = {
   violet: "bg-violetSoft text-violet",
   success: "bg-successSoft text-success",
 };
-const ICON = { hito: "◈", cumple: "✦", vacaciones: "✈", festivo: "✺" };
 
 function Item({ tone, icon, tag, title, sub, cta, to }) {
   const inner = (
     <>
       <div className="flex items-center gap-2.5">
-        <span className={`h-10 w-10 rounded-xl grid place-items-center text-[16px] shrink-0 ${TONE[tone] || TONE.brand}`}>
-          {icon}
+        <span className={`h-10 w-10 rounded-xl grid place-items-center shrink-0 ${TONE[tone] || TONE.brand}`}>
+          <NavIcon name={icon} className="w-[18px] h-[18px]" />
         </span>
         {tag && (
           <span className="text-[10px] uppercase tracking-[0.14em] font-semibold text-mutedSoft">
@@ -60,30 +46,9 @@ function Item({ tone, icon, tag, title, sub, cta, to }) {
   );
 }
 
-export default function NovedadesPanel({ news = [], events = [] }) {
-  const hoy = startOfDay(new Date());
-
-  // Próximos eventos como novedades.
-  const evItems = events
-    .map((e) => ({ ...e, dias: Math.round((startOfDay(parse(e.start)) - hoy) / DAY) }))
-    .filter((e) => e.dias >= 0)
-    .sort((a, b) => a.dias - b.dias)
-    .slice(0, 4)
-    .map((e) => {
-      const t = EVENT_TYPES[e.type];
-      return {
-        id: `e-${e.id}`,
-        tone: t.color,
-        icon: ICON[e.type] || "◈",
-        tag: t.label,
-        title: e.title,
-        sub: [e.who, rel(e.dias)].filter(Boolean).join(" · "),
-        cta: "Ver en calendario",
-        to: "/calendario",
-      };
-    });
-
-  const items = [...news, ...evItems];
+export default function NovedadesPanel({ news = [] }) {
+  // De momento, solo 3 novedades de ejemplo.
+  const items = news.slice(0, 3);
 
   return (
     <aside className="lg:sticky lg:top-8 space-y-2.5">

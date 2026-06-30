@@ -71,9 +71,9 @@ export const EVENTS = [
 // recursos nuevos, políticas actualizadas. Se mezclan con los próximos eventos
 // en el panel de la derecha.
 export const NEWS = [
-  { id: "n1", tone: "brand", icon: "❡", tag: "Políticas", title: "Política de vacaciones actualizada", sub: "Reparto orientativo por trimestres y antelación.", date: "2026-06-26", cta: "Leer", to: "/politicas/vacaciones" },
-  { id: "n2", tone: "success", icon: "✦", tag: "Recursos", title: "Fichas de herramientas", sub: "Para qué sirve cada una y qué evitar.", date: "2026-06-24", cta: "Ver", to: "/recursos" },
-  { id: "n3", tone: "info", icon: "✻", tag: "Onboarding", title: "Nuevo recorrido de onboarding", sub: "Qué es F*cts, cultura, políticas y herramientas.", date: "2026-06-20", cta: "Empezar", to: "/onboarding" },
+  { id: "n1", tone: "brand", icon: "doc", tag: "Políticas", title: "Política de vacaciones actualizada", sub: "Reparto orientativo por trimestres y antelación.", date: "2026-06-26", cta: "Leer", to: "/politicas/vacaciones" },
+  { id: "n2", tone: "success", icon: "grid", tag: "Recursos", title: "Fichas de herramientas", sub: "Para qué sirve cada una y qué evitar.", date: "2026-06-24", cta: "Ver", to: "/recursos" },
+  { id: "n3", tone: "info", icon: "sparkles", tag: "Onboarding", title: "Nuevo recorrido de onboarding", sub: "Qué es F*cts, cultura, políticas y herramientas.", date: "2026-06-20", cta: "Empezar", to: "/onboarding" },
 ];
 
 // Onboarding — recorrido lineal para quien acaba de entrar a F*cts.
@@ -83,6 +83,14 @@ export const ONBOARDING = [
   { id: "politicas", num: "03", icon: "♥", cover: "politicas", title: "Políticas internas", desc: "Horarios, vacaciones, comunicación y seguridad.", min: 8 },
   { id: "herramientas", num: "04", icon: "◐", cover: "herramientas", title: "Herramientas", desc: "ClickUp, Drive, Figma, Holded y cómo pedir accesos.", min: 4 },
   { id: "tareas", num: "05", icon: "✓", cover: "tareas", title: "Tareas de onboarding", desc: "Tu checklist de las primeras dos semanas.", min: 3 },
+];
+
+// Enlaces de interés (accesos rápidos del equipo). Editables más adelante.
+export const LINKS = [
+  { id: "drive", title: "Google Drive", desc: "Archivo del estudio", url: "https://drive.google.com" },
+  { id: "raindrop", title: "Raindrop", desc: "Referencias e inspiración", url: "https://raindrop.io" },
+  { id: "clickup", title: "ClickUp", desc: "Tareas y proyectos", url: "https://clickup.com" },
+  { id: "figma", title: "Figma", desc: "Diseño y prototipos", url: "https://figma.com" },
 ];
 
 // Helpers de fecha (formato es-ES).
