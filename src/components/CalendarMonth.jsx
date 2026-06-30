@@ -329,9 +329,9 @@ export default function CalendarMonth({ events = [], canRequest = false }) {
                 onClick={() => onDayClick(k)}
                 className={`h-full min-h-[84px] rounded-xl border p-1.5 flex flex-col gap-1 cursor-pointer transition ${
                   isReqEdge
-                    ? "border-brand bg-brand/[0.12] ring-2 ring-brand/50"
+                    ? "border-ink bg-ink/[0.10] ring-2 ring-ink/30"
                     : inReq
-                      ? "border-brand/45 bg-brand/[0.07]"
+                      ? "border-ink/30 bg-ink/[0.05]"
                       : isToday
                         ? "border-brand/55 bg-brand/[0.045] ring-1 ring-brand/30"
                         : isSel
@@ -430,8 +430,8 @@ export default function CalendarMonth({ events = [], canRequest = false }) {
 
           {reqMode ? (
             <div className="space-y-3">
-              <div className="rounded-lg bg-brandSoft/40 border border-brand/15 p-3">
-                <p className="text-micro text-brand font-medium mb-1.5">Elige el rango en el calendario</p>
+              <div className="rounded-lg bg-surface2/50 border border-border p-3">
+                <p className="text-micro text-ink font-medium mb-1.5">Elige el rango en el calendario</p>
                 <p className="text-small text-ink capitalize leading-snug">
                   {reqStart ? fmtSel(reqStart) : "—"}
                   {reqStart && reqEndEff !== reqStart && <> <span className="text-mutedSoft lowercase">al</span> {fmtSel(reqEndEff)}</>}
@@ -459,7 +459,7 @@ export default function CalendarMonth({ events = [], canRequest = false }) {
               <input className="input !h-9 !py-1" placeholder="Nota (opcional)" value={reqNote} onChange={(e) => setReqNote(e.target.value)} />
               {reqMsg && <p className={`text-micro ${reqMsg.ok ? "text-success" : "text-danger"}`}>{reqMsg.text}</p>}
               <div className="flex items-center gap-2">
-                <button onClick={submitRequest} disabled={pending || reqWd <= 0 || (reqMsg && reqMsg.ok)} className="btn-brand h-9 flex-1 text-[13px] disabled:opacity-50">
+                <button onClick={submitRequest} disabled={pending || reqWd <= 0 || (reqMsg && reqMsg.ok)} className="btn-primary h-9 flex-1 text-[13px] disabled:opacity-50">
                   {pending ? "Enviando…" : reqMsg?.ok ? "Enviada ✓" : "Enviar solicitud"}
                 </button>
                 <button onClick={cancelRequest} className="btn-ghost h-9 text-[13px]">{reqMsg?.ok ? "Cerrar" : "Cancelar"}</button>
@@ -499,8 +499,14 @@ export default function CalendarMonth({ events = [], canRequest = false }) {
               )}
 
               {canRequest && (
-                <button onClick={startRequest} className="btn-brand w-full h-10 mt-4 text-[13px] inline-flex items-center justify-center gap-2">
-                  🏖️ Solicitar vacaciones
+                <button
+                  onClick={startRequest}
+                  className="group w-full mt-4 h-10 rounded-xl border border-borderStrong/50 bg-surface2/40 text-ink text-[13px] font-medium inline-flex items-center justify-center gap-2 hover:bg-surface2/80 hover:border-borderStrong active:scale-[0.99] transition-[background-color,border-color,transform] duration-150"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-80 transition-transform duration-150 group-hover:rotate-90">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                  Solicitar vacaciones
                 </button>
               )}
             </>
