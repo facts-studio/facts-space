@@ -69,6 +69,28 @@ export function madridToUTC(dateISO, timeHM) {
   return new Date(utcGuess - (shown - utcGuess));
 }
 
+// Minutos transcurridos del día (hora local de España) de un instante.
+export function madridMinutes(value) {
+  const d = value instanceof Date ? value : new Date(value);
+  const parts = new Intl.DateTimeFormat("es-ES", {
+    timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit", hour12: false,
+  }).formatToParts(d);
+  const p = {};
+  for (const x of parts) p[x.type] = x.value;
+  return (p.hour === "24" ? 0 : +p.hour) * 60 + +p.minute;
+}
+
+// Lista de días [fromISO, toISO] (incluidos) como { iso, dow } (dow: 0=dom..6=sáb).
+export function eachDayISO(fromISO, toISO) {
+  const out = [];
+  const end = new Date(toISO + "T00:00:00");
+  let g = 0;
+  for (const d = new Date(fromISO + "T00:00:00"); d <= end && g < 1000; d.setDate(d.getDate() + 1), g++) {
+    out.push({ iso: iso(d), dow: d.getDay() });
+  }
+  return out;
+}
+
 // Formatea una duración en ms como "Xh Ym" (o "Ym" si <1h).
 export function formatDuration(ms) {
   if (!ms || ms < 0) ms = 0;

@@ -1,25 +1,67 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { addEntry, voidEntry, autofillTime } from "@/lib/actions/time";
-import { madridTime, formatDuration } from "@/lib/dates";
+import { madridTime, madridMinutes, formatDuration } from "@/lib/dates";
 
 const durMs = (e) => (e.clock_out ? new Date(e.clock_out) - new Date(e.clock_in) : 0);
 
-function fmtDayLabel(iso) {
-  const [y, m, d] = iso.split("-").map(Number);
-  const s = new Date(y, m - 1, d).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
-  return s.charAt(0).toUpperCase() + s.slice(1);
+// Ventana del día para la barra de horario (06:00–22:00).
+const WIN_START = 6 * 60;
+const WIN_SPAN = 16 * 60;
+const clamp = (n) => Math.max(0, Math.min(100, n));
+
+function monthDaysISO(month) {
+  const [y, m] = month.split("-").map(Number);
+  const last = new Date(y, m, 0).getDate();
+  return Array.from({ length: last }, (_, i) => {
+    const d = new Date(y, m - 1, i + 1);
+    return { iso: `${month}-${String(i + 1).padStart(2, "0")}`, dow: d.getDay() };
+  });
 }
 
-const field = "h-9 rounded-lg border border-border bg-surface px-3 text-[13px] text-ink outline-none focus:border-borderStrong";
+function dayLabel(iso) {
+  const [y, m, d] = iso.split("-").map(Number);
+  const wd = new Date(y, m - 1, d).toLocaleDateString("es-ES", { weekday: "short" });
+  return `${wd.charAt(0).toUpperCase() + wd.slice(1).replace(".", "")} ${d}`;
+}
 
-export default function FichajeClient({ entries, month, todayISO }) {
+const PILL = {
+  pending: "bg-warnSoft/60 text-warn",
+  validated: "bg-successSoft/60 text-success",
+  festivo: "bg-successSoft/60 text-success",
+  vacaciones: "bg-warnSoft/60 text-warn",
+  cumple: "bg-infoSoft/60 text-info",
+};
+
+export default function FichajeClient({ entries, festivos = [], vacaciones = [], birthday, todayISO, month, missing = [] }) {
   const router = useRouter();
+  const refresh = () => router.refresh();
 
-  // ── Resúmenes
+  // Estado del formulario (elevado para que las acciones rápidas lo prefijen).
+  const [mode, setMode] = useState("manual");
+  const [date, setDate] = useState(todayISO);
+  const [fromDate, setFromDate] = useState(missing[0] || `${month}-01`);
+  const [toDate, setToDate] = useState(todayISO);
+  const [start, setStart] = useState("09:00");
+  const [end, setEnd] = useState("18:00");
+  const cardRef = useRef(null);
+
+  const ficharDay = (iso) => {
+    setMode("manual");
+    setDate(iso);
+    cardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  const autofillFrom = (iso) => {
+    setMode("auto");
+    setFromDate(iso);
+    setToDate(todayISO);
+    cardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  // Resúmenes
   const monthMs = useMemo(() => entries.reduce((s, e) => s + durMs(e), 0), [entries]);
   const weekStartISO = useMemo(() => {
     const t = new Date(todayISO + "T00:00:00");
@@ -31,17 +73,24 @@ export default function FichajeClient({ entries, month, todayISO }) {
     [entries, weekStartISO, todayISO]
   );
 
-  // ── Agrupar por día (desc)
-  const days = useMemo(() => {
-    const map = new Map();
+  // Índices para clasificar el día
+  const byDay = useMemo(() => {
+    const m = new Map();
     for (const e of entries) {
-      if (!map.has(e.work_date)) map.set(e.work_date, []);
-      map.get(e.work_date).push(e);
+      if (!m.has(e.work_date)) m.set(e.work_date, []);
+      m.get(e.work_date).push(e);
     }
-    return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+    return m;
   }, [entries]);
+  const fset = useMemo(() => new Set(festivos), [festivos]);
+  const vset = useMemo(() => new Set(vacaciones), [vacaciones]);
+  const bday = birthday ? birthday.slice(5) : null;
 
-  // ── Navegación de meses
+  const currentMonth = todayISO.slice(0, 7);
+  const isFutureMonth = month > currentMonth;
+  const lastISO = month === currentMonth ? todayISO : `${month}-31`;
+  const allDays = isFutureMonth ? [] : monthDaysISO(month).filter((d) => d.iso <= lastISO).reverse();
+
   const [yy, mmStr] = month.split("-");
   const monthLabel = new Date(+yy, +mmStr - 1, 1).toLocaleDateString("es-ES", { month: "long", year: "numeric" });
   const shift = (delta) => {
@@ -51,6 +100,20 @@ export default function FichajeClient({ entries, month, todayISO }) {
 
   return (
     <div className="space-y-3">
+      {/* Días sin fichar */}
+      {missing.length > 0 && (
+        <div className="card p-4 flex items-center justify-between gap-4 flex-wrap border-warn/30 bg-warnSoft/25">
+          <p className="text-small text-ink">
+            Llevas <b>{missing.length}</b> {missing.length === 1 ? "día laborable" : "días laborables"} sin fichar
+            <span className="text-mutedSoft"> · desde el {dayLabel(missing[0])}</span>
+          </p>
+          <div className="flex items-center gap-2">
+            <button onClick={() => ficharDay(missing[missing.length - 1])} className="btn-ghost h-8 text-[12.5px]">Fichar uno</button>
+            <button onClick={() => autofillFrom(missing[0])} className="btn-primary h-8 text-[12.5px]">Autorrellenar todos</button>
+          </div>
+        </div>
+      )}
+
       {/* Resúmenes */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         <Stat label="Esta semana" value={formatDuration(weekMs)} />
@@ -58,8 +121,13 @@ export default function FichajeClient({ entries, month, todayISO }) {
         <Stat label="Jornadas registradas" value={String(entries.length)} />
       </div>
 
-      {/* Fichar: manual o autorrellenar (mismo formulario) */}
-      <FicharCard month={month} todayISO={todayISO} onDone={() => router.refresh()} />
+      {/* Fichar (manual / autorrellenar) */}
+      <div ref={cardRef}>
+        <FicharCard
+          {...{ mode, setMode, date, setDate, fromDate, setFromDate, toDate, setToDate, start, setStart, end, setEnd }}
+          onDone={refresh}
+        />
+      </div>
 
       {/* Historial */}
       <div className="card p-6">
@@ -72,24 +140,31 @@ export default function FichajeClient({ entries, month, todayISO }) {
           </div>
         </div>
 
-        {days.length === 0 ? (
-          <div className="rounded-2xl border border-borderStrong/40 px-4 py-12 text-center text-[13px] text-mutedSoft">
-            Sin fichajes este mes
+        {/* Cabecera de columnas */}
+        <div className="flex items-center gap-4 px-1 pb-2 text-micro uppercase tracking-wide text-mutedSoft border-b border-border/60">
+          <span className="w-[110px] shrink-0">Día</span>
+          <span className="flex-1">Horario</span>
+          <span className="w-[90px] shrink-0 text-right">Horas</span>
+          <span className="w-[120px] shrink-0 text-right">Estado</span>
+        </div>
+
+        {allDays.length === 0 ? (
+          <div className="rounded-2xl border border-borderStrong/40 px-4 py-12 text-center text-[13px] text-mutedSoft mt-3">
+            Nada que mostrar
           </div>
         ) : (
-          <ul className="divide-y divide-border/60">
-            {days.map(([d, list]) => {
-              const total = list.reduce((s, e) => s + durMs(e), 0);
+          <ul className="divide-y divide-border/50">
+            {allDays.map(({ iso, dow }) => {
+              const list = byDay.get(iso) || [];
+              let kind;
+              if (list.length) kind = "worked";
+              else if (fset.has(iso)) kind = "festivo";
+              else if (vset.has(iso)) kind = "vacaciones";
+              else if (bday && iso.slice(5) === bday) kind = "cumple";
+              else if (dow === 0 || dow === 6) kind = "weekend";
+              else kind = "pending";
               return (
-                <li key={d} className="py-2.5 flex items-center gap-4">
-                  <span className="text-small text-ink capitalize w-[210px] shrink-0 truncate">{fmtDayLabel(d)}</span>
-                  <div className="flex items-center gap-1.5 flex-1 min-w-0 overflow-x-auto">
-                    {list.map((e) => (
-                      <EntryChip key={e.id} entry={e} onDone={() => router.refresh()} />
-                    ))}
-                  </div>
-                  <span className="text-small text-ink tabular-nums shrink-0">{formatDuration(total)}</span>
-                </li>
+                <DayRow key={iso} iso={iso} kind={kind} entries={list} onFichar={() => ficharDay(iso)} onDone={refresh} />
               );
             })}
           </ul>
@@ -97,6 +172,72 @@ export default function FichajeClient({ entries, month, todayISO }) {
       </div>
     </div>
   );
+}
+
+function DayRow({ iso, kind, entries, onFichar, onDone }) {
+  const [pending, run] = useTransition();
+  const total = entries.reduce((s, e) => s + durMs(e), 0);
+  const status = entries.length && entries.every((e) => e.status === "validated") ? "validated" : "pending";
+
+  const anular = (id) => run(async () => { const r = await voidEntry(id); if (r.ok) onDone(); });
+
+  const muted = kind === "weekend";
+  return (
+    <li className={`flex items-center gap-4 py-2.5 ${muted ? "opacity-45" : ""}`}>
+      <span className="w-[110px] shrink-0 text-small text-ink">{dayLabel(iso)}</span>
+
+      {/* Horario */}
+      <div className="flex-1 min-w-0">
+        {kind === "worked" ? (
+          <div className="relative h-3 rounded-full bg-surface2/70 overflow-hidden">
+            {entries.map((e) => {
+              const s = madridMinutes(e.clock_in);
+              const en = e.clock_out ? madridMinutes(e.clock_out) : s;
+              return (
+                <span
+                  key={e.id}
+                  className="absolute top-0 h-full rounded-full bg-ink/75"
+                  style={{ left: `${clamp(((s - WIN_START) / WIN_SPAN) * 100)}%`, width: `${clamp(((en - s) / WIN_SPAN) * 100)}%` }}
+                  title={`${madridTime(e.clock_in)}–${e.clock_out ? madridTime(e.clock_out) : "—"}`}
+                />
+              );
+            })}
+          </div>
+        ) : kind === "pending" ? (
+          <button onClick={onFichar} className="text-[12.5px] text-ink/70 hover:text-ink underline underline-offset-2 decoration-borderStrong">+ Fichar este día</button>
+        ) : (
+          <span className="text-micro text-mutedSoft">
+            {kind === "festivo" ? "Festivo" : kind === "vacaciones" ? "Vacaciones" : kind === "cumple" ? "Cumpleaños" : "Fin de semana"}
+          </span>
+        )}
+      </div>
+
+      {/* Horas */}
+      <span className="w-[90px] shrink-0 text-right text-small tabular-nums text-ink">
+        {kind === "worked" ? formatDuration(total) : "—"}
+      </span>
+
+      {/* Estado */}
+      <span className="w-[120px] shrink-0 flex items-center justify-end gap-1.5">
+        {kind === "worked" ? (
+          <>
+            <Pill kind={status}>{status === "validated" ? "Validado" : "Pendiente"}</Pill>
+            {entries.length === 1 && (
+              <button onClick={() => anular(entries[0].id)} disabled={pending} aria-label="Anular" className="h-5 w-5 grid place-items-center rounded-full text-mutedSoft hover:text-danger hover:bg-dangerSoft/50 transition">✕</button>
+            )}
+          </>
+        ) : kind === "pending" ? (
+          <Pill kind="pending">Pendiente</Pill>
+        ) : kind === "festivo" || kind === "vacaciones" || kind === "cumple" ? (
+          <Pill kind={kind}>{kind === "festivo" ? "Festivo" : kind === "vacaciones" ? "Vacaciones" : "Cumpleaños"}</Pill>
+        ) : null}
+      </span>
+    </li>
+  );
+}
+
+function Pill({ kind, children }) {
+  return <span className={`rounded-full px-2.5 py-0.5 text-micro font-medium ${PILL[kind]}`}>{children}</span>;
 }
 
 function Stat({ label, value, capitalize }) {
@@ -108,42 +249,18 @@ function Stat({ label, value, capitalize }) {
   );
 }
 
-function EntryChip({ entry, onDone }) {
-  const [pending, start] = useTransition();
-  const remove = () =>
-    start(async () => {
-      const res = await voidEntry(entry.id);
-      if (res.ok) onDone();
-    });
-  return (
-    <span className="group inline-flex items-center gap-1.5 rounded-full border border-border bg-surface2/40 pl-2.5 pr-1.5 py-1 text-micro text-ink tabular-nums">
-      {madridTime(entry.clock_in)}–{entry.clock_out ? madridTime(entry.clock_out) : "—"}
-      <button onClick={remove} disabled={pending} aria-label="Anular" className="h-4 w-4 grid place-items-center rounded-full text-mutedSoft hover:text-danger hover:bg-dangerSoft/50 transition">✕</button>
-    </span>
-  );
-}
+const fieldCls = "h-9 rounded-lg border border-border bg-surface px-3 text-[13px] text-ink outline-none focus:border-borderStrong";
 
-function FicharCard({ month, todayISO, onDone }) {
-  const [mode, setMode] = useState("manual"); // "manual" | "auto"
-  const [date, setDate] = useState(todayISO);
-  const [fromDate, setFromDate] = useState(`${month}-01`);
-  const [toDate, setToDate] = useState(todayISO);
-  const [start, setStart] = useState("09:00");
-  const [end, setEnd] = useState("18:00");
+function FicharCard({ mode, setMode, date, setDate, fromDate, setFromDate, toDate, setToDate, start, setStart, end, setEnd, onDone }) {
   const [msg, setMsg] = useState(null);
   const [pending, run] = useTransition();
 
   const submit = () => {
     setMsg(null);
     run(async () => {
-      const res =
-        mode === "manual"
-          ? await addEntry({ date, start, end })
-          : await autofillTime({ fromDate, toDate, start, end });
-      if (res.ok) {
-        setMsg({ ok: true, text: mode === "manual" ? "Fichaje añadido." : `Añadidos ${res.count} días.` });
-        onDone();
-      } else setMsg({ ok: false, text: res.error });
+      const res = mode === "manual" ? await addEntry({ date, start, end }) : await autofillTime({ fromDate, toDate, start, end });
+      if (res.ok) { setMsg({ ok: true, text: mode === "manual" ? "Fichaje añadido." : `Añadidos ${res.count} días.` }); onDone(); }
+      else setMsg({ ok: false, text: res.error });
     });
   };
 
@@ -153,37 +270,27 @@ function FicharCard({ month, todayISO, onDone }) {
         <p className="section-eyebrow">Fichar</p>
         <div className="flex items-center bg-surface2/60 rounded-lg p-0.5">
           {[["manual", "Manual"], ["auto", "Autorrellenar"]].map(([v, l]) => (
-            <button
-              key={v}
-              onClick={() => { setMode(v); setMsg(null); }}
-              className={`px-3 py-1 rounded-md text-[12.5px] transition ${mode === v ? "bg-bg text-ink shadow-sm font-medium" : "text-muted hover:text-ink"}`}
-            >
-              {l}
-            </button>
+            <button key={v} onClick={() => { setMode(v); setMsg(null); }} className={`px-3 py-1 rounded-md text-[12.5px] transition ${mode === v ? "bg-bg text-ink shadow-sm font-medium" : "text-muted hover:text-ink"}`}>{l}</button>
           ))}
         </div>
       </div>
 
       <div className="flex flex-wrap items-end gap-2">
         {mode === "manual" ? (
-          <Labeled label="Día"><input type="date" className={field} value={date} onChange={(e) => setDate(e.target.value)} /></Labeled>
+          <Labeled label="Día"><input type="date" className={fieldCls} value={date} onChange={(e) => setDate(e.target.value)} /></Labeled>
         ) : (
           <>
-            <Labeled label="Desde"><input type="date" className={field} value={fromDate} onChange={(e) => setFromDate(e.target.value)} /></Labeled>
-            <Labeled label="Hasta"><input type="date" className={field} value={toDate} onChange={(e) => setToDate(e.target.value)} /></Labeled>
+            <Labeled label="Desde"><input type="date" className={fieldCls} value={fromDate} onChange={(e) => setFromDate(e.target.value)} /></Labeled>
+            <Labeled label="Hasta"><input type="date" className={fieldCls} value={toDate} onChange={(e) => setToDate(e.target.value)} /></Labeled>
           </>
         )}
-        <Labeled label="Entrada"><input type="time" className={field} value={start} onChange={(e) => setStart(e.target.value)} /></Labeled>
-        <Labeled label="Salida"><input type="time" className={field} value={end} onChange={(e) => setEnd(e.target.value)} /></Labeled>
-        <button onClick={submit} disabled={pending} className="btn-primary h-9 text-[13px] disabled:opacity-50">
-          {pending ? "…" : mode === "manual" ? "Añadir" : "Rellenar"}
-        </button>
+        <Labeled label="Entrada"><input type="time" className={fieldCls} value={start} onChange={(e) => setStart(e.target.value)} /></Labeled>
+        <Labeled label="Salida"><input type="time" className={fieldCls} value={end} onChange={(e) => setEnd(e.target.value)} /></Labeled>
+        <button onClick={submit} disabled={pending} className="btn-primary h-9 text-[13px] disabled:opacity-50">{pending ? "…" : mode === "manual" ? "Añadir" : "Rellenar"}</button>
       </div>
 
       {mode === "auto" && (
-        <p className="text-micro text-mutedSoft mt-2 leading-snug">
-          Rellena los días sin fichar del rango con ese horario, saltando findes, festivos, tu cumpleaños y tus vacaciones aprobadas.
-        </p>
+        <p className="text-micro text-mutedSoft mt-2 leading-snug">Rellena los días sin fichar del rango con ese horario, saltando findes, festivos, tu cumpleaños y tus vacaciones aprobadas.</p>
       )}
       {msg && <p className={`text-micro mt-2 ${msg.ok ? "text-success" : "text-danger"}`}>{msg.text}</p>}
     </div>
