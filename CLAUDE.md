@@ -33,9 +33,16 @@ Repo `Alvarofcts/fcts-portal`. Trabajo en rama `feat/vacaciones-fichaje`.
 - Inicio: aviso al admin de solicitudes pendientes en el panel derecho.
 
 ## Pendiente
+- **Extracción de facturas (IA)** — ya implementada con `claude-opus-4-8` en
+  `src/lib/actions/extract.js`. PENDIENTE de activar/ejecutar más adelante:
+  1. Ejecutar migración `0011_document_extracted.sql` (columna `documents.extracted`).
+  2. Poner `ANTHROPIC_API_KEY` en `.env.local` y en Vercel + cargar saldo.
+  3. **Abaratar**: cambiar el modelo de `extractInvoice` a `claude-haiku-4-5`
+     (≈0,003 €/factura vs ≈0,02–0,03 € con Opus). Sonnet 4.6 es alternativa.
 - Justificantes adjuntos en ausencias (subida a `hr-docs` como documentos).
 - Fase 9: pulido UX/UI, avisos in-app, responsive, repaso RGPD.
 - Página `/vacaciones` propia (o consolidar en Mi espacio).
+- Resumen de gastos (sumas por mes/proveedor) a partir de facturas extraídas.
 
 ## Supabase
 - Proyecto real `facts-space` (ref `syhotifklflfozcograt`). Claves en `.env.local` (no commitear).
