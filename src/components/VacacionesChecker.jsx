@@ -124,12 +124,12 @@ export default function VacacionesChecker() {
   const result = useMemo(() => (start ? evaluate(start, end) : null), [start, end]);
 
   return (
-    <aside className="mt-8 lg:mt-0 lg:sticky lg:top-8 lg:border-l lg:border-border lg:pl-7">
+    <section className="mt-12 pt-8 border-t border-border">
       <h2 className="section-eyebrow mb-1.5">Comprobador</h2>
-      <p className="text-title text-ink mb-1">¿Puedo pedir estos días?</p>
-      <p className="text-small text-muted mb-5">Introduce las fechas y te decimos si es viable según la política.</p>
+      <p className="font-display text-[22px] text-ink mb-1">¿Puedo pedir estos días?</p>
+      <p className="text-small text-muted mb-5 max-w-[48ch]">Introduce las fechas y te decimos si es viable según la política (carga del trimestre, periodos bloqueados, antelación y cobertura del equipo).</p>
 
-      <div className="flex flex-col gap-3">
+      <div className="grid sm:grid-cols-2 gap-3 max-w-[440px]">
         <label className="block">
           <span className="text-micro uppercase tracking-[0.1em] text-mutedSoft">Desde</span>
           <input type="date" value={start} onChange={(e) => setStart(e.target.value)} className="input mt-1.5" />
@@ -141,7 +141,7 @@ export default function VacacionesChecker() {
       </div>
 
       {result && (
-        <div className="mt-6">
+        <div className="mt-6 max-w-[560px]">
           <div className="flex items-center gap-2.5 mb-1">
             <span className={`h-2.5 w-2.5 rounded-full ${TONE[result.status].dot}`} />
             <span className={`text-title ${TONE[result.status].text}`}>{result.title}</span>
@@ -166,6 +166,6 @@ export default function VacacionesChecker() {
           </p>
         </div>
       )}
-    </aside>
+    </section>
   );
 }

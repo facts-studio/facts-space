@@ -22,22 +22,11 @@ export default async function PoliticaPage({ params }) {
     </>
   );
 
-  if (withChecker) {
-    return (
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-8 lg:items-start">
-        <div className="min-w-0">
-          {Head}
-          <ContentBlocks blocks={p.body} />
-        </div>
-        <VacacionesChecker />
-      </div>
-    );
-  }
-
   return (
     <div>
       {Head}
       <ContentBlocks blocks={p.body} />
+      {withChecker && <VacacionesChecker />}
     </div>
   );
 }

@@ -59,7 +59,7 @@ export default function ContentBlocks({ blocks = [] }) {
         );
         // Barra de carga anual: un único gráfico con segmentos por trimestre.
         if (b.loadbar) return (
-          <div key={i}>
+          <div key={i} className="rounded-2xl bg-surface/55 p-5 md:p-6">
             <div className="flex gap-1.5">
               {b.loadbar.map((q, j) => (
                 <div key={j} className="flex-1">

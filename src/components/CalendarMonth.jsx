@@ -27,6 +27,15 @@ const EMPTY = [];
 
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
+// Rejilla de 42 días (6 semanas, lunes primero) de un mes dado.
+function monthDays(y, m) {
+  const off = (new Date(y, m, 1).getDay() + 6) % 7;
+  const start = new Date(y, m, 1 - off);
+  return Array.from({ length: 42 }, (_, i) => {
+    const d = new Date(start); d.setDate(start.getDate() + i); return d;
+  });
+}
+
 // Acabado del chip por tipo de evento (clases explícitas para Tailwind).
 const CHIP = {
   hito: "bg-brand text-white",
@@ -37,6 +46,12 @@ const CHIP = {
 const DOT = {
   brand: "bg-brand", info: "bg-info", warn: "bg-warn", violet: "bg-violet",
 };
+// Relleno suave por color para la vista anual.
+const YFILL = {
+  brand: "bg-brandSoft", info: "bg-infoSoft", warn: "bg-warnSoft", violet: "bg-violetSoft",
+};
+// Prioridad de color cuando un día tiene varios eventos.
+const YORDER = ["hito", "festivo", "cumple", "vacaciones"];
 // Tile del panel del día: fondo suave + borde + acento por tipo.
 const TILE = {
   brand: "bg-brandSoft/60 border-brand/15",
@@ -68,6 +83,7 @@ export default function CalendarMonth({ events = [] }) {
     return new Date(base.getFullYear(), base.getMonth(), 1);
   });
   const [selected, setSelected] = useState(null);
+  const [view, setView] = useState("mes"); // "mes" | "año"
   // Filtro por tipo de evento. Todos activos por defecto.
   const [active, setActive] = useState(() => new Set(Object.keys(EVENT_TYPES)));
   const toggle = (k) =>
@@ -120,18 +136,35 @@ export default function CalendarMonth({ events = [] }) {
   return (
     <div className={`h-[calc(100vh-5rem)] ${selected ? "lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-5 lg:items-stretch" : ""}`}>
       <div className="flex flex-col min-h-0 h-full">
-        {/* Cabecera de mes */}
+        {/* Cabecera */}
         <div className="flex items-center justify-between gap-3 mb-3">
           <h2 className="font-display text-[24px] text-ink capitalize leading-none flex items-baseline gap-2">
-            {MESES[month]}
-            <span className="font-sans font-normal text-[14px] text-mutedSoft tabular-nums">{year}</span>
+            {view === "mes" ? (
+              <>{MESES[month]}<span className="font-sans font-normal text-[14px] text-mutedSoft tabular-nums">{year}</span></>
+            ) : (
+              <span className="tabular-nums">{year}</span>
+            )}
           </h2>
           <div className="flex items-center gap-1 shrink-0">
+            {/* Conmutador Mes / Año */}
+            <div className="flex items-center bg-surface2/60 rounded-lg p-0.5 mr-1">
+              {["mes", "año"].map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setView(v)}
+                  className={`px-2.5 py-1 rounded-md text-[12.5px] capitalize transition ${
+                    view === v ? "bg-bg text-ink shadow-sm font-medium" : "text-muted hover:text-ink"
+                  }`}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
             <button onClick={() => setCursor(new Date(today.getFullYear(), today.getMonth(), 1))} className="px-3 py-1.5 rounded-lg text-[12.5px] text-inkSoft hover:bg-surface2/60 transition mr-1">Hoy</button>
-            <button onClick={() => setCursor(new Date(year, month - 1, 1))} aria-label="Mes anterior" className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-muted hover:bg-surface2/60 active:scale-95 transition">
+            <button onClick={() => setCursor(view === "mes" ? new Date(year, month - 1, 1) : new Date(year - 1, month, 1))} aria-label="Anterior" className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-muted hover:bg-surface2/60 active:scale-95 transition">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
             </button>
-            <button onClick={() => setCursor(new Date(year, month + 1, 1))} aria-label="Mes siguiente" className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-muted hover:bg-surface2/60 active:scale-95 transition">
+            <button onClick={() => setCursor(view === "mes" ? new Date(year, month + 1, 1) : new Date(year + 1, month, 1))} aria-label="Siguiente" className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-muted hover:bg-surface2/60 active:scale-95 transition">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
             </button>
           </div>
@@ -198,6 +231,8 @@ export default function CalendarMonth({ events = [] }) {
           </div>
         </div>
 
+        {view === "mes" && (
+        <>
         {/* Cabecera de días */}
         <div className="grid grid-cols-7 gap-1 mb-1">
           {WD.map((w, i) => (
@@ -263,6 +298,45 @@ export default function CalendarMonth({ events = [] }) {
             );
           })}
         </div>
+        </>
+        )}
+
+        {view === "año" && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 flex-1 min-h-0 overflow-y-auto pr-1">
+            {Array.from({ length: 12 }, (_, mi) => (
+              <div key={mi} className="rounded-xl bg-surface/45 p-3">
+                <button onClick={() => { setCursor(new Date(year, mi, 1)); setView("mes"); }} className="text-small font-medium text-ink capitalize mb-2 hover:text-brand transition">{MESES[mi]}</button>
+                <div className="grid grid-cols-7 gap-px mb-1">
+                  {WD.map((w, i) => <div key={i} className="text-[8px] text-mutedSoft/60 text-center">{w}</div>)}
+                </div>
+                <div className="grid grid-cols-7 gap-px">
+                  {monthDays(year, mi).map((d, i) => {
+                    const k = iso(d);
+                    const inM = d.getMonth() === mi;
+                    const its = inM ? (byDay.get(k) || EMPTY).filter(pass) : EMPTY;
+                    const isT = k === todayISO;
+                    const dom = YORDER.map((t) => its.find((e) => e.type === t)).find(Boolean);
+                    const color = dom ? EVENT_TYPES[dom.type].color : null;
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => { if (!inM) return; setCursor(new Date(year, mi, 1)); setSelected(k); setView("mes"); }}
+                        className={`aspect-square rounded-md flex items-center justify-center text-[9.5px] leading-none transition ${
+                          !inM ? "opacity-0 pointer-events-none"
+                            : isT ? "bg-brand text-white font-semibold"
+                            : color ? `${YFILL[color]} text-ink`
+                            : "text-ink hover:bg-surface2/70"
+                        }`}
+                      >
+                        {inM ? d.getDate() : ""}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Panel del día seleccionado */}
