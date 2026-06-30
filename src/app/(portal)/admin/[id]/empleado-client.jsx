@@ -48,7 +48,7 @@ export default function EmpleadoClient({ employee, employees, requests, document
 function Resumen({ e, employees, requests, documents, time, vacUsed, year, onDone }) {
   const [edit, setEdit] = useState(false);
   if (edit) return <FichaForm e={e} employees={employees} onCancel={() => setEdit(false)} onSaved={() => { setEdit(false); onDone(); }} />;
-  const allowance = Number(e.vacation_allowance);
+  const allowance = Number(e.vacation_allowance) + Number(e.vacation_adjustment || 0);
   const monthMs = time.reduce((s, t) => s + durMs(t), 0);
   const nominas = documents.filter((d) => d.category === "nomina").slice(0, 3);
   const upcoming = requests.filter((r) => r.status === "approved" && r.end_date >= new Date().toISOString().slice(0, 10)).slice(0, 4);
@@ -146,7 +146,7 @@ const FICHA_GROUPS = [
   ["Contrato", [
     ["role", "Puesto", "text"], ["contract_type", "Tipo de contrato", "text"], ["start_date", "Fecha de alta", "date"],
     ["weekly_hours", "Jornada (h/sem)", "number"], ["gross_salary", "Salario bruto anual (€)", "number"],
-    ["vacation_allowance", "Días vacaciones/año", "number"],
+    ["vacation_allowance", "Días vacaciones/año (base)", "number"], ["vacation_adjustment", "Días extra (+/−)", "number"],
   ]],
 ];
 

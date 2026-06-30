@@ -72,15 +72,18 @@ export default function EquipoView({ team, events, vacUsed = {}, year }) {
                   <dd className="text-small text-ink">🎂 {fmtDate(m.birthday)}</dd>
                 </div>
               )}
-              {m.vacation_allowance != null && (
-                <div className="flex items-center justify-between gap-4">
-                  <dt className="text-small text-mutedSoft">Vacaciones {year}</dt>
-                  <dd className="text-small text-ink tabular-nums">
-                    {Number(m.vacation_allowance) - (vacUsed[m.id] || 0)} restantes
-                    <span className="text-mutedSoft"> · {vacUsed[m.id] || 0} de {Number(m.vacation_allowance)}</span>
-                  </dd>
-                </div>
-              )}
+              {m.vacation_allowance != null && (() => {
+                const allowance = Number(m.vacation_allowance) + Number(m.vacation_adjustment || 0);
+                return (
+                  <div className="flex items-center justify-between gap-4">
+                    <dt className="text-small text-mutedSoft">Vacaciones {year}</dt>
+                    <dd className="text-small text-ink tabular-nums">
+                      {allowance - (vacUsed[m.id] || 0)} restantes
+                      <span className="text-mutedSoft"> · {vacUsed[m.id] || 0} de {allowance}</span>
+                    </dd>
+                  </div>
+                );
+              })()}
             </dl>
 
             {memberEvents(events, m.name).length > 0 && (

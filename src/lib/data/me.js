@@ -32,7 +32,7 @@ export async function getMyOverview(employee) {
   ]);
 
   const used = (vacR.data ?? []).reduce((s, v) => s + Number(v.working_days), 0);
-  const allowance = Number(employee.vacation_allowance);
+  const allowance = Number(employee.vacation_allowance) + Number(employee.vacation_adjustment || 0);
   return {
     year,
     allowance,

@@ -259,7 +259,7 @@ function Informes({ employees, vacUsed, timeHours, month, year }) {
   const monthLabel = new Date(+month.slice(0, 4), +month.slice(5) - 1, 1).toLocaleDateString("es-ES", { month: "long", year: "numeric" });
   const rows = employees.filter((e) => e.active).map((e) => {
     const used = vacUsed[e.id] || 0;
-    const allowance = Number(e.vacation_allowance);
+    const allowance = Number(e.vacation_allowance) + Number(e.vacation_adjustment || 0);
     const hoursMs = timeHours[e.id] || 0;
     return { name: e.name, used, allowance, remaining: allowance - used, hours: hoursMs / 3600000 };
   });
@@ -449,7 +449,8 @@ function AddEmployee({ onDone }) {
 }
 
 function EmployeeRow({ e, used }) {
-  const remaining = Number(e.vacation_allowance) - used;
+  const allowance = Number(e.vacation_allowance) + Number(e.vacation_adjustment || 0);
+  const remaining = allowance - used;
   return (
     <Link
       href={`/admin/${e.id}`}
@@ -463,7 +464,7 @@ function EmployeeRow({ e, used }) {
           <p className="text-micro text-mutedSoft truncate">{e.role || "—"}</p>
         </div>
       </div>
-      <span className="w-[90px] text-right text-small tabular-nums text-ink">{remaining} <span className="text-mutedSoft">/ {Number(e.vacation_allowance)}</span></span>
+      <span className="w-[90px] text-right text-small tabular-nums text-ink">{remaining} <span className="text-mutedSoft">/ {allowance}</span></span>
       {e.is_admin && <span className="text-micro text-mutedSoft w-[50px] text-center">Admin</span>}
       {!e.is_admin && <span className="w-[50px]" />}
       <span className="text-mutedSoft">›</span>

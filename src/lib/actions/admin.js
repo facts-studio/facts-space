@@ -19,6 +19,7 @@ export async function updateEmployee({ id, patch }) {
   const allowed = {};
   if ("manager_id" in patch) allowed.manager_id = patch.manager_id || null;
   if ("vacation_allowance" in patch) allowed.vacation_allowance = Number(patch.vacation_allowance) || 0;
+  if ("vacation_adjustment" in patch) allowed.vacation_adjustment = Number(patch.vacation_adjustment) || 0;
   if ("is_admin" in patch) allowed.is_admin = Boolean(patch.is_admin);
   if ("active" in patch) allowed.active = Boolean(patch.active);
   if ("role" in patch) allowed.role = String(patch.role);

@@ -9,7 +9,7 @@ export async function getAllEmployees() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("employees")
-    .select("id, name, email, role, photo, color, birthday, manager_id, is_admin, vacation_allowance, active")
+    .select("id, name, email, role, photo, color, birthday, manager_id, is_admin, vacation_allowance, vacation_adjustment, active")
     .order("name");
   return data ?? [];
 }
