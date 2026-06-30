@@ -30,3 +30,33 @@ export function workingDaysBetween(startISO, endISO, holidays = []) {
 
 // Año natural de una fecha ISO.
 export const yearOf = (iso) => Number(iso.slice(0, 4));
+
+// Fecha local de España (Europe/Madrid) en ISO "YYYY-MM-DD". El servidor corre
+// en UTC; el registro de jornada debe usar la hora local del centro de trabajo.
+export function madridDateISO(d = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Madrid",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
+}
+
+// Hora local de España "HH:MM" de un instante (Date o ISO string).
+export function madridTime(value) {
+  const d = value instanceof Date ? value : new Date(value);
+  return new Intl.DateTimeFormat("es-ES", {
+    timeZone: "Europe/Madrid",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(d);
+}
+
+// Formatea una duración en ms como "Xh Ym" (o "Ym" si <1h).
+export function formatDuration(ms) {
+  if (!ms || ms < 0) ms = 0;
+  const totalMin = Math.floor(ms / 60000);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return h > 0 ? `${h}h ${String(m).padStart(2, "0")}m` : `${m}m`;
+}
