@@ -4,6 +4,12 @@ import { useMemo, useState, useTransition } from "react";
 import { EVENT_TYPES, TEAM } from "@/lib/mock";
 import { workingDaysBetween } from "@/lib/dates";
 import { requestVacation } from "@/lib/actions/vacations";
+import { evaluateVacation } from "@/lib/vacation-policy";
+
+// Colores del veredicto orientativo de política.
+const POLICY_BANNER = { ok: "bg-successSoft/50 text-success", warn: "bg-warnSoft/45 text-warn", bad: "bg-dangerSoft/45 text-danger" };
+const POLICY_TONE = { ok: "text-success", warn: "text-warn", bad: "text-danger" };
+const POLICY_GLYPH = { ok: "✓", warn: "!", bad: "✕" };
 
 const MEMBER = new Map(TEAM.map((m) => [m.name, m]));
 // Tipos con persona asociada → mostramos miniatura.
@@ -162,6 +168,7 @@ export default function CalendarMonth({ events = [], canRequest = false }) {
 
   const reqEndEff = reqEnd || reqStart;
   const reqWd = reqStart ? workingDaysBetween(reqStart, reqEndEff, festivoSet) : 0;
+  const reqAssess = reqMode && reqStart ? evaluateVacation(reqStart, reqEndEff, events) : null;
 
   const startRequest = () => {
     setReqMode(true);
@@ -433,6 +440,22 @@ export default function CalendarMonth({ events = [], canRequest = false }) {
                   {reqWd > 0 ? <>{reqWd} {reqWd === 1 ? "día laborable" : "días laborables"} · findes y festivos no cuentan</> : "Sin días laborables en el rango."}
                 </p>
               </div>
+              {reqAssess && (
+                <div className="space-y-1.5">
+                  <div className={`rounded-lg px-2.5 py-1.5 text-micro font-medium ${POLICY_BANNER[reqAssess.status]}`}>
+                    {reqAssess.title}
+                  </div>
+                  <ul className="space-y-1">
+                    {reqAssess.reasons.map((r, i) => (
+                      <li key={i} className="flex gap-1.5 text-micro text-inkSoft leading-snug">
+                        <span className={`shrink-0 ${POLICY_TONE[r.tone]}`}>{POLICY_GLYPH[r.tone]}</span>
+                        <span>{r.text}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-micro text-mutedSoft leading-snug">Orientativo: puedes solicitarlas igualmente; la aprobación final es de tu responsable.</p>
+                </div>
+              )}
               <input className="input !h-9 !py-1" placeholder="Nota (opcional)" value={reqNote} onChange={(e) => setReqNote(e.target.value)} />
               {reqMsg && <p className={`text-micro ${reqMsg.ok ? "text-success" : "text-danger"}`}>{reqMsg.text}</p>}
               <div className="flex items-center gap-2">
