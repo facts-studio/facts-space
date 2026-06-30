@@ -1,4 +1,5 @@
 import "./globals.css";
+import Script from "next/script";
 
 export const metadata = {
   title: "F*cts Studio · Portal interno",
@@ -19,10 +20,10 @@ const themeInit = `(function(){try{var t=localStorage.getItem('theme');var d=t?t
 export default function RootLayout({ children }) {
   return (
     <html lang="es" className="h-full">
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: themeInit }} />
-      </head>
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        <Script id="theme-init" strategy="beforeInteractive">{themeInit}</Script>
+        {children}
+      </body>
     </html>
   );
 }
