@@ -343,7 +343,7 @@ export default function CalendarMonth({ events = [], canRequest = false }) {
               >
                 <div className="flex items-center justify-between px-0.5">
                   <span className={`text-[12px] tabular-nums leading-none inline-flex items-center justify-center ${
-                    isToday ? "h-5 w-5 rounded-full bg-brand text-white font-bold" : inMonth ? "text-ink" : "text-mutedSoft"
+                    isToday ? "h-5 w-5 rounded-full bg-ink text-bg font-bold" : inMonth ? "text-ink" : "text-mutedSoft"
                   }`}>{d.getDate()}</span>
                   {items.length > 0 && <span className="text-[9.5px] text-mutedSoft tabular-nums">{items.length}</span>}
                 </div>
@@ -400,7 +400,7 @@ export default function CalendarMonth({ events = [], canRequest = false }) {
                         onClick={() => { if (!inM) return; setCursor(new Date(year, mi, 1)); setSelected(k); setView("mes"); }}
                         className={`aspect-square rounded-md flex items-center justify-center text-[9.5px] leading-none transition ${
                           !inM ? "opacity-0 pointer-events-none"
-                            : isT ? "bg-brand text-white font-semibold"
+                            : isT ? "bg-ink text-bg font-semibold"
                             : color ? `${YFILL[color]} text-ink`
                             : "text-ink hover:bg-surface2/70"
                         }`}

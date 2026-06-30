@@ -21,9 +21,9 @@
   --ct-accent: 31 31 30;
   --ct-accentHover: 42 42 42;
   --ct-accentSoft: 233 231 225;
-  --ct-brand: 18 39 29;        /* #12271D verde de marca */
-  --ct-brandSoft: 224 233 227; /* #E0E9E3 */
-  --ct-brandMid: 47 107 73;    /* #2F6B49 */
+  --ct-brand: 31 31 30;        /* negro de marca (#1F1F1E) — F*cts es negros y cremas */
+  --ct-brandSoft: 233 231 225; /* crema (#E9E7E1) */
+  --ct-brandMid: 90 88 82;     /* taupe medio */
   --ct-success: 63 122 58;
   --ct-successSoft: 220 231 214;
   --ct-warn: 176 122 31;
@@ -65,9 +65,9 @@
   --ct-accent: 239 238 235;
   --ct-accentHover: 224 222 215;
   --ct-accentSoft: 47 47 44;
-  --ct-brand: 122 170 142;
-  --ct-brandSoft: 28 46 38;
-  --ct-brandMid: 122 170 142;
+  --ct-brand: 239 238 235;     /* crema sobre oscuro */
+  --ct-brandSoft: 47 47 44;
+  --ct-brandMid: 170 168 160;
   --ct-success: 130 184 122;
   --ct-successSoft: 40 58 38;
   --ct-warn: 212 165 90;
@@ -128,7 +128,7 @@ html, body {
     @apply btn bg-ink text-bg border-ink hover:bg-inkSoft hover:border-inkSoft;
   }
   .btn-brand {
-    @apply btn bg-brand text-white border-brand hover:brightness-[0.96];
+    @apply btn bg-ink text-bg border-ink hover:brightness-[0.96];
   }
   .btn-ghost {
     @apply btn bg-transparent text-inkSoft border-border hover:bg-surface2/60 hover:border-borderStrong;
