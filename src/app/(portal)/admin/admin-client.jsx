@@ -4,19 +4,21 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { decideVacation } from "@/lib/actions/vacations";
 import { updateEmployee, validateMonth } from "@/lib/actions/admin";
-import { fmtRange } from "@/lib/mock";
+import { recordDocument, deleteDocument, getDocumentUrl } from "@/lib/actions/documents";
+import { createClient } from "@/lib/supabase/client";
+import { fmtRange, fmtDate } from "@/lib/mock";
 import { absenceLabel } from "@/lib/absences";
 
 const TABS = [
-  ["solicitudes", "Solicitudes"],
+  ["aprobaciones", "Aprobaciones"],
   ["equipo", "Equipo"],
-  ["fichaje", "Fichaje"],
+  ["documentos", "Documentos"],
 ];
 
-export default function AdminClient({ employees, pending, recent, timeStats, vacUsed, month, year }) {
+export default function AdminClient({ employees, pending, recent, timeStats, vacUsed, documents = [], month, year }) {
   const router = useRouter();
   const refresh = () => router.refresh();
-  const [tab, setTab] = useState("solicitudes");
+  const [tab, setTab] = useState("aprobaciones");
   const nameById = useMemo(() => new Map(employees.map((e) => [e.id, e.name])), [employees]);
 
   return (
@@ -29,17 +31,119 @@ export default function AdminClient({ employees, pending, recent, timeStats, vac
             className={`px-3.5 py-1.5 rounded-md text-[13px] transition ${tab === v ? "bg-bg text-ink shadow-sm font-medium" : "text-muted hover:text-ink"}`}
           >
             {l}
-            {v === "solicitudes" && pending.length > 0 && (
+            {v === "aprobaciones" && pending.length > 0 && (
               <span className="ml-1.5 text-micro text-warn">{pending.length}</span>
             )}
           </button>
         ))}
       </div>
 
-      {tab === "solicitudes" && <Solicitudes pending={pending} recent={recent} nameById={nameById} onDone={refresh} />}
+      {tab === "aprobaciones" && (
+        <div className="space-y-3">
+          <Solicitudes pending={pending} recent={recent} nameById={nameById} onDone={refresh} />
+          <Fichaje employees={employees} timeStats={timeStats} month={month} onDone={refresh} />
+        </div>
+      )}
       {tab === "equipo" && <Equipo employees={employees} vacUsed={vacUsed} year={year} onDone={refresh} />}
-      {tab === "fichaje" && <Fichaje employees={employees} timeStats={timeStats} month={month} onDone={refresh} />}
+      {tab === "documentos" && <Documentos employees={employees} documents={documents} nameById={nameById} month={month} onDone={refresh} />}
     </div>
+  );
+}
+
+// ── Documentos (nóminas, contratos, otros) ───────────────────────────────────
+function Documentos({ employees, documents, nameById, month, onDone }) {
+  const [employeeId, setEmployeeId] = useState(employees[0]?.id || "");
+  const [category, setCategory] = useState("nomina");
+  const [period, setPeriod] = useState(month);
+  const [title, setTitle] = useState("");
+  const [file, setFile] = useState(null);
+  const [msg, setMsg] = useState(null);
+  const [pending, run] = useTransition();
+
+  const submit = () => {
+    setMsg(null);
+    if (!employeeId || !file) { setMsg({ ok: false, text: "Elige empleado y archivo." }); return; }
+    run(async () => {
+      const safe = file.name.replace(/[^a-zA-Z0-9.\-_]/g, "_");
+      const path = `${employeeId}/${category}/${Date.now()}-${safe}`;
+      const supabase = createClient();
+      const up = await supabase.storage.from("hr-docs").upload(path, file, { upsert: false });
+      if (up.error) { setMsg({ ok: false, text: up.error.message }); return; }
+      const res = await recordDocument({ employeeId, category, title, period: category === "nomina" ? period : "", storagePath: path });
+      if (res.ok) { setMsg({ ok: true, text: "Documento subido." }); setFile(null); setTitle(""); onDone(); }
+      else setMsg({ ok: false, text: res.error });
+    });
+  };
+
+  const list = employeeId ? documents.filter((d) => d.employee_id === employeeId) : documents;
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-2xl bg-surface/55 p-6">
+        <p className="section-eyebrow mb-4">Subir documento</p>
+        <div className="flex flex-wrap items-end gap-2">
+          <Field label="Empleado">
+            <select value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} className="h-9 rounded-lg bg-surface px-2 text-[13px] text-ink min-w-[160px]">
+              {employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+            </select>
+          </Field>
+          <Field label="Tipo">
+            <select value={category} onChange={(e) => setCategory(e.target.value)} className="h-9 rounded-lg bg-surface px-2 text-[13px] text-ink">
+              <option value="nomina">Nómina</option>
+              <option value="contrato">Contrato</option>
+              <option value="documento">Documento</option>
+            </select>
+          </Field>
+          {category === "nomina" ? (
+            <Field label="Mes"><input type="month" value={period} onChange={(e) => setPeriod(e.target.value)} className="h-9 rounded-lg bg-surface px-2 text-[13px] text-ink" /></Field>
+          ) : (
+            <Field label="Título"><input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="p. ej. Contrato 2026" className="h-9 rounded-lg bg-surface px-2.5 text-[13px] text-ink" /></Field>
+          )}
+          <Field label="Archivo (PDF)"><input type="file" accept="application/pdf,image/*" onChange={(e) => setFile(e.target.files?.[0] || null)} className="text-[12px] text-muted" /></Field>
+          <button onClick={submit} disabled={pending} className="btn-primary h-9 text-[13px] disabled:opacity-50">{pending ? "Subiendo…" : "Subir"}</button>
+        </div>
+        {msg && <p className={`text-micro mt-2 ${msg.ok ? "text-success" : "text-danger"}`}>{msg.text}</p>}
+      </div>
+
+      <div className="rounded-2xl bg-surface/55 p-6">
+        <p className="section-eyebrow mb-4">Documentos {employeeId ? `· ${nameById.get(employeeId)}` : ""}</p>
+        {list.length === 0 ? (
+          <p className="text-small text-mutedSoft">Sin documentos.</p>
+        ) : (
+          <ul className="divide-y divide-border/50">
+            {list.map((d) => <DocRow key={d.id} d={d} who={nameById.get(d.employee_id)} onDone={onDone} />)}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function DocRow({ d, who, onDone }) {
+  const [pending, run] = useTransition();
+  const open = () => run(async () => { const r = await getDocumentUrl(d.id); if (r.ok) window.open(r.url, "_blank"); });
+  const del = () => run(async () => { const r = await deleteDocument(d.id); if (r.ok) onDone(); });
+  const label = d.title || (d.category === "nomina" ? `Nómina ${d.period}` : d.category === "contrato" ? "Contrato" : "Documento");
+  return (
+    <li className="flex items-center justify-between gap-3 py-2.5">
+      <div className="min-w-0">
+        <p className="text-small text-ink truncate">{label} <span className="text-mutedSoft font-normal">· {who}</span></p>
+        <p className="text-micro text-mutedSoft">{fmtDate(d.created_at.slice(0, 10))}</p>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <button onClick={open} disabled={pending} className="btn-ghost h-8 text-[12.5px]">Ver</button>
+        <button onClick={del} disabled={pending} className="h-8 w-8 grid place-items-center rounded-lg text-mutedSoft hover:text-danger hover:bg-dangerSoft/50 transition">✕</button>
+      </div>
+    </li>
+  );
+}
+
+function Field({ label, children }) {
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="text-micro text-mutedSoft">{label}</span>
+      {children}
+    </label>
   );
 }
 

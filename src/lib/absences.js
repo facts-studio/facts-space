@@ -12,8 +12,13 @@ export const ABSENCE_TYPES = {
 export const absenceLabel = (t) => ABSENCE_TYPES[t]?.label || t;
 export const absenceColor = (t) => ABSENCE_TYPES[t]?.color || "info";
 
-// Opciones para selects, en orden.
-export const ABSENCE_OPTIONS = Object.entries(ABSENCE_TYPES).map(([value, v]) => ({ value, label: v.label }));
+// Opciones (simplificadas) para el selector al solicitar. El resto de valores
+// del catálogo siguen siendo válidos para datos existentes.
+export const ABSENCE_OPTIONS = [
+  { value: "vacaciones", label: "Vacaciones" },
+  { value: "permiso", label: "Permiso retribuido" },
+  { value: "baja", label: "Baja médica" },
+];
 
 // Permisos retribuidos orientativos (art. 37.3 ET) para ayudar al solicitar.
 export const PERMISOS_RETRIBUIDOS = [

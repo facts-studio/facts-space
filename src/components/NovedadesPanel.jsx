@@ -46,12 +46,27 @@ function Item({ tone, icon, tag, title, sub, cta, to }) {
   );
 }
 
-export default function NovedadesPanel({ news = [] }) {
+export default function NovedadesPanel({ news = [], pendingApprovals = 0 }) {
   // De momento, solo 3 novedades de ejemplo.
   const items = news.slice(0, 3);
 
   return (
     <aside className="lg:sticky lg:top-0 space-y-2.5">
+      {pendingApprovals > 0 && (
+        <Link
+          href="/admin"
+          className="block rounded-2xl bg-warnSoft/40 hover:bg-warnSoft/60 transition p-4 mb-1"
+        >
+          <div className="flex items-center gap-2 mb-1">
+            <span className="h-2 w-2 rounded-full bg-warn" />
+            <span className="text-[10px] uppercase tracking-[0.14em] font-semibold text-warn">Por aprobar</span>
+          </div>
+          <p className="text-body font-semibold text-ink leading-snug">
+            {pendingApprovals} {pendingApprovals === 1 ? "solicitud pendiente" : "solicitudes pendientes"}
+          </p>
+          <p className="text-micro text-mutedSoft mt-0.5">Revisar en Administrar →</p>
+        </Link>
+      )}
       <div className="flex items-center gap-2 mb-1.5">
         <span className="text-caption uppercase tracking-[0.16em] text-mutedSoft">Novedades</span>
         <span className="text-caption text-mutedSoft tabular-nums">{items.length}</span>

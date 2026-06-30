@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { fmtRange, fmtDate } from "@/lib/mock";
 import { ABSENCE_TYPES } from "@/lib/absences";
+import { getDocumentUrl } from "@/lib/actions/documents";
 
 const TABS = [
   ["resumen", "Resumen"],
@@ -20,7 +21,9 @@ const STATUS = {
   cancelled: ["Cancelada", "bg-surface2 text-muted"],
 };
 
-export default function MiEspacioClient({ me, overview, missingCount, requests = [] }) {
+export default function MiEspacioClient({ me, overview, missingCount, requests = [], documents = [] }) {
+  const nominas = documents.filter((d) => d.category === "nomina");
+  const otros = documents.filter((d) => d.category !== "nomina");
   const [tab, setTab] = useState("resumen");
   return (
     <div className="space-y-3">
@@ -39,8 +42,8 @@ export default function MiEspacioClient({ me, overview, missingCount, requests =
       {tab === "resumen" && <Resumen me={me} overview={overview} missingCount={missingCount} />}
       {tab === "ausencias" && <Ausencias requests={requests} />}
       {tab === "datos" && <Datos me={me} />}
-      {tab === "nominas" && <Soon title="Nóminas" text="Aquí verás y descargarás tus nóminas cuando administración las publique." />}
-      {tab === "documentos" && <Soon title="Documentos" text="Aquí estarán tu contrato y documentos." />}
+      {tab === "nominas" && <DocList title="Nóminas" items={nominas} empty="Aún no hay nóminas publicadas." />}
+      {tab === "documentos" && <DocList title="Documentos" items={otros} empty="Aún no hay documentos." />}
     </div>
   );
 }
@@ -152,6 +155,32 @@ function FieldCard({ title, rows }) {
   );
 }
 
+function DocList({ title, items, empty }) {
+  const [pending, run] = useTransition();
+  const open = (id) => run(async () => { const r = await getDocumentUrl(id); if (r.ok) window.open(r.url, "_blank"); });
+  const labelOf = (d) => d.title || (d.category === "nomina" ? `Nómina ${d.period}` : d.category === "contrato" ? "Contrato" : "Documento");
+  return (
+    <div className="rounded-2xl bg-surface/55 p-6">
+      <p className="section-eyebrow mb-4">{title}</p>
+      {items.length === 0 ? (
+        <p className="text-small text-mutedSoft">{empty}</p>
+      ) : (
+        <ul className="divide-y divide-border/50">
+          {items.map((d) => (
+            <li key={d.id} className="flex items-center justify-between gap-3 py-2.5">
+              <div className="min-w-0">
+                <p className="text-small text-ink truncate">{labelOf(d)}</p>
+                <p className="text-micro text-mutedSoft">{fmtDate(d.created_at.slice(0, 10))}</p>
+              </div>
+              <button onClick={() => open(d.id)} disabled={pending} className="btn-ghost h-8 text-[12.5px]">Descargar</button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function Stat({ label, value, sub }) {
   return (
     <div className="rounded-2xl bg-surface/55 p-5">
@@ -171,11 +200,3 @@ function QuickLink({ href, title, desc }) {
   );
 }
 
-function Soon({ title, text }) {
-  return (
-    <div className="rounded-2xl bg-surface/55 p-6">
-      <p className="section-eyebrow mb-2">{title}</p>
-      <p className="text-small text-mutedSoft">{text}</p>
-    </div>
-  );
-}

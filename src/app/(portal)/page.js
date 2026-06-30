@@ -6,6 +6,7 @@ import { NEWS, LINKS } from "@/lib/mock";
 import { CLIENTS } from "@/lib/content";
 import { getCalendarEvents } from "@/lib/data/calendar";
 import { getCurrentEmployee } from "@/lib/data/helpers";
+import { getPendingVacations } from "@/lib/data/admin";
 
 function favicon(url) {
   try { return `https://www.google.com/s2/favicons?domain=${new URL(url).hostname}&sz=64`; } catch { return null; }
@@ -28,6 +29,7 @@ const SHORTCUTS = [
 export default async function HomePage() {
   const [events, me] = await Promise.all([getCalendarEvents(), getCurrentEmployee()]);
   const nombre = me?.name?.split(" ")[0] || "equipo";
+  const pendingApprovals = me?.is_admin ? (await getPendingVacations()).length : 0;
   return (
     <div className="grid lg:grid-cols-[minmax(0,1fr)_320px] gap-8 lg:gap-12 items-start">
       <BirthdayConfetti />
@@ -81,7 +83,7 @@ export default async function HomePage() {
       </div>
 
       {/* Columna derecha — Novedades */}
-      <NovedadesPanel news={NEWS} events={events} />
+      <NovedadesPanel news={NEWS} events={events} pendingApprovals={pendingApprovals} />
     </div>
   );
 }
