@@ -81,16 +81,14 @@ export default function FichajeClient({ entries, month, todayISO }) {
             {days.map(([d, list]) => {
               const total = list.reduce((s, e) => s + durMs(e), 0);
               return (
-                <li key={d} className="py-3 flex items-start justify-between gap-4">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-small text-ink capitalize">{fmtDayLabel(d)}</p>
-                    <div className="flex flex-wrap gap-1.5 mt-1.5">
-                      {list.map((e) => (
-                        <EntryChip key={e.id} entry={e} onDone={() => router.refresh()} />
-                      ))}
-                    </div>
+                <li key={d} className="py-2.5 flex items-center gap-4">
+                  <span className="text-small text-ink capitalize w-[210px] shrink-0 truncate">{fmtDayLabel(d)}</span>
+                  <div className="flex items-center gap-1.5 flex-1 min-w-0 overflow-x-auto">
+                    {list.map((e) => (
+                      <EntryChip key={e.id} entry={e} onDone={() => router.refresh()} />
+                    ))}
                   </div>
-                  <span className="text-small text-ink tabular-nums shrink-0 pt-0.5">{formatDuration(total)}</span>
+                  <span className="text-small text-ink tabular-nums shrink-0">{formatDuration(total)}</span>
                 </li>
               );
             })}
