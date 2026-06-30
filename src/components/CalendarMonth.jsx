@@ -152,6 +152,51 @@ export default function CalendarMonth({ events = [], canRequest = false }) {
     return s;
   }, [events]);
 
+  // ── Solicitud de vacaciones: el rango se elige clicando en el propio calendario.
+  const [reqMode, setReqMode] = useState(false);
+  const [reqStart, setReqStart] = useState(null);
+  const [reqEnd, setReqEnd] = useState(null);
+  const [reqNote, setReqNote] = useState("");
+  const [reqMsg, setReqMsg] = useState(null);
+  const [pending, startTransition] = useTransition();
+
+  const reqEndEff = reqEnd || reqStart;
+  const reqWd = reqStart ? workingDaysBetween(reqStart, reqEndEff, festivoSet) : 0;
+
+  const startRequest = () => {
+    setReqMode(true);
+    setReqStart(selected);
+    setReqEnd(null);
+    setReqNote("");
+    setReqMsg(null);
+  };
+  const cancelRequest = () => {
+    setReqMode(false);
+    setReqStart(null);
+    setReqEnd(null);
+    setReqMsg(null);
+  };
+  const submitRequest = () => {
+    setReqMsg(null);
+    startTransition(async () => {
+      const res = await requestVacation({ startDate: reqStart, endDate: reqEndEff, note: reqNote });
+      if (res.ok) setReqMsg({ ok: true, text: `Solicitud enviada · ${res.workingDays} ${res.workingDays === 1 ? "día laborable" : "días laborables"}. Pendiente de aprobación.` });
+      else setReqMsg({ ok: false, text: res.error });
+    });
+  };
+
+  // Click en un día: en modo solicitud fija inicio/fin del rango; si no, abre el
+  // panel del día.
+  const onDayClick = (k) => {
+    if (reqMode) {
+      setReqMsg(null);
+      if (!reqStart || k < reqStart || reqEnd) { setReqStart(k); setReqEnd(null); }
+      else setReqEnd(k);
+      return;
+    }
+    setSelected((cur) => (cur === k ? null : k));
+  };
+
   return (
     <div className={`h-[calc(100vh-5rem)] ${selected ? "lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-5 lg:items-stretch" : ""}`}>
       <div className="flex flex-col min-h-0 h-full">
@@ -269,18 +314,24 @@ export default function CalendarMonth({ events = [], canRequest = false }) {
             const items = (byDay.get(k) || EMPTY).filter(pass);
             const extra = items.length - MAX_CHIPS;
             const hasFestivo = items.some((e) => e.type === "festivo");
+            const inReq = reqMode && reqStart && k >= reqStart && k <= reqEndEff;
+            const isReqEdge = reqMode && (k === reqStart || k === reqEndEff);
             return (
               <div
                 key={i}
-                onClick={() => setSelected((cur) => (cur === k ? null : k))}
+                onClick={() => onDayClick(k)}
                 className={`h-full min-h-[84px] rounded-xl border p-1.5 flex flex-col gap-1 cursor-pointer transition ${
-                  isToday
-                    ? "border-brand/55 bg-brand/[0.045] ring-1 ring-brand/30"
-                    : isSel
-                      ? "border-ink/45 bg-surface2/40"
-                      : hasFestivo
-                        ? "border-success/20 bg-successSoft/45 hover:border-success/35"
-                        : "border-borderStrong/45 hover:border-borderStrong/70"
+                  isReqEdge
+                    ? "border-brand bg-brand/[0.12] ring-2 ring-brand/50"
+                    : inReq
+                      ? "border-brand/45 bg-brand/[0.07]"
+                      : isToday
+                        ? "border-brand/55 bg-brand/[0.045] ring-1 ring-brand/30"
+                        : isSel
+                          ? "border-ink/45 bg-surface2/40"
+                          : hasFestivo
+                            ? "border-success/20 bg-successSoft/45 hover:border-success/35"
+                            : "border-borderStrong/45 hover:border-borderStrong/70"
                 } ${!inMonth ? "opacity-45" : ""}`}
               >
                 <div className="flex items-center justify-between px-0.5">
@@ -362,42 +413,72 @@ export default function CalendarMonth({ events = [], canRequest = false }) {
       {selected && (
         <aside className="mt-6 lg:mt-0 lg:h-full lg:overflow-y-auto rounded-2xl border border-border/60 bg-surface/40 p-4">
           <div className="flex items-center justify-between gap-2 mb-3">
-            <span className="text-[11px] uppercase tracking-[0.12em] text-mutedSoft capitalize">{fmtSel(selected)}</span>
-            <button onClick={() => setSelected(null)} aria-label="Cerrar" className="h-6 w-6 inline-flex items-center justify-center rounded-md text-mutedSoft hover:text-ink hover:bg-surface2/60 transition">
+            <span className="text-[11px] uppercase tracking-[0.12em] text-mutedSoft capitalize">
+              {reqMode ? "Nueva solicitud" : fmtSel(selected)}
+            </span>
+            <button onClick={() => (reqMode ? cancelRequest() : setSelected(null))} aria-label="Cerrar" className="h-6 w-6 inline-flex items-center justify-center rounded-md text-mutedSoft hover:text-ink hover:bg-surface2/60 transition">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
             </button>
           </div>
-          {selItems.length > 0 ? (
-            <ul className="space-y-2">
-              {selItems.map((e, j) => {
-                const t = EVENT_TYPES[e.type];
-                const person = WITH_PERSON.has(e.type) && e.who ? MEMBER.get(e.who) : null;
-                return (
-                  <li key={j} className={`rounded-lg border p-2.5 flex items-center gap-3 ${TILE[t.color]}`}>
-                    {person?.photo ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={person.photo} alt="" className="w-9 h-9 rounded-full object-cover shrink-0 ring-2 ring-paper" />
-                    ) : (
-                      <span className={`w-9 h-9 rounded-full grid place-items-center shrink-0 bg-paper ${TEXT[t.color]}`}>
-                        <span className={`w-2.5 h-2.5 rounded-full ${DOT[t.color]}`} />
-                      </span>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="text-small text-ink font-medium leading-snug truncate">{e.title}</p>
-                      <p className={`text-micro font-medium ${TEXT[t.color]}`}>
-                        {t.label}{e.who ? <span className="text-mutedSoft font-normal"> · {e.who}</span> : null}
-                      </p>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          ) : (
-            <div className="text-center text-mutedSoft text-[13px] py-8">Nada este día.</div>
-          )}
 
-          {canRequest && (
-            <DayRequestForm key={selected} dayISO={selected} festivoSet={festivoSet} />
+          {reqMode ? (
+            <div className="space-y-3">
+              <div className="rounded-lg bg-brandSoft/40 border border-brand/15 p-3">
+                <p className="text-micro text-brand font-medium mb-1.5">Elige el rango en el calendario</p>
+                <p className="text-small text-ink capitalize leading-snug">
+                  {reqStart ? fmtSel(reqStart) : "—"}
+                  {reqStart && reqEndEff !== reqStart && <> <span className="text-mutedSoft lowercase">al</span> {fmtSel(reqEndEff)}</>}
+                </p>
+                <p className="text-micro text-mutedSoft mt-1">
+                  {reqWd > 0 ? <>{reqWd} {reqWd === 1 ? "día laborable" : "días laborables"} · findes y festivos no cuentan</> : "Sin días laborables en el rango."}
+                </p>
+              </div>
+              <input className="input !h-9 !py-1" placeholder="Nota (opcional)" value={reqNote} onChange={(e) => setReqNote(e.target.value)} />
+              {reqMsg && <p className={`text-micro ${reqMsg.ok ? "text-success" : "text-danger"}`}>{reqMsg.text}</p>}
+              <div className="flex items-center gap-2">
+                <button onClick={submitRequest} disabled={pending || reqWd <= 0 || (reqMsg && reqMsg.ok)} className="btn-brand h-9 flex-1 text-[13px] disabled:opacity-50">
+                  {pending ? "Enviando…" : reqMsg?.ok ? "Enviada ✓" : "Enviar solicitud"}
+                </button>
+                <button onClick={cancelRequest} className="btn-ghost h-9 text-[13px]">{reqMsg?.ok ? "Cerrar" : "Cancelar"}</button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {selItems.length > 0 ? (
+                <ul className="space-y-2">
+                  {selItems.map((e, j) => {
+                    const t = EVENT_TYPES[e.type];
+                    const person = WITH_PERSON.has(e.type) && e.who ? MEMBER.get(e.who) : null;
+                    return (
+                      <li key={j} className={`rounded-lg border p-2.5 flex items-center gap-3 ${TILE[t.color]}`}>
+                        {person?.photo ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={person.photo} alt="" className="w-9 h-9 rounded-full object-cover shrink-0 ring-2 ring-paper" />
+                        ) : (
+                          <span className={`w-9 h-9 rounded-full grid place-items-center shrink-0 bg-paper ${TEXT[t.color]}`}>
+                            <span className={`w-2.5 h-2.5 rounded-full ${DOT[t.color]}`} />
+                          </span>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-small text-ink font-medium leading-snug truncate">{e.title}</p>
+                          <p className={`text-micro font-medium ${TEXT[t.color]}`}>
+                            {t.label}{e.who ? <span className="text-mutedSoft font-normal"> · {e.who}</span> : null}
+                          </p>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <div className="text-center text-mutedSoft text-[13px] py-8">Nada este día.</div>
+              )}
+
+              {canRequest && (
+                <button onClick={startRequest} className="btn-brand w-full h-10 mt-4 text-[13px] inline-flex items-center justify-center gap-2">
+                  🏖️ Solicitar vacaciones
+                </button>
+              )}
+            </>
           )}
         </aside>
       )}
@@ -408,66 +489,4 @@ export default function CalendarMonth({ events = [], canRequest = false }) {
 function fmtSel(k) {
   const [y, m, d] = k.split("-").map(Number);
   return new Date(y, m - 1, d).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
-}
-
-// Formulario de solicitud de vacaciones para el día seleccionado. Se remonta por
-// día (key=dayISO), así su estado se resetea al cambiar de día.
-function DayRequestForm({ dayISO, festivoSet }) {
-  const [open, setOpen] = useState(false);
-  const [end, setEnd] = useState(dayISO);
-  const [note, setNote] = useState("");
-  const [msg, setMsg] = useState(null);
-  const [pending, startTransition] = useTransition();
-
-  const endISO = end && end >= dayISO ? end : dayISO;
-  const wd = workingDaysBetween(dayISO, endISO, festivoSet);
-
-  const submit = () => {
-    setMsg(null);
-    startTransition(async () => {
-      const res = await requestVacation({ startDate: dayISO, endDate: endISO, note });
-      if (res.ok) setMsg({ ok: true, text: `Solicitud enviada · ${res.workingDays} ${res.workingDays === 1 ? "día laborable" : "días laborables"}. Pendiente de aprobación.` });
-      else setMsg({ ok: false, text: res.error });
-    });
-  };
-
-  if (!open) {
-    return (
-      <button
-        onClick={() => setOpen(true)}
-        className="btn-brand w-full h-10 mt-4 text-[13px] inline-flex items-center justify-center gap-2"
-      >
-        🏖️ Solicitar vacaciones
-      </button>
-    );
-  }
-
-  return (
-    <div className="mt-4 pt-4 border-t border-border/60">
-      <p className="label mb-2">Solicitar vacaciones</p>
-      <div className="space-y-2.5">
-        <div className="flex items-center justify-between gap-3 text-small">
-          <span className="text-mutedSoft">Desde</span>
-          <span className="text-ink capitalize">{fmtSel(dayISO)}</span>
-        </div>
-        <label className="flex items-center justify-between gap-3 text-small">
-          <span className="text-mutedSoft shrink-0">Hasta</span>
-          <input type="date" className="input !h-9 !py-1 max-w-[170px]" min={dayISO} value={endISO} onChange={(e) => setEnd(e.target.value)} />
-        </label>
-        <input className="input !h-9 !py-1" placeholder="Nota (opcional)" value={note} onChange={(e) => setNote(e.target.value)} />
-        <p className="text-micro text-mutedSoft">
-          {wd > 0 ? <>{wd} {wd === 1 ? "día laborable" : "días laborables"} (findes y festivos no cuentan)</> : "Sin días laborables en el rango."}
-        </p>
-        {msg && (
-          <p className={`text-micro ${msg.ok ? "text-success" : "text-danger"}`}>{msg.text}</p>
-        )}
-        <div className="flex items-center gap-2 pt-1">
-          <button onClick={submit} disabled={pending || wd <= 0 || (msg && msg.ok)} className="btn-brand h-9 flex-1 text-[13px] disabled:opacity-50">
-            {pending ? "Enviando…" : msg?.ok ? "Enviada ✓" : "Enviar solicitud"}
-          </button>
-          <button onClick={() => setOpen(false)} className="btn-ghost h-9 text-[13px]">Cerrar</button>
-        </div>
-      </div>
-    </div>
-  );
 }
