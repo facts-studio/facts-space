@@ -25,30 +25,41 @@ export default function LoginPage() {
 
   return (
     <main className="min-h-screen grid place-items-center px-6">
-      <div className="w-full max-w-[400px] fade-up">
-        <div className="text-center mb-8">
-          <FctsMark className="h-9 w-auto text-brand mx-auto mb-5" />
-          <p className="section-eyebrow mb-3">F*cts Studio</p>
-          <h1 className="font-display text-[34px] leading-[1.1] text-ink">
-            Portal <span className="title-italic">interno</span>
-          </h1>
-          <p className="section-helper mx-auto">
-            Calendario, políticas y recursos del equipo, todo en un sitio.
-          </p>
-        </div>
+      <div className="w-full max-w-[320px] text-center fade-up">
+        <FctsMark className="h-8 w-auto text-brand mx-auto mb-8" />
 
-        <div className="card p-6">
-          <button
-            onClick={signIn}
-            disabled={loading}
-            className="btn-primary w-full h-11 text-[14px] disabled:opacity-60"
-          >
-            {loading ? "Conectando…" : "Entrar con Google"}
-          </button>
-          <p className="text-micro text-mutedSoft text-center mt-4">
-            Solo cuentas <span className="text-muted">@{domain}</span>
-          </p>
-        </div>
+        <h1 className="font-display text-[26px] leading-[1.15] tracking-[-0.02em] text-ink">
+          Portal interno
+        </h1>
+        <p className="text-[14px] text-muted mt-2 mb-9">
+          Entra con tu cuenta del equipo.
+        </p>
+
+        <button
+          onClick={signIn}
+          disabled={loading}
+          className="w-full h-11 inline-flex items-center justify-center gap-2.5 rounded-full bg-ink text-bg text-[14px] font-medium transition hover:bg-inkSoft active:scale-[0.99] disabled:opacity-60"
+        >
+          {loading ? (
+            "Conectando…"
+          ) : (
+            <>
+              <span className="grid place-items-center h-5 w-5 rounded-full bg-bg shrink-0">
+                <svg width="12" height="12" viewBox="0 0 24 24" aria-hidden>
+                  <path fill="#4285F4" d="M23 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.2a5.3 5.3 0 0 1-2.3 3.5v2.9h3.7c2.2-2 3.4-5 3.4-8.6z" />
+                  <path fill="#34A853" d="M12 24c3.1 0 5.7-1 7.6-2.8l-3.7-2.9c-1 .7-2.3 1.1-3.9 1.1-3 0-5.5-2-6.4-4.7H1.8v3C3.7 21.4 7.5 24 12 24z" />
+                  <path fill="#FBBC05" d="M5.6 14.7a7.2 7.2 0 0 1 0-4.6v-3H1.8a12 12 0 0 0 0 10.6z" />
+                  <path fill="#EA4335" d="M12 4.8c1.7 0 3.2.6 4.4 1.7l3.3-3.3C17.7 1.2 15.1 0 12 0 7.5 0 3.7 2.6 1.8 6.4l3.8 3a7.1 7.1 0 0 1 6.4-4.6z" />
+                </svg>
+              </span>
+              Entrar con Google
+            </>
+          )}
+        </button>
+
+        <p className="text-micro text-mutedSoft mt-5">
+          Solo cuentas @{domain}
+        </p>
       </div>
     </main>
   );
