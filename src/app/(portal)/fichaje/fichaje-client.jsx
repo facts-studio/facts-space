@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { addEntry, voidEntry, autofillTime } from "@/lib/actions/time";
 import { madridTime, madridMinutes, formatDuration } from "@/lib/dates";
+import { Surface, Stat, Badge, Field, Input, Tabs, Button, EmptyState } from "@/components/ui";
 
 const durMs = (e) => (e.clock_out ? new Date(e.clock_out) - new Date(e.clock_in) : 0);
 
@@ -28,12 +29,12 @@ function dayLabel(iso) {
   return `${wd.charAt(0).toUpperCase() + wd.slice(1).replace(".", "")} ${d}`;
 }
 
-const PILL = {
-  pending: "bg-warnSoft/60 text-warn",
-  validated: "bg-successSoft/60 text-success",
-  festivo: "bg-successSoft/60 text-success",
-  vacaciones: "bg-warnSoft/60 text-warn",
-  cumple: "bg-infoSoft/60 text-info",
+const PILL_LABEL = {
+  validated: "Validado",
+  pending: "Pendiente",
+  festivo: "Festivo",
+  vacaciones: "Vacaciones",
+  cumple: "Cumpleaños",
 };
 
 export default function FichajeClient({ entries, festivos = [], vacaciones = [], birthday, todayISO, month, missing = [] }) {
@@ -46,7 +47,7 @@ export default function FichajeClient({ entries, festivos = [], vacaciones = [],
   const [fromDate, setFromDate] = useState(missing[0] || `${month}-01`);
   const [toDate, setToDate] = useState(todayISO);
   const [start, setStart] = useState("09:00");
-  const [end, setEnd] = useState("18:00");
+  const [end, setEnd] = useState("17:00"); // jornada de 8h por defecto
   const cardRef = useRef(null);
 
   const ficharDay = (iso) => {
@@ -54,11 +55,20 @@ export default function FichajeClient({ entries, festivos = [], vacaciones = [],
     setDate(iso);
     cardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
-  const autofillFrom = (iso) => {
-    setMode("auto");
-    setFromDate(iso);
-    setToDate(todayISO);
-    cardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  // Horario habitual para el autorrellenado directo desde el aviso.
+  // Autorrellenar ficha SIEMPRE una jornada de 8h (09:00–17:00).
+  const DEFAULT_START = "09:00";
+  const DEFAULT_END = "17:00";
+  const [bannerMsg, setBannerMsg] = useState(null);
+  const [bannerPending, runBanner] = useTransition();
+  const autofillAll = () => {
+    setBannerMsg(null);
+    runBanner(async () => {
+      const res = await autofillTime({ fromDate: missing[0], toDate: todayISO, start: DEFAULT_START, end: DEFAULT_END });
+      if (res.ok) { setBannerMsg({ ok: true, text: `Fichados ${res.count} días (${DEFAULT_START}–${DEFAULT_END}).` }); refresh(); }
+      else setBannerMsg({ ok: false, text: res.error });
+    });
   };
 
   // Resúmenes
@@ -102,16 +112,17 @@ export default function FichajeClient({ entries, festivos = [], vacaciones = [],
     <div className="space-y-3">
       {/* Días sin fichar */}
       {missing.length > 0 && (
-        <div className="rounded-2xl bg-warnSoft/30 p-4 flex items-center justify-between gap-4 flex-wrap">
+        <Surface pad="none" className="bg-warnSoft/30 p-4 flex items-center justify-between gap-4 flex-wrap">
           <p className="text-small text-ink">
             Llevas <b>{missing.length}</b> {missing.length === 1 ? "día laborable" : "días laborables"} sin fichar
             <span className="text-mutedSoft"> · desde el {dayLabel(missing[0])}</span>
+            {bannerMsg && <span className={`ml-1 ${bannerMsg.ok ? "text-success" : "text-danger"}`}> · {bannerMsg.text}</span>}
           </p>
           <div className="flex items-center gap-2">
-            <button onClick={() => ficharDay(missing[missing.length - 1])} className="btn-ghost h-8 text-[12.5px]">Fichar uno</button>
-            <button onClick={() => autofillFrom(missing[0])} className="btn-primary h-8 text-[12.5px]">Autorrellenar todos</button>
+            <Button variant="ghost" size="sm" onClick={() => ficharDay(missing[missing.length - 1])}>Fichar uno</Button>
+            <Button size="sm" onClick={autofillAll} disabled={bannerPending}>{bannerPending ? "…" : "Autorrellenar todos"}</Button>
           </div>
-        </div>
+        </Surface>
       )}
 
       {/* Resúmenes */}
@@ -130,7 +141,7 @@ export default function FichajeClient({ entries, festivos = [], vacaciones = [],
       </div>
 
       {/* Historial */}
-      <div className="rounded-2xl bg-surface/55 p-6">
+      <Surface>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-title text-ink capitalize">{monthLabel}</h2>
           <div className="flex items-center gap-2">
@@ -149,9 +160,7 @@ export default function FichajeClient({ entries, festivos = [], vacaciones = [],
         </div>
 
         {allDays.length === 0 ? (
-          <div className="rounded-2xl bg-surface2/40 px-4 py-12 text-center text-[13px] text-mutedSoft mt-3">
-            Nada que mostrar
-          </div>
+          <EmptyState className="mt-3">Nada que mostrar</EmptyState>
         ) : (
           <ul className="divide-y divide-border/50">
             {allDays.map(({ iso, dow }) => {
@@ -169,7 +178,7 @@ export default function FichajeClient({ entries, festivos = [], vacaciones = [],
             })}
           </ul>
         )}
-      </div>
+      </Surface>
     </div>
   );
 }
@@ -196,8 +205,15 @@ function DayRow({ iso, kind, entries, onFichar, onDone }) {
               return (
                 <span
                   key={e.id}
-                  className="absolute top-0 h-full rounded-full bg-ink/35"
-                  style={{ left: `${clamp(((s - WIN_START) / WIN_SPAN) * 100)}%`, width: `${clamp(((en - s) / WIN_SPAN) * 100)}%` }}
+                  className="absolute top-0 h-full rounded-full"
+                  style={{
+                    left: `${clamp(((s - WIN_START) / WIN_SPAN) * 100)}%`,
+                    width: `${clamp(((en - s) / WIN_SPAN) * 100)}%`,
+                    // Verde suave "fichado correctamente" + rayas diagonales sutiles.
+                    backgroundColor: "rgb(var(--ct-success) / 0.22)",
+                    backgroundImage:
+                      "repeating-linear-gradient(45deg, rgb(var(--ct-success) / 0.28) 0 1.5px, transparent 1.5px 7px)",
+                  }}
                   title={`${madridTime(e.clock_in)}–${e.clock_out ? madridTime(e.clock_out) : "—"}`}
                 />
               );
@@ -221,36 +237,20 @@ function DayRow({ iso, kind, entries, onFichar, onDone }) {
       <span className="w-[120px] shrink-0 flex items-center justify-end gap-1.5">
         {kind === "worked" ? (
           <>
-            <Pill kind={status}>{status === "validated" ? "Validado" : "Pendiente"}</Pill>
+            <Badge kind={status}>{PILL_LABEL[status]}</Badge>
             {entries.length === 1 && (
               <button onClick={() => anular(entries[0].id)} disabled={pending} aria-label="Anular" className="h-5 w-5 grid place-items-center rounded-full text-mutedSoft hover:text-danger hover:bg-dangerSoft/50 transition">✕</button>
             )}
           </>
         ) : kind === "pending" ? (
-          <Pill kind="pending">Pendiente</Pill>
+          <Badge kind="pending">Pendiente</Badge>
         ) : kind === "festivo" || kind === "vacaciones" || kind === "cumple" ? (
-          <Pill kind={kind}>{kind === "festivo" ? "Festivo" : kind === "vacaciones" ? "Vacaciones" : "Cumpleaños"}</Pill>
+          <Badge kind={kind}>{PILL_LABEL[kind]}</Badge>
         ) : null}
       </span>
     </li>
   );
 }
-
-function Pill({ kind, children }) {
-  return <span className={`rounded-full px-2.5 py-0.5 text-micro font-medium ${PILL[kind]}`}>{children}</span>;
-}
-
-function Stat({ label, value, capitalize }) {
-  return (
-    <div className="rounded-2xl bg-surface/55 p-5">
-      <p className={`section-eyebrow mb-2 ${capitalize ? "capitalize" : ""}`}>{label}</p>
-      <p className="font-display text-[26px] leading-none text-ink tabular-nums">{value}</p>
-    </div>
-  );
-}
-
-const fieldCls = "h-9 rounded-lg border border-border bg-surface px-3 text-[13px] text-ink outline-none focus:border-borderStrong";
-
 function FicharCard({ mode, setMode, date, setDate, fromDate, setFromDate, toDate, setToDate, start, setStart, end, setEnd, onDone }) {
   const [msg, setMsg] = useState(null);
   const [pending, run] = useTransition();
@@ -265,43 +265,34 @@ function FicharCard({ mode, setMode, date, setDate, fromDate, setFromDate, toDat
   };
 
   return (
-    <div className="rounded-2xl bg-surface/55 p-6">
+    <Surface>
       <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
         <p className="section-eyebrow">Fichar</p>
-        <div className="flex items-center bg-surface2/60 rounded-lg p-0.5">
-          {[["manual", "Manual"], ["auto", "Autorrellenar"]].map(([v, l]) => (
-            <button key={v} onClick={() => { setMode(v); setMsg(null); }} className={`px-3 py-1 rounded-md text-[12.5px] transition ${mode === v ? "bg-bg text-ink shadow-sm font-medium" : "text-muted hover:text-ink"}`}>{l}</button>
-          ))}
-        </div>
+        <Tabs
+          tabs={[{ value: "manual", label: "Manual" }, { value: "auto", label: "Autorrellenar" }]}
+          value={mode}
+          onChange={(v) => { setMode(v); setMsg(null); }}
+        />
       </div>
 
       <div className="flex flex-wrap items-end gap-2">
         {mode === "manual" ? (
-          <Labeled label="Día"><input type="date" className={fieldCls} value={date} onChange={(e) => setDate(e.target.value)} /></Labeled>
+          <Field label="Día"><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
         ) : (
           <>
-            <Labeled label="Desde"><input type="date" className={fieldCls} value={fromDate} onChange={(e) => setFromDate(e.target.value)} /></Labeled>
-            <Labeled label="Hasta"><input type="date" className={fieldCls} value={toDate} onChange={(e) => setToDate(e.target.value)} /></Labeled>
+            <Field label="Desde"><Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} /></Field>
+            <Field label="Hasta"><Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} /></Field>
           </>
         )}
-        <Labeled label="Entrada"><input type="time" className={fieldCls} value={start} onChange={(e) => setStart(e.target.value)} /></Labeled>
-        <Labeled label="Salida"><input type="time" className={fieldCls} value={end} onChange={(e) => setEnd(e.target.value)} /></Labeled>
-        <button onClick={submit} disabled={pending} className="btn-primary h-9 text-[13px] disabled:opacity-50">{pending ? "…" : mode === "manual" ? "Añadir" : "Rellenar"}</button>
+        <Field label="Entrada"><Input type="time" value={start} onChange={(e) => setStart(e.target.value)} /></Field>
+        <Field label="Salida"><Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} /></Field>
+        <Button onClick={submit} disabled={pending} className="h-9">{pending ? "…" : mode === "manual" ? "Añadir" : "Rellenar"}</Button>
       </div>
 
       {mode === "auto" && (
         <p className="text-micro text-mutedSoft mt-2 leading-snug">Rellena los días sin fichar del rango con ese horario, saltando findes, festivos, tu cumpleaños y tus vacaciones aprobadas.</p>
       )}
       {msg && <p className={`text-micro mt-2 ${msg.ok ? "text-success" : "text-danger"}`}>{msg.text}</p>}
-    </div>
-  );
-}
-
-function Labeled({ label, children }) {
-  return (
-    <label className="flex flex-col gap-1">
-      <span className="text-micro text-mutedSoft">{label}</span>
-      {children}
-    </label>
+    </Surface>
   );
 }

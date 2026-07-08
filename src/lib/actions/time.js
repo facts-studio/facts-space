@@ -30,6 +30,8 @@ export async function addEntry({ date, start, end }) {
     clock_out: madridToUTC(date, end).toISOString(),
     work_date: date,
     source: "manual",
+    // Sin responsable → no hay quien valide: se da por validado.
+    status: me.manager_id ? "pending" : "validated",
   });
   if (error) return { ok: false, error: error.message };
   revalidatePath("/fichaje");
@@ -89,6 +91,7 @@ export async function autofillTime({ fromDate, toDate, start, end }) {
       clock_out: madridToUTC(d, end).toISOString(),
       work_date: d,
       source: "auto",
+      status: me.manager_id ? "pending" : "validated",
     });
   });
 

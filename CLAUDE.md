@@ -6,11 +6,16 @@ Portal interno de **F*cts Studio** para sustituir a **Holded** en RR.HH.
 Next.js 16.2.9 + React 19 + Tailwind 3.4 + **Supabase** (auth Google `@fcts.studio`).
 Repo `Alvarofcts/fcts-portal`. Trabajo en rama `feat/vacaciones-fichaje`.
 
-## Marca y estética (IMPORTANTE)
-- Paleta **negros y cremas**, NO verde. Acción primaria = `btn-primary` (negro `bg-ink text-bg`).
-  Acentos = ink/neutros (tokens `brand` ya remapeados a negro/crema en `globals.css`).
-- Superficies suaves: contenedores `rounded-2xl bg-surface/55 p-6`, filas `bg-surface2/40`,
-  títulos `section-eyebrow`. **Sin** la clase `card` (paper blanco) ni `border`/outline por todo.
+## Design system (OBLIGATORIO — leer antes de tocar UI)
+- **Norma completa en [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md).** Regla de oro: NO se escriben
+  class strings de UI sueltos. Toda superficie/botón/campo/píldora/métrica sale de una
+  primitiva de `src/components/ui/` (barrel `@/components/ui`): `Surface`, `SectionHeader`,
+  `Stat`, `Badge`, `Field`/`Input`/`Select`, `Tabs`, `DataList`/`DataRow`, `EmptyState`, `Button`.
+- Si el patrón no existe como primitiva, **créalo en `src/components/ui/`** y expórtalo antes de
+  usarlo — el sistema se enriquece, no diverge. Nunca hex ni `text-[Npx]` arbitrarios: usar tokens.
+- Paleta **negros y cremas**, NO verde. Acción primaria = negro (`bg-ink text-bg`).
+- Superficies suaves vía `<Surface>` (`rounded-2xl bg-surface/55`), filas `variant="muted"`.
+  **Sin** la clase `card` (paper blanco) ni `border`/outline por todo.
   Referencia buena: `recursos/page.js`, `VacacionesChecker.jsx`, módulos de fichaje/admin.
 
 ## Arquitectura

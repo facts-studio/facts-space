@@ -11,6 +11,7 @@ import {
   getTimeHoursByEmployee,
 } from "@/lib/data/admin";
 import { getAllDocuments } from "@/lib/data/documents";
+import { getConfiguredLists } from "@/lib/data/clickup";
 import { madridDateISO } from "@/lib/dates";
 
 export default async function AdminPage() {
@@ -38,6 +39,7 @@ export default async function AdminPage() {
     getTimeHoursByEmployee(month),
   ]);
   const documents = await getAllDocuments();
+  const clickupLists = await getConfiguredLists();
 
   return (
     <div>
@@ -51,6 +53,7 @@ export default async function AdminPage() {
         calendarEvents={calendarEvents}
         timeHours={timeHours}
         documents={documents}
+        clickupLists={clickupLists}
         month={month}
         year={year}
       />

@@ -26,7 +26,7 @@ export default async function PortalLayout({ children }) {
     <div className="flex min-h-screen">
       <Sidebar user={user} isAdmin={Boolean(emp?.is_admin)} />
       <main className="flex-1 min-w-0 px-5 md:px-10 py-8 md:py-10">
-        <div className="fade-up">{children}</div>
+        <div className="fade-up mx-auto w-full max-w-[1440px]">{children}</div>
       </main>
     </div>
   );

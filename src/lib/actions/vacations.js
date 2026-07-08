@@ -27,6 +27,9 @@ export async function requestVacation({ startDate, endDate, note = "", type = "v
   const wd = workingDaysBetween(startDate, end, await getFestivos(supabase));
   if (wd <= 0) return { ok: false, error: "Ese rango no tiene días laborables (findes/festivos)." };
 
+  // Sin responsable (manager) → se aprueba automáticamente, no hay quien decida.
+  const autoApprove = !me.manager_id;
+
   const { error } = await supabase.from("vacation_requests").insert({
     employee_id: me.id,
     start_date: startDate,
@@ -34,13 +37,14 @@ export async function requestVacation({ startDate, endDate, note = "", type = "v
     working_days: wd,
     note: note.trim(),
     type,
-    status: "pending",
+    status: autoApprove ? "approved" : "pending",
+    ...(autoApprove ? { decided_by: me.id, decided_at: new Date().toISOString() } : {}),
   });
   if (error) return { ok: false, error: error.message };
 
   revalidatePath("/calendario");
   revalidatePath("/mi-espacio");
-  return { ok: true, workingDays: wd };
+  return { ok: true, workingDays: wd, autoApproved: autoApprove };
 }
 
 // Mis ausencias (todas, recientes primero).

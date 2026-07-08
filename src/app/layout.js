@@ -5,6 +5,8 @@ export const metadata = {
   title: "F*cts Studio · Portal interno",
   description: "Calendario, políticas y recursos del equipo de F*cts Studio.",
   robots: { index: false, follow: false },
+  // Nombre e icono al instalar en la pantalla de inicio del iPhone.
+  appleWebApp: { capable: true, title: "F*cts", statusBarStyle: "black-translucent" },
 };
 
 export const viewport = {

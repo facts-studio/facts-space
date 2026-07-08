@@ -1,6 +1,7 @@
 "use client";
 
 import { EVENT_TYPES, TEAM } from "@/lib/mock";
+import { Surface } from "@/components/ui";
 
 const MEMBER = new Map(TEAM.map((m) => [m.name, m]));
 
@@ -17,6 +18,10 @@ const parse = (iso) => new Date(iso + "T00:00:00");
 const diasHasta = (iso, hoy) => Math.round((startOfDay(parse(iso)) - hoy) / DAY);
 const firstName = (s) => (s || "").split(" ")[0];
 const corto = (iso) => parse(iso).toLocaleDateString("es-ES", { day: "numeric", month: "long" });
+const diaMes = (iso) => {
+  const d = parse(iso);
+  return { day: d.getDate(), month: d.toLocaleDateString("es-ES", { month: "long" }) };
+};
 
 function rel(dias) {
   if (dias <= 0) return "hoy";
@@ -95,7 +100,7 @@ export default function TodayHero({ nombre = "equipo", events = [] }) {
         {vacEnd && <> hasta el <Hi>{vacEnd}</Hi></>}
       </>
     ) : (
-      <><Ico>🏖️</Ico> Hoy {joinNodes(deVacaciones.map((n) => <Hi>{n}</Hi>))} están de vacaciones</>
+      <><Ico>🏖️</Ico> Hoy {joinNodes(deVacaciones.map((n) => <Hi key={n}>{n}</Hi>))} están de vacaciones</>
     );
 
   const partes = [];
@@ -127,6 +132,28 @@ export default function TodayHero({ nombre = "equipo", events = [] }) {
   const shown = new Set([proxCumple?.id, proxFestivo?.id, proxHito?.id, ...vacHoy.map((e) => e.id)].filter(Boolean));
   const fill = futuros.filter((e) => e.dias > 0 && !shown.has(e.id)).slice(0, 2);
 
+  // Agenda de "Lo más cercano": eventos agrupados por día (hoy + próximos días
+  // con eventos). Estilo lista tipo calendario.
+  const isoOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const todayISO = isoOf(hoy);
+  const byDate = new Map();
+  for (const e of futuros) {
+    if (!byDate.has(e.start)) byDate.set(e.start, []);
+    byDate.get(e.start).push(e);
+  }
+  const nextDates = [...byDate.keys()].filter((d) => d > todayISO).sort();
+  const agenda = [todayISO, ...nextDates].slice(0, 4).map((iso) => {
+    const d = parse(iso);
+    return {
+      iso,
+      isToday: iso === todayISO,
+      num: d.getDate(),
+      month: d.toLocaleDateString("es-ES", { month: "long" }),
+      weekday: d.toLocaleDateString("es-ES", { weekday: "short" }).replace(".", ""),
+      events: byDate.get(iso) || [],
+    };
+  });
+
   // skipIcon: omite el emoji cuando el evento anterior es del mismo tipo (no
   // repetir 🏖️ 🏖️ seguidos).
   const ICON = { cumple: "🎂", festivo: "🗓️", hito: "🎯", vacaciones: "🏖️" };
@@ -138,34 +165,57 @@ export default function TodayHero({ nombre = "equipo", events = [] }) {
     return <>{ico}las vacaciones de <Hi>{e.who}</Hi> el <Hi>{corto(e.start)}</Hi></>;
   };
 
+  // Agrupa eventos consecutivos de la misma persona (p. ej. dos tramos de
+  // vacaciones de Carla) para no repetir "las vacaciones de Carla … Carla …".
+  const groupFill = (items) => {
+    const groups = [];
+    for (const e of items) {
+      const last = groups[groups.length - 1];
+      if (last && last.type === e.type && e.type === "vacaciones" && last.who === e.who) {
+        last.events.push(e);
+      } else {
+        groups.push({ type: e.type, who: e.who, title: e.title, events: [e] });
+      }
+    }
+    return groups;
+  };
+  // "el 2 y el 6 de julio" cuando comparten mes; si no, fechas completas.
+  const fechasNode = (evs) => {
+    const parts = evs.map((e) => diaMes(e.start));
+    if (evs.length > 1 && parts.every((p) => p.month === parts[0].month)) {
+      return <>el {joinNodes(parts.map((p) => <Hi key={p.day}>{p.day}</Hi>))} de {parts[0].month}</>;
+    }
+    return joinNodes(evs.map((e) => <>el <Hi>{corto(e.start)}</Hi></>));
+  };
+  const nodeForGroup = (g, skipIcon = false) => {
+    const ico = skipIcon ? null : <><Ico>{ICON[g.type]}</Ico> </>;
+    if (g.type === "cumple") return <>{ico}el cumple de <Hi>{g.who}</Hi> {fechasNode(g.events)}</>;
+    if (g.type === "festivo") return <>{ico}el festivo <Hi>«{g.title}»</Hi> {fechasNode(g.events)}</>;
+    if (g.type === "hito") return <>{ico}el hito <Hi>«{g.title}»</Hi> {fechasNode(g.events)}</>;
+    return <>{ico}las vacaciones de <Hi>{g.who}</Hi> {fechasNode(g.events)}</>;
+  };
+
   // Concordancia de "será/serán": plural si hay más de un evento o si el único
   // es de tipo vacaciones ("las vacaciones … serán").
   const seraVerbo = (items) =>
     items.length > 1 || (items.length === 1 && items[0].type === "vacaciones") ? "serán" : "será";
 
-  // Entradilla y cierre que van variando (deterministas por fecha).
+  // Una sola entradilla que va variando (determinista por fecha). Sin coletilla
+  // de cierre: el contenido cierra solo, más natural.
   const hasContent = hasNow || fill.length > 0;
   const seed = now.getFullYear() + now.getMonth() * 31 + now.getDate();
   const pick = (arr) => arr[seed % arr.length];
   const INTROS_NOW = [
-    "Parece que tenemos algunas cosas.",
     "Esto es lo que se cuece estos días.",
     "Un vistazo rápido a la agenda.",
-    "Vamos a ver qué tenemos por aquí.",
+    "Esto es lo que tenemos por aquí.",
   ];
   const INTROS_CALM = [
     "De momento, tranquilo por aquí.",
     "Poca cosa inmediata, pero atentos.",
-    "Nada urgente ahora mismo.",
-  ];
-  const CLOSINGS = [
-    "Eso es todo por el momento.",
-    "Y poco más por ahora.",
-    "Nada más de momento.",
-    "Lo dicho, a por el día.",
+    "No tenemos nada urgente ahora mismo.",
   ];
   const intro = hasNow ? pick(INTROS_NOW) : pick(INTROS_CALM);
-  const closing = pick(CLOSINGS);
 
   return (
     <header className="pb-2 mb-8 fade-up">
@@ -193,30 +243,57 @@ export default function TodayHero({ nombre = "equipo", events = [] }) {
             )}
           </>
         ) : fill.length > 0 ? (
-          <>Lo próximo {seraVerbo(fill)} {joinNodes(fill.map((e, i) => nodeFor(e, i > 0 && fill[i - 1].type === e.type)))}.</>
+          (() => {
+            const groups = groupFill(fill);
+            return <>Lo próximo {seraVerbo(fill)} {joinNodes(groups.map((g, i) => nodeForGroup(g, i > 0 && groups[i - 1].type === g.type)))}.</>;
+          })()
         ) : (
           <>Parece que de momento nada más. Buen momento para avanzar con calma.</>
         )}
-        {hasContent && <> {closing}</>}
       </p>
 
-      {/* Lo más cercano */}
+      {/* Lo más cercano — agenda por día (minimal, alineada) */}
       {proxEvento && (
-        <div className="mt-10 rounded-[28px] bg-surface2/65 border border-border/50 p-7 md:p-10">
-          <span className="inline-flex items-center gap-2 text-caption uppercase text-brandMid font-semibold">
-            <span className="h-1.5 w-1.5 rounded-full bg-brandMid" /> Lo más cercano
-          </span>
-          <h2 className="font-display text-[28px] md:text-[40px] leading-[1.05] tracking-[-0.025em] text-ink mt-4 flex items-center gap-3 max-w-[640px]">
-            {proxEvento.who && MEMBER.get(proxEvento.who)?.photo && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={MEMBER.get(proxEvento.who).photo} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
-            )}
-            {proxEvento.title}
-          </h2>
-          <p className="text-body-lg text-inkSoft/85 mt-3">
-            {EVENT_TYPES[proxEvento.type].label} · {rel(proxEvento.dias)} · {corto(proxEvento.start)}
-          </p>
-        </div>
+        <Surface variant="raised" pad="none" className="mt-10 rounded-[28px] p-6 md:p-8">
+          <p className="section-eyebrow mb-1">Lo más cercano</p>
+
+          <div className="divide-y divide-border/50">
+            {agenda.map((day) => (
+              <div key={day.iso} className="flex gap-4 py-4 first:pt-3 last:pb-1">
+                {/* Fecha */}
+                <div className="w-[76px] shrink-0 flex items-center gap-2.5">
+                  <span className="font-display text-[28px] leading-none text-ink tabular-nums w-[1.1em] text-right shrink-0">{day.num}</span>
+                  <span className="leading-tight">
+                    <span className="block text-[13px] leading-none text-ink capitalize">{day.weekday}</span>
+                    <span className="block text-micro leading-none text-mutedSoft capitalize mt-1">{day.month}</span>
+                  </span>
+                </div>
+
+                {/* Eventos del día */}
+                <div className="flex-1 min-w-0 space-y-3 self-center">
+                  {day.events.length === 0 ? (
+                    <p className="text-small text-mutedSoft">No hay más eventos hoy</p>
+                  ) : (
+                    day.events.map((e) => (
+                      <div key={e.id} className="flex items-center gap-2.5 min-w-0">
+                        {e.who && MEMBER.get(e.who)?.photo ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={MEMBER.get(e.who).photo} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" />
+                        ) : (
+                          <span className="w-6 h-6 rounded-full bg-surface2/70 grid place-items-center text-[12px] shrink-0">{ICON[e.type]}</span>
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-small text-ink truncate leading-tight">{e.title}</p>
+                          <p className="text-micro text-mutedSoft">{EVENT_TYPES[e.type].label} · {rel(e.dias)}</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Surface>
       )}
     </header>
   );

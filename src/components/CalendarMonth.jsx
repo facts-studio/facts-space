@@ -6,6 +6,8 @@ import { workingDaysBetween } from "@/lib/dates";
 import { requestVacation } from "@/lib/actions/vacations";
 import { evaluateVacation } from "@/lib/vacation-policy";
 import { ABSENCE_OPTIONS } from "@/lib/absences";
+import { Switch } from "@/components/ui";
+import { cn } from "@/lib/cn";
 
 // Colores del veredicto orientativo de política.
 const POLICY_BANNER = { ok: "bg-successSoft/50 text-success", warn: "bg-warnSoft/45 text-warn", bad: "bg-dangerSoft/45 text-danger" };
@@ -31,10 +33,37 @@ function MiniAvatar({ member, ring = "ring-white/70" }) {
 
 const WD = ["L", "M", "X", "J", "V", "S", "D"]; // lunes primero
 const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
-const MAX_CHIPS = 3;
+const MAX_LANES = 3; // barras visibles por día antes de "+N"
 const EMPTY = [];
 
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const DAY_MS = 86400000;
+
+// Barras continuas de una semana: cada evento se recorta a los límites de la
+// semana y se le asigna un carril (lane) para que no se solapen. Un rango de
+// varios días es UNA sola barra que abarca las columnas correspondientes.
+function weekBars(weekDates, events) {
+  const wStart = weekDates[0];
+  const wEnd = weekDates[6];
+  const bars = [];
+  for (const e of events) {
+    const s = new Date(e.start + "T00:00:00");
+    const en = new Date(e.end + "T00:00:00");
+    if (en < wStart || s > wEnd) continue;
+    const cs = Math.max(0, Math.round((s - wStart) / DAY_MS));
+    const ce = Math.min(6, Math.round((en - wStart) / DAY_MS));
+    bars.push({ e, cs, ce, span: ce - cs + 1, continuesLeft: s < wStart, continuesRight: en > wEnd });
+  }
+  bars.sort((a, b) => a.cs - b.cs || b.span - a.span);
+  const laneEnds = [];
+  for (const b of bars) {
+    let lane = 0;
+    while (lane < laneEnds.length && laneEnds[lane] >= b.cs) lane++;
+    b.lane = lane;
+    laneEnds[lane] = b.ce;
+  }
+  return bars;
+}
 
 // Rejilla de 42 días (6 semanas, lunes primero) de un mes dado.
 function monthDays(y, m) {
@@ -52,7 +81,10 @@ const CHIP = {
   vacaciones: "bg-warnSoft text-warn",
   ausencia: "bg-violetSoft text-violet",
   festivo: "bg-successSoft text-success",
+  tarea: "bg-surface2 text-inkSoft",
 };
+// Tipo "tarea" añadido a los tipos de evento (para las búsquedas de color/label).
+const TYPE = { ...EVENT_TYPES, tarea: { label: "Tarea", color: "brand" } };
 const DOT = {
   brand: "bg-brand", info: "bg-info", warn: "bg-warn", violet: "bg-violet", success: "bg-success", danger: "bg-danger",
 };
@@ -84,7 +116,9 @@ const FILTER_ON = {
   danger: "bg-dangerSoft text-danger border-danger/30",
 };
 
-export default function CalendarMonth({ events = [], canRequest = false }) {
+export default function CalendarMonth({ events = [], tasks = [], canRequest = false }) {
+  const [showTasks, setShowTasks] = useState(false);
+  const allEvents = useMemo(() => (showTasks ? events.concat(tasks) : events), [events, tasks, showTasks]);
   const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
   const todayISO = iso(today);
   // Arranca en el mes del próximo evento (o el mes actual si no hay).
@@ -117,13 +151,13 @@ export default function CalendarMonth({ events = [], canRequest = false }) {
       return n.size === 0 ? null : n;
     });
   const passPerson = (e) => !people || !e.who || people.has(e.who);
-  const passType = (e) => active.has(e.type);
+  const passType = (e) => e.type === "tarea" || active.has(e.type); // tareas van por su propio switch
   const pass = (e) => passType(e) && passPerson(e);
 
-  // Eventos por día (sensible al rango start→end).
+  // Eventos (+ tareas si el switch está on) por día, sensible al rango start→end.
   const byDay = useMemo(() => {
     const m = new Map();
-    for (const e of events) {
+    for (const e of allEvents) {
       const d = new Date(e.start + "T00:00:00");
       const end = new Date(e.end + "T00:00:00");
       let guard = 0;
@@ -135,7 +169,7 @@ export default function CalendarMonth({ events = [], canRequest = false }) {
       }
     }
     return m;
-  }, [events]);
+  }, [allEvents]);
 
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
@@ -146,6 +180,16 @@ export default function CalendarMonth({ events = [], canRequest = false }) {
   });
 
   const selItems = (selected ? byDay.get(selected) || EMPTY : EMPTY).filter(pass);
+
+  // Eventos que se pintan como barras continuas (los festivos se muestran como
+  // fondo del día, no como barra, para no duplicar).
+  const barEvents = useMemo(
+    () => allEvents.filter((e) => e.type !== "festivo" && pass(e)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allEvents, active, people],
+  );
+  const weeks = [];
+  for (let i = 0; i < 42; i += 7) weeks.push(days.slice(i, i + 7));
 
   // Festivos (ISO) para descontar del cómputo de días laborables en la solicitud.
   const festivoSet = useMemo(() => {
@@ -221,6 +265,8 @@ export default function CalendarMonth({ events = [], canRequest = false }) {
             )}
           </h2>
           <div className="flex items-center gap-1 shrink-0">
+            {/* Switch: mostrar tareas de ClickUp en el calendario */}
+            <Switch checked={showTasks} onChange={setShowTasks} label="Tareas" className="mr-2" />
             {/* Conmutador Mes / Año */}
             <div className="flex items-center bg-surface2/60 rounded-lg p-0.5 mr-1">
               {["mes", "año"].map((v) => (
@@ -315,65 +361,86 @@ export default function CalendarMonth({ events = [], canRequest = false }) {
           ))}
         </div>
 
-        {/* Rejilla del mes */}
-        <div className="grid grid-cols-7 gap-1 auto-rows-fr flex-1 min-h-0">
-          {days.map((d, i) => {
-            const k = iso(d);
-            const inMonth = d.getMonth() === month;
-            const isToday = k === todayISO;
-            const isSel = selected === k;
-            const items = (byDay.get(k) || EMPTY).filter(pass);
-            const extra = items.length - MAX_CHIPS;
-            const hasFestivo = items.some((e) => e.type === "festivo");
-            const inReq = reqMode && reqStart && k >= reqStart && k <= reqEndEff;
-            const isReqEdge = reqMode && (k === reqStart || k === reqEndEff);
+        {/* Rejilla del mes: fondo de días + barras continuas por semana */}
+        <div className="grid grid-rows-6 gap-1 flex-1 min-h-0">
+          {weeks.map((week, wi) => {
+            const bars = weekBars(week, barEvents);
+            // Cobertura por columna de las barras visibles (lane < MAX_LANES).
+            const cover = [0, 0, 0, 0, 0, 0, 0];
+            for (const b of bars) if (b.lane < MAX_LANES) for (let c = b.cs; c <= b.ce; c++) cover[c]++;
             return (
-              <div
-                key={i}
-                onClick={() => onDayClick(k)}
-                className={`h-full min-h-[84px] rounded-xl border p-1.5 flex flex-col gap-1 cursor-pointer transition ${
-                  isReqEdge
-                    ? "border-ink bg-ink/[0.10] ring-2 ring-ink/30"
-                    : inReq
-                      ? "border-ink/30 bg-ink/[0.05]"
-                      : isToday
-                        ? "border-brand/55 bg-brand/[0.045] ring-1 ring-brand/30"
-                        : isSel
-                          ? "border-ink/45 bg-surface2/40"
-                          : hasFestivo
-                            ? "border-success/20 bg-successSoft/45 hover:border-success/35"
-                            : "border-borderStrong/45 hover:border-borderStrong/70"
-                } ${!inMonth ? "opacity-45" : ""}`}
-              >
-                <div className="flex items-center justify-between px-0.5">
-                  <span className={`text-[12px] tabular-nums leading-none inline-flex items-center justify-center ${
-                    isToday ? "h-5 w-5 rounded-full bg-ink text-bg font-bold" : inMonth ? "text-ink" : "text-mutedSoft"
-                  }`}>{d.getDate()}</span>
-                  {items.length > 0 && <span className="text-[9.5px] text-mutedSoft tabular-nums">{items.length}</span>}
-                </div>
-                <div className="flex flex-col gap-0.5 min-w-0">
-                  {items.slice(0, MAX_CHIPS).map((e, j) => {
+              <div key={wi} className="relative grid grid-cols-7 gap-1 min-h-[92px]">
+                {/* Fondo: celdas de día */}
+                {week.map((d, di) => {
+                  const k = iso(d);
+                  const inMonth = d.getMonth() === month;
+                  const isToday = k === todayISO;
+                  const isSel = selected === k;
+                  const items = (byDay.get(k) || EMPTY).filter(pass);
+                  const hasFestivo = items.some((e) => e.type === "festivo");
+                  const inReq = reqMode && reqStart && k >= reqStart && k <= reqEndEff;
+                  const isReqEdge = reqMode && (k === reqStart || k === reqEndEff);
+                  const overflow = items.filter((e) => e.type !== "festivo").length - cover[di];
+                  return (
+                    <div
+                      key={di}
+                      onClick={() => onDayClick(k)}
+                      className={`rounded-xl border p-1.5 flex flex-col cursor-pointer transition ${
+                        isReqEdge
+                          ? "border-ink bg-ink/[0.10] ring-2 ring-ink/30"
+                          : inReq
+                            ? "border-ink/30 bg-ink/[0.05]"
+                            : isSel
+                              ? "border-ink/45 bg-surface2/40"
+                              : hasFestivo
+                                ? "border-success/20 bg-successSoft/45 hover:border-success/35"
+                                : "border-borderStrong/45 hover:border-borderStrong/70"
+                      } ${!inMonth ? "opacity-45" : ""}`}
+                    >
+                      <div className="flex items-center justify-between px-0.5">
+                        <span className={`text-[12px] tabular-nums leading-none inline-flex items-center justify-center ${
+                          isToday ? "h-5 w-5 rounded-full bg-ink text-bg font-bold" : inMonth ? "text-ink" : "text-mutedSoft"
+                        }`}>{d.getDate()}</span>
+                        {items.length > 0 && <span className="text-[9.5px] text-mutedSoft tabular-nums">{items.length}</span>}
+                      </div>
+                      {overflow > 0 && (
+                        <button
+                          type="button"
+                          onClick={(ev) => { ev.stopPropagation(); setSelected(k); }}
+                          className="mt-auto text-left px-0.5 text-[10px] text-mutedSoft hover:text-ink transition"
+                        >
+                          +{overflow}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+                {/* Barras continuas por encima de las celdas */}
+                <div className="pointer-events-none absolute inset-0 grid grid-cols-7 gap-1 pt-[26px] [grid-auto-rows:22px]">
+                  {bars.filter((b) => b.lane < MAX_LANES).map((b, bi) => {
+                    const e = b.e;
                     const person = WITH_PERSON.has(e.type) && e.who ? MEMBER.get(e.who) : null;
+                    const withAvatar = person && !b.continuesLeft;
                     return (
-                      <span
-                        key={j}
+                      <button
+                        key={bi}
+                        type="button"
                         title={e.title}
-                        className={`w-full flex items-center gap-1.5 rounded-lg px-1.5 py-1 text-[11px] leading-tight ${CHIP[e.type] || "bg-surface2 text-ink"}`}
+                        onClick={(ev) => { ev.stopPropagation(); setSelected(iso(week[b.cs])); }}
+                        style={{ gridColumn: `${b.cs + 1} / span ${b.span}`, gridRow: b.lane + 1 }}
+                        className={cn(
+                          "pointer-events-auto mx-1 flex items-center gap-1 h-[20px] text-[11px] leading-none rounded-full",
+                          withAvatar ? "pl-0.5 pr-2" : "px-2",
+                          CHIP[e.type] || "bg-surface2 text-ink",
+                          b.continuesLeft && "rounded-l-none",
+                          b.continuesRight && "rounded-r-none",
+                        )}
                       >
-                        {person && <MiniAvatar member={person} />}
+                        {withAvatar && <MiniAvatar member={person} ring="ring-bg" />}
                         <span className="truncate">{e.title}</span>
-                      </span>
+                      </button>
                     );
                   })}
-                  {extra > 0 && (
-                    <button
-                      type="button"
-                      onClick={(ev) => { ev.stopPropagation(); setSelected(k); }}
-                      className="w-full text-left px-1.5 text-[10.5px] text-mutedSoft hover:text-ink transition"
-                    >
-                      +{extra} más
-                    </button>
-                  )}
                 </div>
               </div>
             );
@@ -397,7 +464,7 @@ export default function CalendarMonth({ events = [], canRequest = false }) {
                     const its = inM ? (byDay.get(k) || EMPTY).filter(pass) : EMPTY;
                     const isT = k === todayISO;
                     const dom = YORDER.map((t) => its.find((e) => e.type === t)).find(Boolean);
-                    const color = dom ? EVENT_TYPES[dom.type].color : null;
+                    const color = dom ? TYPE[dom.type].color : null;
                     return (
                       <button
                         key={i}
@@ -483,7 +550,7 @@ export default function CalendarMonth({ events = [], canRequest = false }) {
               {selItems.length > 0 ? (
                 <ul className="space-y-2">
                   {selItems.map((e, j) => {
-                    const t = EVENT_TYPES[e.type];
+                    const t = TYPE[e.type];
                     const person = WITH_PERSON.has(e.type) && e.who ? MEMBER.get(e.who) : null;
                     return (
                       <li key={j} className={`rounded-lg border p-2.5 flex items-center gap-3 ${TILE[t.color]}`}>

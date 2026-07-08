@@ -11,16 +11,18 @@ import { createClient } from "@/lib/supabase/client";
 import { fmtRange, fmtDate } from "@/lib/mock";
 import { formatDuration } from "@/lib/dates";
 import { absenceLabel } from "@/lib/absences";
+import ClickUpSources from "@/components/admin/ClickUpSources";
 
 const TABS = [
   ["aprobaciones", "Aprobaciones"],
   ["equipo", "Empleados"],
   ["documentos", "Documentos"],
   ["calendario", "Calendario"],
+  ["clickup", "ClickUp"],
   ["informes", "Informes"],
 ];
 
-export default function AdminClient({ employees, pending, recent, timeStats, vacUsed, calendarEvents = [], timeHours = {}, documents = [], month, year }) {
+export default function AdminClient({ employees, pending, recent, timeStats, vacUsed, calendarEvents = [], timeHours = {}, documents = [], clickupLists = [], month, year }) {
   const router = useRouter();
   const refresh = () => router.refresh();
   const [tab, setTab] = useState("aprobaciones");
@@ -52,6 +54,7 @@ export default function AdminClient({ employees, pending, recent, timeStats, vac
       {tab === "equipo" && <Equipo employees={employees} vacUsed={vacUsed} year={year} onDone={refresh} />}
       {tab === "documentos" && <Documentos employees={employees} documents={documents} nameById={nameById} month={month} onDone={refresh} />}
       {tab === "calendario" && <Calendario events={calendarEvents} year={year} onDone={refresh} />}
+      {tab === "clickup" && <ClickUpSources lists={clickupLists} />}
       {tab === "informes" && <Informes employees={employees} vacUsed={vacUsed} timeHours={timeHours} month={month} year={year} />}
     </div>
   );

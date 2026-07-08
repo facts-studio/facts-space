@@ -186,6 +186,9 @@ html, body {
   from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+/* Barra de tiempo del toast de deshacer (5s, izquierda→derecha) */
+@keyframes toastbar { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes toastIn { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translate(-50%, 0); } }
 .fade-up { animation: fadeUp 0.42s cubic-bezier(0.23, 1, 0.32, 1) both; }
 @keyframes fadeOnly { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
@@ -218,12 +221,12 @@ html, body {
 }
 @media (prefers-reduced-motion: reduce) { .confetti-piece { display: none; } }
 
-/* Scrollbar custom (marca verde, crema en oscuro) */
-* { scrollbar-width: thin; scrollbar-color: #12271D transparent; }
+/* Scrollbar custom (ink de marca, crema en oscuro) */
+* { scrollbar-width: thin; scrollbar-color: rgb(var(--ct-ink)) transparent; }
 *::-webkit-scrollbar { width: 4px; height: 4px; }
 *::-webkit-scrollbar-track { background: transparent; }
-*::-webkit-scrollbar-thumb { background: #12271D; border-radius: 4px; }
-*::-webkit-scrollbar-thumb:hover { background: #0A1812; }
-.dark * { scrollbar-color: #EFEEEB transparent; }
-.dark *::-webkit-scrollbar-thumb { background: #EFEEEB; }
-.dark *::-webkit-scrollbar-thumb:hover { background: #DAD6CC; }
+*::-webkit-scrollbar-thumb { background: rgb(var(--ct-ink)); border-radius: 4px; }
+*::-webkit-scrollbar-thumb:hover { background: rgb(var(--ct-inkSoft)); }
+.dark * { scrollbar-color: rgb(var(--ct-ink)) transparent; }
+.dark *::-webkit-scrollbar-thumb { background: rgb(var(--ct-ink)); }
+.dark *::-webkit-scrollbar-thumb:hover { background: rgb(var(--ct-inkSoft)); }
