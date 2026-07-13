@@ -76,18 +76,18 @@ function monthDays(y, m) {
 
 // Acabado del chip por tipo de evento (clases explícitas para Tailwind).
 const CHIP = {
-  hito: "bg-danger text-white",
+  hito: "bg-dangerSoft text-danger",
   cumple: "bg-infoSoft text-info",
   vacaciones: "bg-warnSoft text-warn",
   ausencia: "bg-violetSoft text-violet",
   festivo: "bg-successSoft text-success",
   tarea: "bg-surface2 text-inkSoft",
 };
+
+// Emoji por tipo (para el icono del detalle del día cuando no hay foto de persona).
+const ICON = { hito: "🔥", cumple: "🎂", vacaciones: "🏖️", ausencia: "🌴", festivo: "🗓️", tarea: "📋" };
 // Tipo "tarea" añadido a los tipos de evento (para las búsquedas de color/label).
 const TYPE = { ...EVENT_TYPES, tarea: { label: "Tarea", color: "brand" } };
-const DOT = {
-  brand: "bg-brand", info: "bg-info", warn: "bg-warn", violet: "bg-violet", success: "bg-success", danger: "bg-danger",
-};
 // Relleno suave por color para la vista anual.
 const YFILL = {
   brand: "bg-brandSoft", info: "bg-infoSoft", warn: "bg-warnSoft", violet: "bg-violetSoft", success: "bg-successSoft", danger: "bg-dangerSoft",
@@ -134,11 +134,16 @@ export default function CalendarMonth({ events = [], tasks = [], canRequest = fa
   const [view, setView] = useState("mes"); // "mes" | "año"
   // Filtro por tipo de evento. Todos activos por defecto.
   const [active, setActive] = useState(() => new Set(Object.keys(EVENT_TYPES)));
+  // Clic en un filtro: aísla a ese tipo. Si ya está solo ese (o clicas el único),
+  // vuelve a mostrar todos. Puedes sumar/quitar tipos clicando otros.
   const toggle = (k) =>
     setActive((cur) => {
+      const all = Object.keys(EVENT_TYPES);
+      if (cur.size === all.length) return new Set([k]);      // de "todos" → solo ese
+      if (cur.size === 1 && cur.has(k)) return new Set(all);  // el único → todos
       const n = new Set(cur);
       n.has(k) ? n.delete(k) : n.add(k);
-      return n;
+      return n.size ? n : new Set(all);                       // nunca vacío
     });
 
   // Filtro por persona. null = sin filtro (todas). Set = solo esas personas
@@ -301,11 +306,10 @@ export default function CalendarMonth({ events = [], tasks = [], canRequest = fa
                   key={key}
                   onClick={() => toggle(key)}
                   aria-pressed={on}
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] border transition active:scale-[0.97] ${
+                  className={`inline-flex items-center px-2.5 py-1 rounded-full text-[12px] border transition active:scale-[0.97] ${
                     on ? FILTER_ON[t.color] : "bg-transparent text-mutedSoft border-borderStrong/50 hover:text-ink hover:border-borderStrong"
                   }`}
                 >
-                  <span className={`inline-block w-2 h-2 rounded-full ${on ? DOT[t.color] : "bg-mutedSoft/50"}`} />
                   {t.label}
                 </button>
               );
@@ -558,8 +562,8 @@ export default function CalendarMonth({ events = [], tasks = [], canRequest = fa
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={person.photo} alt="" className="w-9 h-9 rounded-full object-cover shrink-0 ring-2 ring-paper" />
                         ) : (
-                          <span className={`w-9 h-9 rounded-full grid place-items-center shrink-0 bg-paper ${TEXT[t.color]}`}>
-                            <span className={`w-2.5 h-2.5 rounded-full ${DOT[t.color]}`} />
+                          <span className="w-9 h-9 rounded-full grid place-items-center shrink-0 bg-paper text-[16px]">
+                            {ICON[e.type] || "•"}
                           </span>
                         )}
                         <div className="min-w-0 flex-1">

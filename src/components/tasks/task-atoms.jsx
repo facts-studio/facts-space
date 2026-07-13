@@ -146,16 +146,18 @@ export function StatusMenu({ current, color, statuses = [], listId, onPick, done
 // Fila de tarea unificada. El cluster izquierdo (caret + estado + nombre) es UNA
 // celda que se indenta en las subtareas; las columnas de la derecha (área, fecha,
 // asignados) son fijas para que coincidan siempre entre padres y subtareas.
+// La columna Área solo se muestra a admins (el resto solo ve listas "Tareas").
 const ROW = "grid grid-cols-[minmax(0,1fr)_132px_92px_84px] gap-3 items-center px-3 py-2.5 rounded-lg hover:bg-surface2/40 transition-colors";
+const ROW_NO_AREA = "grid grid-cols-[minmax(0,1fr)_92px_84px] gap-3 items-center px-3 py-2.5 rounded-lg hover:bg-surface2/40 transition-colors";
 
-export function TaskRow({ t, eff, open, statuses, onPickStatus, onOpen, active, depth = 0, hasSubtasks = false, expanded = false, onToggle }) {
+export function TaskRow({ t, eff, open, statuses, onPickStatus, onOpen, active, depth = 0, hasSubtasks = false, expanded = false, onToggle, showArea = true }) {
   const due = dueLabel(t.dueDate);
   const nameCls = cn("min-w-0 text-small text-ink hover:text-brand transition-colors truncate text-left", !open && "line-through text-mutedSoft");
   // Indenta el cluster izquierdo completo (caret+estado+nombre) según profundidad.
   const indent = depth ? { paddingLeft: depth * 24 } : undefined;
   return (
     <div
-      className={cn(ROW, active && "bg-surface2/60", onOpen && "cursor-pointer")}
+      className={cn(showArea ? ROW : ROW_NO_AREA, active && "bg-surface2/60", onOpen && "cursor-pointer")}
       onClick={onOpen ? () => onOpen(t) : undefined}
     >
       <div className="flex items-center gap-3 min-w-0" style={indent}>
@@ -189,7 +191,7 @@ export function TaskRow({ t, eff, open, statuses, onPickStatus, onOpen, active, 
           <svg className="h-3.5 w-3.5 shrink-0 text-mutedSoft/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-label="Tiene recursos"><title>Tiene recursos</title><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
         )}
       </div>
-      <span className="text-micro text-mutedSoft truncate">{t.listName || "—"}</span>
+      {showArea && <span className="text-micro text-mutedSoft truncate">{t.listName || "—"}</span>}
       <span className={cn("text-micro text-right tabular-nums", due.tone)}>{due.text}</span>
       <div className="justify-self-end"><Avatars assignees={t.assignees} /></div>
     </div>

@@ -1,7 +1,7 @@
 "use client";
 
-import { EVENT_TYPES, TEAM } from "@/lib/mock";
-import { Surface } from "@/components/ui";
+import { TEAM } from "@/lib/mock";
+import LoMasCercano from "@/components/LoMasCercano";
 
 const MEMBER = new Map(TEAM.map((m) => [m.name, m]));
 
@@ -132,28 +132,6 @@ export default function TodayHero({ nombre = "equipo", events = [], fichajeRemin
   const shown = new Set([proxCumple?.id, proxFestivo?.id, proxHito?.id, ...vacHoy.map((e) => e.id)].filter(Boolean));
   const fill = futuros.filter((e) => e.dias > 0 && !shown.has(e.id)).slice(0, 2);
 
-  // Agenda de "Lo más cercano": eventos agrupados por día (hoy + próximos días
-  // con eventos). Estilo lista tipo calendario.
-  const isoOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  const todayISO = isoOf(hoy);
-  const byDate = new Map();
-  for (const e of futuros) {
-    if (!byDate.has(e.start)) byDate.set(e.start, []);
-    byDate.get(e.start).push(e);
-  }
-  const nextDates = [...byDate.keys()].filter((d) => d > todayISO).sort();
-  const agenda = [todayISO, ...nextDates].slice(0, 4).map((iso) => {
-    const d = parse(iso);
-    return {
-      iso,
-      isToday: iso === todayISO,
-      num: d.getDate(),
-      month: d.toLocaleDateString("es-ES", { month: "long" }),
-      weekday: d.toLocaleDateString("es-ES", { weekday: "short" }).replace(".", ""),
-      events: byDate.get(iso) || [],
-    };
-  });
-
   // skipIcon: omite el emoji cuando el evento anterior es del mismo tipo (no
   // repetir 🏖️ 🏖️ seguidos).
   const ICON = { cumple: "🎂", festivo: "🗓️", hito: "🎯", vacaciones: "🏖️" };
@@ -275,49 +253,8 @@ export default function TodayHero({ nombre = "equipo", events = [], fichajeRemin
       {/* Aviso de fichaje (encima de "Lo más cercano") */}
       {fichajeReminder}
 
-      {/* Lo más cercano — agenda por día (minimal, alineada) */}
-      {proxEvento && (
-        <Surface variant="raised" pad="none" className="mt-10 rounded-[28px] p-6 md:p-8">
-          <p className="section-eyebrow mb-1">Lo más cercano</p>
-
-          <div className="divide-y divide-border/50">
-            {agenda.map((day) => (
-              <div key={day.iso} className="flex gap-4 py-4 first:pt-3 last:pb-1">
-                {/* Fecha */}
-                <div className="w-[76px] shrink-0 flex items-center gap-2.5">
-                  <span className="font-display text-[28px] leading-none text-ink tabular-nums w-[1.1em] text-right shrink-0">{day.num}</span>
-                  <span className="leading-tight">
-                    <span className="block text-[13px] leading-none text-ink capitalize">{day.weekday}</span>
-                    <span className="block text-micro leading-none text-mutedSoft capitalize mt-1">{day.month}</span>
-                  </span>
-                </div>
-
-                {/* Eventos del día */}
-                <div className="flex-1 min-w-0 space-y-3 self-center">
-                  {day.events.length === 0 ? (
-                    <p className="text-small text-mutedSoft">No hay más eventos hoy</p>
-                  ) : (
-                    day.events.map((e) => (
-                      <div key={e.id} className="flex items-center gap-2.5 min-w-0">
-                        {e.who && MEMBER.get(e.who)?.photo ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={MEMBER.get(e.who).photo} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" />
-                        ) : (
-                          <span className="w-6 h-6 rounded-full bg-surface2/70 grid place-items-center text-[12px] shrink-0">{ICON[e.type]}</span>
-                        )}
-                        <div className="min-w-0">
-                          <p className="text-small text-ink truncate leading-tight">{e.title}</p>
-                          <p className="text-micro text-mutedSoft">{EVENT_TYPES[e.type].label} · {rel(e.dias)}</p>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </Surface>
-      )}
+      {/* Lo más cercano — agenda por día (componente reutilizable) */}
+      <LoMasCercano events={events} className="mt-10" />
     </header>
   );
 }

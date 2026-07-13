@@ -11,6 +11,7 @@ import { clientIcon } from "@/lib/client-icons";
 import { paletteColor } from "@/lib/client-palette";
 import { TaskRow, StatusMenu, Avatars, teamPhoto } from "@/components/tasks/task-atoms";
 import TaskDetail from "@/components/tasks/task-detail";
+import LoMasCercano from "@/components/LoMasCercano";
 
 
 // Busca una tarea por id, incluyendo subtareas anidadas.
@@ -315,14 +316,16 @@ function Section({ label, count, campaign, children }) {
 
 /* ── Pantalla ───────────────────────────────────────────────────────────── */
 
-export default function TareasClient({ tasks, myEmail, isAdmin = false, visibleCount, campaigns = [], statusesByList = {}, iconsByClient = {}, colorsByClient = {} }) {
+export default function TareasClient({ tasks, events = [], myEmail, isAdmin = false, visibleCount, campaigns = [], statusesByList = {}, iconsByClient = {}, colorsByClient = {} }) {
   const [q, setQ] = useState("");
   const [clientSet, setClientSet] = useState(() => new Set()); // multi-selección de clientes/campañas
   const [hoverCtx, setHoverCtx] = useState(null); // tooltip por portal {name,count,x,y}
   const [area, setArea] = useState(""); // "" = todas las disciplinas
   const [showClosed, setShowClosed] = useState(false); // false = solo abiertas
   const [scope, setScope] = useState("all"); // all | mine
+  const [teamPreview, setTeamPreview] = useState(false); // admin: ver como el equipo (sin Management ni columna Área)
   const myPhoto = teamPhoto(myEmail);
+  const showAreaCol = isAdmin && !teamPreview;
   const [tscope, setTscope] = useState("todo"); // todo | hoy | semana | mes
   const cycleTscope = () => { const i = SCOPES.findIndex((s) => s.key === tscope); setTscope(SCOPES[(i + 1) % SCOPES.length].key); };
   const [view, setView] = useState("lista"); // lista | tablero
@@ -368,6 +371,8 @@ export default function TareasClient({ tasks, myEmail, isAdmin = false, visibleC
       // Oculta cerradas si el switch está off, PERO mantiene las que acabas de
       // tocar (override) para que no desaparezcan de golpe al completarlas.
       if (!showClosed && !isOpen(t) && !overrides.has(t.id)) return false;
+      // Modo "vista equipo" (admin): oculta las listas Management (que el equipo no ve).
+      if (teamPreview && (t.listName || "").trim().toLowerCase() === "management") return false;
       if (!matchScope(t, tscope)) return false;
       if (clientSet.size && !clientSet.has(t.project)) return false;
       if (area && t.listName !== area) return false;
@@ -376,7 +381,7 @@ export default function TareasClient({ tasks, myEmail, isAdmin = false, visibleC
       return true;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks, q, clientSet, area, showClosed, scope, tscope, overrides]);
+  }, [tasks, q, clientSet, area, showClosed, scope, tscope, overrides, teamPreview]);
 
   // Agrupación implícita: 1 cliente → por Área; varios/ninguno → por Cliente.
   const groupByArea = clientSet.size === 1;
@@ -443,6 +448,7 @@ export default function TareasClient({ tasks, myEmail, isAdmin = false, visibleC
           hasSubtasks={subs.length > 0}
           expanded={isExp}
           onToggle={() => toggleExpand(t.id)}
+          showArea={showAreaCol}
         />
         {isExp && subs.map((s) => renderRow(s, depth + 1))}
       </div>
@@ -470,8 +476,8 @@ export default function TareasClient({ tasks, myEmail, isAdmin = false, visibleC
         kicker="ClickUp"
         title={clientSet.size === 1 ? [...clientSet][0] : "Tareas"}
         actions={
-          <div className="flex items-center gap-3">
-            <span className="text-micro text-mutedSoft tabular-nums hidden sm:inline">{filtered.length}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-micro text-mutedSoft tabular-nums hidden sm:inline -mr-1">{filtered.length}</span>
             <button
               type="button"
               onClick={refresh}
@@ -482,7 +488,22 @@ export default function TareasClient({ tasks, myEmail, isAdmin = false, visibleC
             >
               <svg className={cn("h-4 w-4", refreshing && "animate-spin")} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36" /><path d="M21 3v6h-6" /></svg>
             </button>
-            <Tabs value={view} onChange={setView} tabs={[{ value: "lista", label: "Lista" }, { value: "calendario", label: "Calendario" }]} />
+              {isAdmin && (
+              <button
+                type="button"
+                onClick={() => setTeamPreview((v) => !v)}
+                title="Ver como lo ve el equipo (sin Management ni columna de lista)"
+                aria-pressed={teamPreview}
+                className={cn(
+                  "inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[13px] transition shrink-0",
+                  teamPreview ? "bg-ink text-bg" : "text-mutedSoft hover:text-ink hover:bg-surface2/60"
+                )}
+              >
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" /><circle cx="12" cy="12" r="3" /></svg>
+                Status
+              </button>
+            )}
+          <Tabs value={view} onChange={setView} tabs={[{ value: "lista", label: "Lista" }, { value: "calendario", label: "Calendario" }]} />
           </div>
         }
       />
@@ -580,6 +601,9 @@ export default function TareasClient({ tasks, myEmail, isAdmin = false, visibleC
           )}
         </div>
       </div>
+
+      {/* Modo Status (admin): agenda de "Lo más cercano" arriba. */}
+      {teamPreview && <LoMasCercano events={events} className="mb-3" />}
 
       <div className={cn(selected && "lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-4 lg:items-start")}>
         <div className="min-w-0">

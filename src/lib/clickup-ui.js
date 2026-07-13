@@ -4,7 +4,11 @@
 export function dueLabel(ms, now = Date.now()) {
   if (!ms) return { text: "Sin fecha", tone: "text-mutedSoft" };
   const day = 86400000;
+  const nowD = new Date(now);
   const startToday = new Date(now).setHours(0, 0, 0, 0);
+  // Fin de la semana de calendario actual (domingo 23:59), lunes = inicio.
+  const dow = (nowD.getDay() + 6) % 7;
+  const endOfWeek = new Date(nowD.getFullYear(), nowD.getMonth(), nowD.getDate() + (6 - dow)).getTime() + day - 1;
   if (ms < startToday) {
     const d = Math.round((startToday - ms) / day);
     return { text: d <= 1 ? "Ayer" : `Vencida (${d} días)`, tone: "text-danger" };
@@ -13,11 +17,13 @@ export function dueLabel(ms, now = Date.now()) {
     const t = new Date(ms).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
     return { text: `Hoy · ${t}`, tone: "text-warn" };
   }
+  // Verde si vence dentro de la semana en la que estamos.
+  const thisWeek = ms <= endOfWeek ? "text-success" : "text-mutedSoft";
   const d = Math.round((ms - startToday) / day);
-  if (d === 1) return { text: "Mañana", tone: "text-mutedSoft" };
-  if (d < 7) return { text: `En ${d} días`, tone: "text-mutedSoft" };
+  if (d === 1) return { text: "Mañana", tone: thisWeek };
+  if (d < 7) return { text: `En ${d} días`, tone: thisWeek };
   const fecha = new Date(ms).toLocaleDateString("es-ES", { day: "numeric", month: "short" });
-  return { text: fecha, tone: "text-mutedSoft" };
+  return { text: fecha, tone: thisWeek };
 }
 
 // Prioridad ClickUp → etiqueta, tono de texto y color del aro del check.

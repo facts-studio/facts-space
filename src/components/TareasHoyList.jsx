@@ -61,8 +61,8 @@ export default function TareasHoyList({ tasks, isAdmin = false }) {
               <p className="text-micro text-mutedSoft truncate">
                 {t.isSubtask && t.parentName
                   ? `de «${t.parentName}»`
-                  : [t.project, t.listName].filter(Boolean).join(" · ")}
-                {e.status && <> · {e.status}</>}
+                  : t.project || ""}
+                {e.status && <>{t.isSubtask || t.project ? " · " : ""}{e.status}</>}
               </p>
             </div>
             {due && <span className={`text-micro shrink-0 ${due.tone}`}>{due.text}</span>}

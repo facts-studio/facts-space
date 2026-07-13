@@ -1,5 +1,7 @@
 import "server-only";
-import { AGENDA_LISTS, isClickUpConfigured } from "./data/clickup";
+import { AGENDA_LISTS, isClickUpConfigured, getAgendaEvents } from "./data/clickup";
+import { createAdminClient } from "./supabase/admin";
+import { workingDaysBetween, eachDayISO } from "./dates";
 
 // Espejo de vacaciones/ausencias de la intranet → lista "Vacaciones" de la
 // Agenda F*cts en ClickUp. Best-effort: si algo falla, no rompe el flujo de la
@@ -9,6 +11,8 @@ const BASE = "https://api.clickup.com/api/v2";
 const stripAccents = (s) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 // Fecha ISO (YYYY-MM-DD) → ms a mediodía UTC (evita desfase de día por zona).
 const msFromISO = (iso) => Date.parse(`${iso}T12:00:00.000Z`);
+// ms → ISO (YYYY-MM-DD) en horario de Madrid.
+const msToISO = (ms) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date(Number(ms)));
 
 // Estados de la lista Vacaciones (ojo: "pendiende" tal cual está escrito en ClickUp).
 const STATUS = { approved: "aprobada", pending: "pendiende" };
@@ -77,4 +81,47 @@ export async function deleteVacationTask(taskId) {
   } catch {
     /* best-effort */
   }
+}
+
+// ── Sync de VUELTA: ClickUp → intranet (webhook) ────────────────────────────
+// Reconcilia una solicitud existente con el estado actual de su tarea en ClickUp.
+// Solo actúa sobre vacaciones creadas desde el portal (que tienen clickup_task_id).
+const CU_STATUS = { aprobada: "approved", pendiende: "pending" };
+
+async function festivoDates() {
+  const agenda = await getAgendaEvents();
+  const days = [];
+  for (const e of agenda) if (e.type === "festivo") days.push(...eachDayISO(e.start, e.end));
+  return days;
+}
+
+export async function reconcileVacationFromClickUp(taskId, { deleted = false } = {}) {
+  const supabase = createAdminClient();
+  if (!supabase || !taskId) return { ok: false, skipped: true };
+  const { data: req } = await supabase
+    .from("vacation_requests")
+    .select("id, start_date, end_date, status")
+    .eq("clickup_task_id", taskId)
+    .maybeSingle();
+  if (!req) return { ok: true, skipped: true }; // no es una vacación del portal
+
+  if (deleted) {
+    await supabase.from("vacation_requests").update({ status: "cancelled", clickup_task_id: null }).eq("id", req.id);
+    return { ok: true, action: "cancelled" };
+  }
+
+  let task;
+  try { task = await cu(`task/${taskId}`, "GET"); } catch { return { ok: false }; }
+  const patch = {};
+  const st = task?.status?.status ? stripAccents(task.status.status) : null;
+  if (CU_STATUS[st] && CU_STATUS[st] !== req.status) patch.status = CU_STATUS[st];
+  const startISO = task?.start_date ? msToISO(task.start_date) : null;
+  const endISO = task?.due_date ? msToISO(task.due_date) : null;
+  if (startISO && startISO !== req.start_date) patch.start_date = startISO;
+  if (endISO && endISO !== req.end_date) patch.end_date = endISO;
+  if (patch.start_date || patch.end_date) {
+    patch.working_days = workingDaysBetween(patch.start_date || req.start_date, patch.end_date || req.end_date, await festivoDates());
+  }
+  if (Object.keys(patch).length) await supabase.from("vacation_requests").update(patch).eq("id", req.id);
+  return { ok: true, action: Object.keys(patch).length ? "updated" : "nochange", patch };
 }

@@ -233,8 +233,11 @@ export async function getClickUpTasks() {
           if (batch.length < 100) break;
         }
       };
-      // 1) abiertas + 2) cerradas de los últimos 15 días (más allá no se traen).
-      const cutoff = Date.now() - 15 * 86400000;
+      // 1) abiertas (sin límite de antigüedad) + 2) cerradas solo de la semana
+      //    actual y la anterior (por fecha de completado). Lunes = inicio de semana.
+      const now = new Date();
+      const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7));
+      const cutoff = startOfWeek.getTime() - 7 * 86400000; // inicio de la semana pasada
       await fetchAll({ include_closed: "false" });
       await fetchAll({ include_closed: "true", date_done_gt: String(cutoff) });
       // Dedup por id (una tarea puede venir en ambas si cambió de estado).
