@@ -39,6 +39,31 @@ export async function requestVacation({ startDate, endDate, note = "", type = "v
   const wd = workingDaysBetween(startDate, end, await getFestivos());
   if (wd <= 0) return { ok: false, error: "Ese rango no tiene días laborables (findes/festivos)." };
 
+  // Saldo de vacaciones: no dejar solicitar más días de los que quedan (solo
+  // aplica a type=vacaciones; bajas/permisos no descuentan del saldo).
+  if (type === "vacaciones") {
+    const startYear = startDate.slice(0, 4);
+    const allowance = Number(me.vacation_allowance ?? 0) + Number(me.vacation_adjustment ?? 0);
+    const { data: existing } = await supabase
+      .from("vacation_requests")
+      .select("working_days, start_date, status")
+      .eq("employee_id", me.id)
+      .eq("type", "vacaciones")
+      .in("status", ["approved", "pending"]);
+    const used = (existing ?? [])
+      .filter((v) => (v.start_date || "").slice(0, 4) === startYear)
+      .reduce((s, v) => s + Number(v.working_days || 0), 0);
+    const remaining = allowance - used;
+    if (wd > remaining) {
+      return {
+        ok: false,
+        error: remaining <= 0
+          ? `No te quedan días de vacaciones para ${startYear}.`
+          : `Solo te quedan ${remaining} día${remaining === 1 ? "" : "s"} de vacaciones y estás pidiendo ${wd}.`,
+      };
+    }
+  }
+
   // Sin responsable (manager) → se aprueba automáticamente, no hay quien decida.
   const autoApprove = !me.manager_id;
 
