@@ -1,31 +1,36 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { EmptyState } from "@/components/ui";
-import { closeClickUpTask } from "@/lib/actions/clickup";
+import { setClickUpTaskStatus } from "@/lib/actions/clickup";
 import { dueLabel } from "@/lib/clickup-ui";
+import { StatusMenu } from "@/components/tasks/task-atoms";
 
-export default function TareasHoyList({ tasks }) {
-  // done: ids cerradas optimistamente. error: id -> mensaje.
+export default function TareasHoyList({ tasks, isAdmin = false }) {
+  // done: ids completadas (ocultas optimistamente). overrides: estado local por id.
   const [done, setDone] = useState(() => new Set());
-  const [errored, setErrored] = useState({});
-  const [pendingId, setPendingId] = useState(null);
+  const [overrides, setOverrides] = useState(() => new Map());
   const [, start] = useTransition();
 
   const visible = tasks.filter((t) => !done.has(t.id));
   if (visible.length === 0) return <EmptyState>Nada pendiente para hoy 🎉</EmptyState>;
 
-  const complete = (id) => {
-    setErrored((e) => ({ ...e, [id]: undefined }));
-    setPendingId(id);
-    setDone((s) => new Set(s).add(id)); // optimista
+  const eff = (t) => overrides.get(t.id) || { status: t.status, statusType: t.statusType, statusColor: t.statusColor };
+  const isOpen = (t) => { const s = eff(t).statusType; return s !== "closed" && s !== "done"; };
+
+  // Cambiar estado desde el círculo (igual que en /tareas). Completar oculta la fila.
+  const pick = (t, s) => {
+    const prevOv = overrides.get(t.id);
+    setOverrides((m) => { const n = new Map(m); n.set(t.id, { status: s.status, statusType: s.type, statusColor: s.color }); return n; });
+    const closes = s.type === "closed" || s.type === "done";
+    if (closes) setDone((d) => new Set(d).add(t.id)); // optimista
     start(async () => {
-      const res = await closeClickUpTask(id);
-      setPendingId(null);
+      const res = await setClickUpTaskStatus(t.id, s.status);
       if (!res?.ok) {
-        // Revertir si falló.
-        setDone((s) => { const n = new Set(s); n.delete(id); return n; });
-        setErrored((e) => ({ ...e, [id]: res?.error || "No se pudo cerrar" }));
+        // Revertir.
+        setOverrides((m) => { const n = new Map(m); if (prevOv) n.set(t.id, prevOv); else n.delete(t.id); return n; });
+        if (closes) setDone((d) => { const n = new Set(d); n.delete(t.id); return n; });
       }
     });
   };
@@ -33,42 +38,50 @@ export default function TareasHoyList({ tasks }) {
   return (
     <ul className="divide-y divide-border/50">
       {visible.map((t) => {
+        const e = eff(t);
         const due = dueLabel(t.dueDate);
-        const busy = pendingId === t.id;
+        const clickHref = t.url && t.url !== "#" ? t.url : null;
+        // Admin → abre ClickUp; resto → /tareas con la tarea abierta en el panel.
+        const rowCls = "group min-w-0 flex-1 flex items-center gap-3";
+        const inner = (
+          <>
+            <div className="min-w-0 flex-1">
+              <p className="text-small text-ink truncate group-hover:text-brand transition-colors flex items-center gap-1.5">
+                {t.isSubtask && (
+                  <span
+                    title={t.parentName ? `Subtarea de «${t.parentName}»` : "Subtarea"}
+                    className="shrink-0 inline-flex items-center gap-0.5 text-micro text-mutedSoft bg-surface2 rounded px-1 leading-[1.4]"
+                  >
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M4 4v8a4 4 0 0 0 4 4h12" /><path d="m16 12 4 4-4 4" /></svg>
+                    sub
+                  </span>
+                )}
+                <span className="truncate">{t.name}</span>
+              </p>
+              <p className="text-micro text-mutedSoft truncate">
+                {t.isSubtask && t.parentName
+                  ? `de «${t.parentName}»`
+                  : [t.project, t.listName].filter(Boolean).join(" · ")}
+                {e.status && <> · {e.status}</>}
+              </p>
+            </div>
+            {due && <span className={`text-micro shrink-0 ${due.tone}`}>{due.text}</span>}
+          </>
+        );
         return (
           <li key={t.id} className="flex items-center gap-3 py-3">
-            {/* Completar → cierra en ClickUp */}
-            <button
-              onClick={() => complete(t.id)}
-              disabled={busy}
-              aria-label="Marcar como completada"
-              title="Completar (se cierra en ClickUp)"
-              className="group/check h-5 w-5 shrink-0 rounded-full border-2 border-borderStrong grid place-items-center text-ink transition hover:border-ink hover:bg-ink hover:text-bg disabled:opacity-40"
-            >
-              <span className="text-[10px] leading-none opacity-0 group-hover/check:opacity-100">✓</span>
-            </button>
+            {/* Círculo de estado (unificado con /tareas): marca y cambia el estado. */}
+            <StatusMenu variant="dot" current={e.status} color={e.statusColor} done={!isOpen(t)} listId={t.listId} onPick={(s) => pick(t, s)} milestone={t.isMilestone} />
 
-            <a
-              href={t.url && t.url !== "#" ? t.url : undefined}
-              target={t.url && t.url !== "#" ? "_blank" : undefined}
-              rel="noreferrer"
-              className="group min-w-0 flex-1 flex items-center gap-3"
-            >
-              <span
-                className="h-2 w-2 rounded-full shrink-0"
-                style={{ background: t.statusColor || "rgb(var(--ct-mutedSoft))" }}
-                title={t.status}
-              />
-              <div className="min-w-0 flex-1">
-                <p className="text-small text-ink truncate group-hover:text-brand transition-colors">{t.name}</p>
-                <p className="text-micro text-mutedSoft truncate">
-                  {[t.project, t.listName].filter(Boolean).join(" · ")}
-                  {t.status && <> · {t.status}</>}
-                  {errored[t.id] && <span className="text-danger"> · {errored[t.id]}</span>}
-                </p>
-              </div>
-              {due && <span className={`text-micro shrink-0 ${due.tone}`}>{due.text}</span>}
-            </a>
+            {isAdmin ? (
+              <a href={clickHref ?? undefined} target={clickHref ? "_blank" : undefined} rel="noreferrer" className={rowCls}>
+                {inner}
+              </a>
+            ) : (
+              <Link href={`/tareas?task=${t.id}`} className={rowCls}>
+                {inner}
+              </Link>
+            )}
           </li>
         );
       })}

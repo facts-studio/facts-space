@@ -31,10 +31,11 @@ export default async function HomePage() {
         <TodayHero
           nombre={nombre}
           events={events}
+          taskCount={mine.length}
           fichajeReminder={me ? <FichajeReminder days={daysSinceFichaje} /> : null}
         />
 
-        <TareasHoy tasks={mine} overview={overview} />
+        <TareasHoy tasks={mine} overview={overview} isAdmin={Boolean(me?.is_admin)} />
       </div>
 
       {/* Columna derecha — Novedades */}

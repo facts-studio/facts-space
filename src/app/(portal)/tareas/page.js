@@ -14,5 +14,5 @@ export default async function TareasPage() {
   const iconsByClient = Object.fromEntries(lists.filter((l) => l.icon && l.folder_name).map((l) => [l.folder_name, l.icon]));
   const colorsByClient = Object.fromEntries(lists.filter((l) => l.color && l.folder_name).map((l) => [l.folder_name, l.color]));
 
-  return <TareasClient tasks={tasks} myEmail={me?.email ?? null} visibleCount={visibleCount} campaigns={campaigns} statusesByList={statusesByList} iconsByClient={iconsByClient} colorsByClient={colorsByClient} />;
+  return <TareasClient tasks={tasks} myEmail={me?.email ?? null} isAdmin={Boolean(me?.is_admin)} visibleCount={visibleCount} campaigns={campaigns} statusesByList={statusesByList} iconsByClient={iconsByClient} colorsByClient={colorsByClient} />;
 }

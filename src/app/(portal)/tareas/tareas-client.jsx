@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Surface, Tabs, Switch, EmptyState, ScreenHeader } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { dueLabel, PRIORITY } from "@/lib/clickup-ui";
@@ -10,34 +10,18 @@ import { setClickUpTaskStatus, refreshClickUpTasks } from "@/lib/actions/clickup
 import { clientIcon } from "@/lib/client-icons";
 import { paletteColor } from "@/lib/client-palette";
 import { TaskRow, StatusMenu, Avatars, teamPhoto } from "@/components/tasks/task-atoms";
+import TaskDetail from "@/components/tasks/task-detail";
 
-// Columnas del tablero por días (solo las que tienen tareas). Función pura de
-// módulo para no llamar a Date.now() dentro del render.
-function buildBoardCols(tasks) {
-  const now = Date.now();
-  const day = 86400000;
-  const start = new Date(now).setHours(0, 0, 0, 0);
-  const cols = [
-    { key: "overdue", label: "Vencidas", accent: "text-danger" },
-    { key: "today", label: "Hoy", accent: "text-warn" },
-    { key: "tomorrow", label: "Mañana", accent: "text-ink" },
-    { key: "week", label: "Esta semana", accent: "text-mutedSoft" },
-    { key: "later", label: "Más adelante", accent: "text-mutedSoft" },
-    { key: "nodate", label: "Sin fecha", accent: "text-mutedSoft" },
-  ].map((c) => ({ ...c, items: [] }));
-  const idx = Object.fromEntries(cols.map((c, i) => [c.key, i]));
-  for (const t of tasks) {
-    let k;
-    if (!t.dueDate) k = "nodate";
-    else if (t.dueDate < start) k = "overdue";
-    else if (t.dueDate < start + day) k = "today";
-    else if (t.dueDate < start + 2 * day) k = "tomorrow";
-    else if (t.dueDate < start + 7 * day) k = "week";
-    else k = "later";
-    cols[idx[k]].items.push(t);
+
+// Busca una tarea por id, incluyendo subtareas anidadas.
+function findTaskById(list, id) {
+  if (!id) return null;
+  for (const t of list) {
+    if (t.id === id) return t;
+    const found = t.subtasks && findTaskById(t.subtasks, id);
+    if (found) return found;
   }
-  cols.forEach((c) => c.items.sort((a, b) => (a.dueDate ?? Infinity) - (b.dueDate ?? Infinity)));
-  return cols.filter((c) => c.items.length);
+  return null;
 }
 
 // Horizonte temporal para el switch de fecha.
@@ -167,7 +151,7 @@ function weekBars(weekDates, tasks) {
   return segs;
 }
 
-function CalendarView({ tasks, colorsByClient = {} }) {
+function CalendarView({ tasks, colorsByClient = {}, onOpen }) {
   const [cur, setCur] = useState(thisMonth);
   const [selDay, setSelDay] = useState(null); // iso del día seleccionado
   const cells = useMemo(() => monthMatrix(cur.y, cur.m), [cur]);
@@ -205,29 +189,29 @@ function CalendarView({ tasks, colorsByClient = {} }) {
         {WEEKDAYS.map((w) => <div key={w} className="text-center text-micro text-mutedSoft">{w}</div>)}
       </div>
 
-      <div className="space-y-1">
+      <div className="flex flex-col gap-1 h-[calc(100vh-15rem)] min-h-[540px]">
         {weeks.map((week, wi) => {
           const segs = weekBars(week, tasks);
           const lanes = Math.min(MAX_LANES, Math.max(0, ...segs.map((s) => s.lane + 1), 0));
           const shown = segs.filter((s) => s.lane < MAX_LANES);
           const extra = week.map((d, i) => segs.filter((s) => s.lane >= MAX_LANES && s.a <= i && s.b >= i).length);
           return (
-            <div key={wi} className="relative">
-              {/* Fondo de días (mismo lenguaje que el calendario de eventos) */}
-              <div className="grid grid-cols-7 gap-1">
+            <div key={wi} className="relative flex-1 min-h-[88px]">
+              {/* Fondo de días: número anclado arriba, altura completa de la fila */}
+              <div className="grid grid-cols-7 gap-1 h-full">
                 {week.map((c) => (
                   <button
                     key={c.iso}
                     type="button"
                     onClick={() => setSelDay((d) => (d === c.iso ? null : c.iso))}
-                    className={cn("text-left min-h-[116px] rounded-xl border bg-surface/40 p-1.5 transition hover:border-borderStrong", !c.inMonth && "opacity-40", c.iso === selDay ? "border-ink/40 bg-surface/70" : "border-border/60")}
+                    className={cn("flex flex-col items-start h-full rounded-xl border bg-surface/40 pt-1.5 px-1.5 transition hover:border-borderStrong", !c.inMonth && "opacity-40", c.iso === selDay ? "border-ink/40 bg-surface/70" : "border-border/60")}
                   >
                     <span className={cn("inline-grid place-items-center h-5 w-5 rounded-full text-micro tabular-nums", c.iso === today ? "bg-ink text-bg font-semibold" : "text-mutedSoft")}>{c.day}</span>
                   </button>
                 ))}
               </div>
-              {/* Barras — capa superpuesta alineada a la rejilla (sin px para no desfasar columnas) */}
-              <div className="absolute left-0 right-0 top-8 space-y-1 pointer-events-none">
+              {/* Barras — capa superpuesta DEBAJO de los números, alineada a la rejilla */}
+              <div className="absolute inset-x-0 top-[30px] space-y-1 pointer-events-none">
                 {Array.from({ length: lanes }).map((_, laneIdx) => (
                   <div key={laneIdx} className="grid grid-cols-7 gap-1">
                     {shown.filter((s) => s.lane === laneIdx).map((s) => {
@@ -235,24 +219,20 @@ function CalendarView({ tasks, colorsByClient = {} }) {
                       const col = t.statusColor || "rgb(var(--ct-mutedSoft))";
                       const a = t.assignees?.[0];
                       const photo = a ? teamPhoto(a.email) : null;
-                      const clientCol = t.project ? paletteColor(t.project, colorsByClient[t.project]).fg : null;
                       return (
-                        <a
+                        <button
                           key={t.id}
-                          href={t.url && t.url !== "#" ? t.url : undefined}
-                          target={t.url && t.url !== "#" ? "_blank" : undefined}
-                          rel="noreferrer"
+                          type="button"
+                          onClick={() => onOpen?.(t)}
                           title={`${t.name}${a ? ` · ${a.name}` : ""}${t.project ? ` · ${t.project}` : ""} · ${t.status}`}
                           style={{ gridColumn: `${s.a + 1} / span ${s.b - s.a + 1}`, background: col + "24" }}
                           className={cn(
-                            "pointer-events-auto flex items-center gap-1.5 h-[24px] px-2 mx-1.5 text-[11.5px] leading-none text-ink hover:brightness-95 transition backdrop-blur-sm",
+                            "pointer-events-auto flex items-center gap-1.5 h-[24px] px-2 mx-1.5 text-[11.5px] leading-none text-ink hover:brightness-95 transition backdrop-blur-sm text-left",
                             s.contPrev ? "rounded-l-none" : "rounded-l-lg", s.contNext ? "rounded-r-none" : "rounded-r-lg"
                           )}
                         >
                           {/* Estado (aro tipo checkbox) */}
                           <span className="h-3 w-3 rounded-full border-[1.6px] shrink-0" style={{ borderColor: col }} />
-                          {/* Cliente (punto de color) */}
-                          {clientCol && <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: clientCol }} />}
                           <span className="truncate flex-1">{t.name}</span>
                           {/* Persona asignada */}
                           {a && (photo ? (
@@ -261,7 +241,7 @@ function CalendarView({ tasks, colorsByClient = {} }) {
                           ) : (
                             <span className="h-4 w-4 rounded-full grid place-items-center text-[8px] text-bg shrink-0 ring-1 ring-bg bg-mutedSoft">{(a.name || "?")[0]?.toUpperCase()}</span>
                           ))}
-                        </a>
+                        </button>
                       );
                     })}
                   </div>
@@ -280,7 +260,7 @@ function CalendarView({ tasks, colorsByClient = {} }) {
 
         {/* Columna de detalle del día seleccionado */}
         {selDay && (
-          <aside className="mt-4 lg:mt-0 lg:sticky lg:top-4 slide-in rounded-2xl border border-border/50 bg-surface/40 p-4">
+          <aside className="mt-4 lg:mt-0 lg:sticky lg:top-16 slide-in rounded-2xl border border-border/50 bg-surface/40 p-4">
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-title text-ink capitalize leading-none">{selLabel}</h4>
               <button onClick={() => setSelDay(null)} aria-label="Cerrar" className="h-7 w-7 grid place-items-center rounded-md text-mutedSoft hover:text-ink hover:bg-surface2/60 transition">✕</button>
@@ -297,7 +277,7 @@ function CalendarView({ tasks, colorsByClient = {} }) {
                     <div key={t.id} className="py-2.5 flex items-start gap-2.5">
                       <span className="h-3.5 w-3.5 mt-0.5 rounded-full border-[1.6px] shrink-0" style={{ borderColor: col }} title={t.status} />
                       <div className="min-w-0 flex-1">
-                        <a href={t.url && t.url !== "#" ? t.url : undefined} target={t.url && t.url !== "#" ? "_blank" : undefined} rel="noreferrer" className="text-small text-ink hover:text-brand transition block truncate">{t.name}</a>
+                        <button type="button" onClick={() => onOpen?.(t)} className="text-small text-ink hover:text-brand transition block truncate text-left w-full">{t.name}</button>
                         <p className="text-micro text-mutedSoft truncate">{[t.project, t.status].filter(Boolean).join(" · ")}</p>
                       </div>
                       {a && (photo ? (
@@ -318,35 +298,6 @@ function CalendarView({ tasks, colorsByClient = {} }) {
   );
 }
 
-// Tarjeta para la vista Tablero.
-function BoardCard({ t, eff, open, statuses, onPickStatus }) {
-  const due = dueLabel(t.dueDate);
-  const prio = t.priority ? PRIORITY[t.priority] : null;
-  return (
-    <div className="rounded-xl bg-surface border border-border/50 p-3 hover:border-borderStrong transition">
-      <div className="flex items-start gap-2">
-        <div className="pt-0.5"><StatusMenu variant="dot" current={eff.status} color={eff.statusColor} done={!open} statuses={statuses} listId={t.listId} onPick={(s) => onPickStatus(t.id, s)} align="left" /></div>
-        <a
-          href={t.url && t.url !== "#" ? t.url : undefined}
-          target={t.url && t.url !== "#" ? "_blank" : undefined}
-          rel="noreferrer"
-          className={cn("text-small leading-snug flex-1 min-w-0", open ? "text-ink hover:text-brand" : "text-mutedSoft line-through")}
-        >
-          {t.name}
-        </a>
-      </div>
-      <div className="mt-2 pl-6 flex items-center justify-between gap-2">
-        <span className="text-micro text-mutedSoft truncate">{[t.listName].filter(Boolean).join(" · ")}</span>
-        <Avatars assignees={t.assignees} />
-      </div>
-      <div className="mt-1.5 pl-6 flex items-center gap-2">
-        <span className={cn("text-micro tabular-nums", due.tone)}>{due.text}</span>
-        {prio && prio.label !== "Normal" && <span className={cn("text-micro", prio.tone)}>· {prio.label}</span>}
-      </div>
-    </div>
-  );
-}
-
 function Section({ label, count, campaign, children }) {
   const [open, setOpen] = useState(true);
   return (
@@ -364,16 +315,24 @@ function Section({ label, count, campaign, children }) {
 
 /* ── Pantalla ───────────────────────────────────────────────────────────── */
 
-export default function TareasClient({ tasks, myEmail, visibleCount, campaigns = [], statusesByList = {}, iconsByClient = {}, colorsByClient = {} }) {
+export default function TareasClient({ tasks, myEmail, isAdmin = false, visibleCount, campaigns = [], statusesByList = {}, iconsByClient = {}, colorsByClient = {} }) {
   const [q, setQ] = useState("");
   const [clientSet, setClientSet] = useState(() => new Set()); // multi-selección de clientes/campañas
   const [hoverCtx, setHoverCtx] = useState(null); // tooltip por portal {name,count,x,y}
   const [area, setArea] = useState(""); // "" = todas las disciplinas
   const [showClosed, setShowClosed] = useState(false); // false = solo abiertas
   const [scope, setScope] = useState("all"); // all | mine
+  const myPhoto = teamPhoto(myEmail);
   const [tscope, setTscope] = useState("todo"); // todo | hoy | semana | mes
   const cycleTscope = () => { const i = SCOPES.findIndex((s) => s.key === tscope); setTscope(SCOPES[(i + 1) % SCOPES.length].key); };
   const [view, setView] = useState("lista"); // lista | tablero
+  // Tarea abierta en el panel derecho; se puede preseleccionar vía ?task=id
+  // (deep-link desde Inicio para el equipo no-admin).
+  const searchParams = useSearchParams();
+  const [selectedId, setSelectedId] = useState(() => searchParams.get("task"));
+  const openTask = (t) => setSelectedId(t.id);
+  const [expanded, setExpanded] = useState(() => new Set()); // ids con subtareas desplegadas
+  const toggleExpand = (id) => setExpanded((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const [overrides, setOverrides] = useState(() => new Map()); // id → {status,statusType,statusColor} (optimista)
   const [undo, setUndo] = useState(null); // {id, st, prev} — toast de deshacer completada
   const undoRef = useRef(null);
@@ -412,7 +371,7 @@ export default function TareasClient({ tasks, myEmail, visibleCount, campaigns =
       if (!matchScope(t, tscope)) return false;
       if (clientSet.size && !clientSet.has(t.project)) return false;
       if (area && t.listName !== area) return false;
-      if (scope === "mine" && !(myEmail && t.assignees.some((a) => a.email === myEmail))) return false;
+      if (scope === "mine" && !(t.everyone || (myEmail && t.assignees.some((a) => a.email === myEmail)))) return false;
       if (ql && !t.name.toLowerCase().includes(ql)) return false;
       return true;
     });
@@ -435,7 +394,9 @@ export default function TareasClient({ tasks, myEmail, visibleCount, campaigns =
     return arr.sort((a, b) => (a.campaign - b.campaign) || a.label.localeCompare(b.label));
   }, [filtered, groupByArea, campaignSet]);
 
-  const boardCols = useMemo(() => buildBoardCols(filtered), [filtered]);
+  // Tarea abierta en el panel derecho (persiste aunque cambien los filtros).
+  // Busca también dentro de las subtareas anidadas.
+  const selected = useMemo(() => findTaskById(tasks, selectedId), [tasks, selectedId]);
 
   const activeFilters = clientSet.size + (area ? 1 : 0) + (scope === "mine" ? 1 : 0) + (showClosed ? 1 : 0) + (tscope !== "todo" ? 1 : 0) + (q ? 1 : 0);
 
@@ -462,6 +423,30 @@ export default function TareasClient({ tasks, myEmail, visibleCount, campaigns =
   const undoComplete = () => {
     clearTimeout(undoRef.current);
     setUndo((u) => { if (u) setOverride(u.id, u.prev); return null; });
+  };
+
+  // Fila + subtareas anidadas (desplegable estilo ClickUp) para la vista Lista.
+  const renderRow = (t, depth = 0) => {
+    const subs = t.subtasks ?? [];
+    const isExp = expanded.has(t.id);
+    return (
+      <div key={t.id}>
+        <TaskRow
+          t={t}
+          eff={eff(t)}
+          open={isOpen(t)}
+          statuses={statusesByList[t.listId] || []}
+          onPickStatus={pickStatus}
+          onOpen={openTask}
+          active={t.id === selectedId}
+          depth={depth}
+          hasSubtasks={subs.length > 0}
+          expanded={isExp}
+          onToggle={() => toggleExpand(t.id)}
+        />
+        {isExp && subs.map((s) => renderRow(s, depth + 1))}
+      </div>
+    );
   };
 
   if (!tasks.length) {
@@ -497,7 +482,7 @@ export default function TareasClient({ tasks, myEmail, visibleCount, campaigns =
             >
               <svg className={cn("h-4 w-4", refreshing && "animate-spin")} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36" /><path d="M21 3v6h-6" /></svg>
             </button>
-            <Tabs value={view} onChange={setView} tabs={[{ value: "lista", label: "Lista" }, { value: "tablero", label: "Tablero" }, { value: "calendario", label: "Calendario" }]} />
+            <Tabs value={view} onChange={setView} tabs={[{ value: "lista", label: "Lista" }, { value: "calendario", label: "Calendario" }]} />
           </div>
         }
       />
@@ -552,7 +537,29 @@ export default function TareasClient({ tasks, myEmail, visibleCount, campaigns =
             <span className="text-ink whitespace-nowrap">{SCOPES.find((s) => s.key === tscope)?.label}</span>
             <span className="text-mutedSoft tabular-nums">{filtered.length}</span>
           </button>
-          <Tabs value={scope} onChange={setScope} tabs={[{ value: "all", label: "Equipo" }, { value: "mine", label: "Mías" }]} />
+          {/* Modo Yo — toggle estilo ClickUp: filtra a tus tareas. */}
+          <button
+            type="button"
+            onClick={() => setScope((s) => (s === "mine" ? "all" : "mine"))}
+            title="Ver solo mis tareas"
+            aria-pressed={scope === "mine"}
+            className={cn(
+              "inline-flex items-center gap-2 h-9 pl-1 pr-3 rounded-full border transition text-[13px] shrink-0",
+              scope === "mine"
+                ? "border-brand/40 bg-brand/10 text-brand"
+                : "border-border bg-surface text-ink hover:border-borderStrong"
+            )}
+          >
+            {myPhoto ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={myPhoto} alt="" className="h-7 w-7 rounded-full object-cover" />
+            ) : (
+              <span className="h-7 w-7 rounded-full grid place-items-center text-[11px] text-bg bg-mutedSoft">
+                {(myEmail || "?")[0]?.toUpperCase()}
+              </span>
+            )}
+            Mis tareas
+          </button>
           <Switch checked={showClosed} onChange={setShowClosed} label="Cerradas" />
           {/* Filtro de Área oculto por ahora
           {areas.length > 1 && (
@@ -574,6 +581,8 @@ export default function TareasClient({ tasks, myEmail, visibleCount, campaigns =
         </div>
       </div>
 
+      <div className={cn(selected && "lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-4 lg:items-start")}>
+        <div className="min-w-0">
       {/* LISTA — cada grupo (cliente/área) en su propia caja */}
       {view === "lista" && (
         filtered.length === 0 ? (
@@ -583,9 +592,7 @@ export default function TareasClient({ tasks, myEmail, visibleCount, campaigns =
             {sections.map((sec) => (
               <Surface key={sec.key} pad="sm">
                 <Section label={sec.label} count={sec.items.length} campaign={sec.campaign}>
-                  {sec.items.map((t) => (
-                    <TaskRow key={t.id} t={t} eff={eff(t)} open={isOpen(t)} statuses={statusesByList[t.listId] || []} onPickStatus={pickStatus} />
-                  ))}
+                  {sec.items.map((t) => renderRow(t))}
                 </Section>
               </Surface>
             ))}
@@ -594,30 +601,23 @@ export default function TareasClient({ tasks, myEmail, visibleCount, campaigns =
       )}
 
       {/* CALENDARIO — mes con las tareas en su fecha */}
-      {view === "calendario" && <CalendarView tasks={filtered} colorsByClient={colorsByClient} />}
+      {view === "calendario" && <CalendarView tasks={filtered} colorsByClient={colorsByClient} onOpen={openTask} />}
+        </div>
 
-      {/* TABLERO — columnas por día (estilo Adhōc) */}
-      {view === "tablero" && (
-        filtered.length === 0 ? (
-          <Surface pad="sm"><EmptyState className="my-2">Nada con esos filtros.</EmptyState></Surface>
-        ) : (
-          <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
-            {boardCols.map((col) => (
-              <div key={col.key} className="w-[260px] shrink-0">
-                <div className="flex items-center gap-2 px-1 mb-2">
-                  <span className={cn("text-[11px] uppercase tracking-[0.08em] font-medium", col.accent)}>{col.label}</span>
-                  <span className="text-micro text-mutedSoft tabular-nums">{col.items.length}</span>
-                </div>
-                <div className="space-y-2">
-                  {col.items.map((t) => (
-                    <BoardCard key={t.id} t={t} eff={eff(t)} open={isOpen(t)} statuses={statusesByList[t.listId] || []} onPickStatus={pickStatus} />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )
-      )}
+        {selected && (
+          <TaskDetail
+            t={selected}
+            eff={eff(selected)}
+            open={isOpen(selected)}
+            statuses={statusesByList[selected.listId] || []}
+            onPickStatus={pickStatus}
+            onOpen={openTask}
+            selectedId={selectedId}
+            isAdmin={isAdmin}
+            onClose={() => setSelectedId(null)}
+          />
+        )}
+      </div>
 
       {/* Toast "Tarea completada" con barra de 5s y deshacer */}
       {undo && typeof document !== "undefined" && createPortal(

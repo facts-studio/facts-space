@@ -3,15 +3,27 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentEmployee } from "@/lib/data/helpers";
-import { workingDaysBetween } from "@/lib/dates";
+import { workingDaysBetween, eachDayISO } from "@/lib/dates";
+import { getAgendaEvents } from "@/lib/data/clickup";
+import { createVacationTask, updateVacationTask, deleteVacationTask } from "@/lib/clickup-vacations";
 
-// Festivos (ISO) para descontarlos del cómputo de días laborables.
-async function getFestivos(supabase) {
-  const { data } = await supabase
-    .from("calendar_events")
-    .select("start_date")
-    .eq("type", "festivo");
-  return (data ?? []).map((f) => f.start_date);
+// Título de la tarea espejo en ClickUp según el tipo de ausencia.
+const ABS_TITLE = { vacaciones: "Vacaciones", baja: "Baja", permiso: "Permiso", asuntos_propios: "Asuntos propios", teletrabajo: "Teletrabajo", otro: "Ausencia" };
+
+// Lee el id de la tarea de ClickUp espejo (best-effort; si la columna aún no
+// existe —migración sin ejecutar— devuelve null sin romper el flujo).
+async function mirrorTaskId(supabase, id) {
+  const { data } = await supabase.from("vacation_requests").select("clickup_task_id").eq("id", id).maybeSingle();
+  return data?.clickup_task_id ?? null;
+}
+
+// Festivos (ISO) para descontarlos del cómputo de días laborables. Fuente:
+// lista Festivos de la Agenda F*cts en ClickUp (rangos expandidos a días).
+async function getFestivos() {
+  const agenda = await getAgendaEvents();
+  const days = [];
+  for (const e of agenda) if (e.type === "festivo") days.push(...eachDayISO(e.start, e.end));
+  return days;
 }
 
 // Solicitar una ausencia (queda 'pending' hasta que el manager/admin decida).
@@ -24,13 +36,13 @@ export async function requestVacation({ startDate, endDate, note = "", type = "v
   if (end < startDate) return { ok: false, error: "La fecha de fin es anterior al inicio." };
 
   const supabase = await createClient();
-  const wd = workingDaysBetween(startDate, end, await getFestivos(supabase));
+  const wd = workingDaysBetween(startDate, end, await getFestivos());
   if (wd <= 0) return { ok: false, error: "Ese rango no tiene días laborables (findes/festivos)." };
 
   // Sin responsable (manager) → se aprueba automáticamente, no hay quien decida.
   const autoApprove = !me.manager_id;
 
-  const { error } = await supabase.from("vacation_requests").insert({
+  const { data: inserted, error } = await supabase.from("vacation_requests").insert({
     employee_id: me.id,
     start_date: startDate,
     end_date: end,
@@ -39,8 +51,13 @@ export async function requestVacation({ startDate, endDate, note = "", type = "v
     type,
     status: autoApprove ? "approved" : "pending",
     ...(autoApprove ? { decided_by: me.id, decided_at: new Date().toISOString() } : {}),
-  });
+  }).select("id").single();
   if (error) return { ok: false, error: error.message };
+
+  // Espejo en ClickUp (Agenda › Vacaciones). Best-effort.
+  const title = `${ABS_TITLE[type] ?? "Ausencia"} ${me.name}`.trim();
+  const taskId = await createVacationTask({ title, startISO: startDate, endISO: end, personName: me.name, approved: autoApprove });
+  if (taskId) await supabase.from("vacation_requests").update({ clickup_task_id: taskId }).eq("id", inserted.id);
 
   revalidatePath("/calendario");
   revalidatePath("/mi-espacio");
@@ -65,6 +82,7 @@ export async function cancelVacation(id) {
   const me = await getCurrentEmployee();
   if (!me) return { ok: false, error: "No has iniciado sesión." };
   const supabase = await createClient();
+  const taskId = await mirrorTaskId(supabase, id);
   const { error } = await supabase
     .from("vacation_requests")
     .update({ status: "cancelled" })
@@ -72,6 +90,7 @@ export async function cancelVacation(id) {
     .eq("employee_id", me.id)
     .eq("status", "pending");
   if (error) return { ok: false, error: error.message };
+  if (taskId) await deleteVacationTask(taskId); // cancelada → borra la tarea espejo
   revalidatePath("/calendario");
   revalidatePath("/vacaciones");
   return { ok: true };
@@ -96,6 +115,15 @@ export async function setVacationStatus({ id, status }) {
   else { patch.decided_by = null; patch.decided_at = null; }
   const { error } = await supabase.from("vacation_requests").update(patch).eq("id", id);
   if (error) return { ok: false, error: error.message };
+
+  // Espejo ClickUp: aprobada/pendiente → actualiza estado; rechazada/cancelada → borra.
+  const taskId = await mirrorTaskId(supabase, id);
+  if (taskId) {
+    if (status === "approved") await updateVacationTask(taskId, { approved: true });
+    else if (status === "pending") await updateVacationTask(taskId, { approved: false });
+    else { await deleteVacationTask(taskId); await supabase.from("vacation_requests").update({ clickup_task_id: null }).eq("id", id); }
+  }
+
   revalidatePath("/admin");
   revalidatePath("/calendario");
   revalidatePath("/mi-espacio");
@@ -114,8 +142,10 @@ export async function deleteVacation(id) {
     .maybeSingle();
   if (!req) return { ok: false, error: "Solicitud no encontrada." };
   if (req.employees?.manager_id !== me.id && !me.is_admin) return { ok: false, error: "Sin permiso." };
+  const taskId = await mirrorTaskId(supabase, id);
   const { error } = await supabase.from("vacation_requests").delete().eq("id", id);
   if (error) return { ok: false, error: error.message };
+  if (taskId) await deleteVacationTask(taskId); // eliminada → borra la tarea espejo
   revalidatePath("/admin");
   revalidatePath("/calendario");
   revalidatePath("/mi-espacio");
@@ -150,6 +180,13 @@ export async function decideVacation({ id, approve, decisionNote = "" }) {
     })
     .eq("id", id);
   if (error) return { ok: false, error: error.message };
+
+  // Espejo ClickUp: aprobar → estado 'aprobada'; rechazar → borra la tarea.
+  const taskId = await mirrorTaskId(supabase, id);
+  if (taskId) {
+    if (approve) await updateVacationTask(taskId, { approved: true });
+    else { await deleteVacationTask(taskId); await supabase.from("vacation_requests").update({ clickup_task_id: null }).eq("id", id); }
+  }
 
   revalidatePath("/calendario");
   revalidatePath("/vacaciones");

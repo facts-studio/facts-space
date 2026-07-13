@@ -1,17 +1,12 @@
-import Link from "next/link";
 import { Surface } from "@/components/ui";
 import TareasHoyList from "./TareasHoyList";
 
-const MAX = 6;
-
 /**
- * Feed personal de tareas (de ClickUp) para la persona logueada. Muestra las
- * más urgentes; el resto viven en /tareas. Completar cierra en ClickUp.
+ * Feed personal de tareas (de ClickUp) para la persona logueada. Muestra TODAS
+ * sus tareas de la semana. Completar cierra en ClickUp.
  * tasks: shape normalizado de src/lib/data/clickup.js (ya ordenado)
  */
-export default function TareasHoy({ tasks = [], overview }) {
-  const shown = tasks.slice(0, MAX);
-  const rest = tasks.length - shown.length;
+export default function TareasHoy({ tasks = [], overview, isAdmin = false }) {
   return (
     <Surface className="mb-4">
       <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
@@ -24,13 +19,7 @@ export default function TareasHoy({ tasks = [], overview }) {
         )}
       </div>
 
-      <TareasHoyList tasks={shown} />
-
-      {rest > 0 && (
-        <Link href="/tareas" className="mt-3 inline-block text-micro text-muted hover:text-ink transition">
-          Ver todas ({tasks.length}) →
-        </Link>
-      )}
+      <TareasHoyList tasks={tasks} isAdmin={isAdmin} />
     </Surface>
   );
 }

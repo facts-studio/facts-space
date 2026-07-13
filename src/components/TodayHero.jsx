@@ -65,7 +65,7 @@ function joinNodes(nodes) {
   ));
 }
 
-export default function TodayHero({ nombre = "equipo", events = [], fichajeReminder = null }) {
+export default function TodayHero({ nombre = "equipo", events = [], fichajeReminder = null, taskCount = 0 }) {
   const now = new Date();
   const hoy = startOfDay(now);
 
@@ -227,6 +227,12 @@ export default function TodayHero({ nombre = "equipo", events = [], fichajeRemin
     "No tenemos nada urgente ahora mismo.",
   ];
   const intro = hasNow ? pick(INTROS_NOW) : pick(INTROS_CALM);
+  // Frase de tareas activas de la persona esta semana (sin nombrarlas).
+  const tareasFrase = taskCount > 0
+    ? <>Tienes <Hi>{taskCount}</Hi> {taskCount === 1 ? "tarea activa" : "tareas activas"} esta semana.</>
+    : null;
+  // Si hay tareas y nada "ahora mismo", la frase de tareas sustituye al intro de calma.
+  const showIntro = hasContent && !(tareasFrase && !hasNow);
 
   return (
     <header className="pb-2 mb-8 fade-up">
@@ -237,7 +243,8 @@ export default function TodayHero({ nombre = "equipo", events = [], fichajeRemin
       </h1>
 
       <p className="mt-7 text-[22px] md:text-[30px] leading-[1.4] tracking-[-0.01em] text-mutedSoft max-w-[44ch]">
-        {hasContent && <>{intro} </>}
+        {tareasFrase && <>{tareasFrase} </>}
+        {showIntro && <>{intro} </>}
         {hasNow ? (
           <>
             {vac}
@@ -258,6 +265,8 @@ export default function TodayHero({ nombre = "equipo", events = [], fichajeRemin
             const groups = groupFill(fill);
             return <>Lo próximo {seraVerbo(fill)} {joinNodes(groups.map((g, i) => nodeForGroup(g, i > 0 && groups[i - 1].type === g.type)))}.</>;
           })()
+        ) : tareasFrase ? (
+          <>Nada más señalado en la agenda; buen momento para ir avanzándolas.</>
         ) : (
           <>Parece que de momento nada más. Buen momento para avanzar con calma.</>
         )}

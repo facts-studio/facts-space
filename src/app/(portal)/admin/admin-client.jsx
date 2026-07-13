@@ -225,7 +225,6 @@ function Calendario({ events, year, onDone }) {
           <Field label="Tipo">
             <select value={type} onChange={(e) => setType(e.target.value)} className="h-9 rounded-lg bg-surface px-2 text-[13px] text-ink">
               <option value="festivo">Festivo</option>
-              <option value="hito">Hito</option>
             </select>
           </Field>
           <Field label="Fecha"><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-9 rounded-lg bg-surface px-2 text-[13px] text-ink" /></Field>

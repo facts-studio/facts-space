@@ -26,13 +26,53 @@ function assigneesFromField(t) {
 // Asignación desde los GRUPOS ("Persona asignada = Equipo:Nombre"). Fuente
 // principal tras mover la asignación de usuarios a grupos. Grupo → miembro del
 // área Equipo (para email/foto). null si la tarea no tiene grupos.
+// Caso especial: el grupo "Team" equivale a TODA la plantilla (se expande a
+// todos los miembros), como si la tarea se asignara a todo el equipo.
+const memberAssignee = (m, fallbackLabel) => ({
+  email: m?.email ?? null,
+  name: m?.name ?? fallbackLabel,
+  initials: ((m?.name ?? fallbackLabel ?? "?")[0] || "?").toUpperCase(),
+  color: null,
+});
+const isTeamGroup = (name) => {
+  const n = stripAccents(name);
+  return n === "team" || n === "todos" || n === "todo el equipo";
+};
 function assigneesFromGroups(t) {
   const gs = t.group_assignees;
   if (!Array.isArray(gs) || !gs.length) return null;
-  return gs.map((g) => {
-    const m = TEAM_BY_FIRST.get(stripAccents(g.name).split(" ")[0]);
-    return { email: m?.email ?? null, name: m?.name ?? g.name, initials: (g.name?.[0] || "?").toUpperCase(), color: null };
-  });
+  // Si la tarea tiene el grupo "Team" (= todos), se muestra SOLO el icono de
+  // Team; representa a todo el equipo (no se listan las personas ni las subtareas).
+  if (gs.some((g) => isTeamGroup(g.name))) {
+    return [{ team: true, email: null, name: "Team", initials: "T", color: null }];
+  }
+  const out = [];
+  const seen = new Set();
+  const add = (a) => { const k = a.email || a.name; if (k && !seen.has(k)) { seen.add(k); out.push(a); } };
+  for (const g of gs) add(memberAssignee(TEAM_BY_FIRST.get(stripAccents(g.name).split(" ")[0]), g.name));
+  return out.length ? out : null;
+}
+
+// Ficheros del campo custom "📁 Recursos" (tipo attachment): pdfs, imágenes,
+// docs… relacionados con la tarea. Devuelve array normalizado o null.
+function resourcesFromField(t) {
+  const f = (t.custom_fields || []).find(
+    (cf) => cf.type === "attachment" && stripAccents(cf.name).includes("recurso")
+  );
+  if (!f || !Array.isArray(f.value) || !f.value.length) return null;
+  const files = f.value
+    .filter((a) => !a.deleted && !a.hidden)
+    .map((a) => ({
+      id: a.id,
+      title: a.title || a.id,
+      ext: (a.extension || "").toLowerCase(),
+      mimetype: a.mimetype || null,
+      size: typeof a.size === "number" ? a.size : null,
+      url: a.url_w_host || a.url || null,
+      thumb: a.thumbnail_medium || a.thumbnail_small || null,
+    }))
+    .filter((a) => a.url);
+  return files.length ? files : null;
 }
 
 // Cliente/campaña desde el TAG. Mapa tag → nombre bonito (coincide con las
@@ -79,8 +119,17 @@ function mapTask(t) {
     // Cliente = tag (opción B); si no hay tag de cliente, cae a la carpeta/space.
     project: clientFromTags(t) ?? (t.folder?.name && !t.folder?.hidden ? t.folder.name : (t.space?.name ?? null)),
     priority: t.priority?.priority ?? null,
+    // ClickUp marca los hitos (milestones) con custom_item_id === 1.
+    isMilestone: t.custom_item_id === 1,
+    description: (t.text_content || t.description || "").trim() || null,
+    resources: resourcesFromField(t), // ficheros del campo "📁 Recursos"
     dueDate: t.due_date ? Number(t.due_date) : null,
     startDate: t.start_date ? Number(t.start_date) : null,
+    // Jerarquía: para plegar subtareas en su tarea de nivel superior.
+    parentId: t.parent ?? null,
+    topParentId: t.top_level_parent ?? null,
+    // Tarea de "Team" = asignada a todo el equipo (matchea a todos y no sube subtareas).
+    everyone: (t.group_assignees ?? []).some((g) => isTeamGroup(g.name)),
     // Asignación: grupos (Equipo) → campo "Asignado a" → persona asignada real.
     assignees: assigneesFromGroups(t) ?? assigneesFromField(t) ?? (t.assignees ?? []).map((a) => ({
       email: a.email ?? null,
@@ -89,6 +138,41 @@ function mapTask(t) {
       color: a.color ?? null,
     })),
   };
+}
+
+// Pliega las subtareas dentro de su tarea padre:
+//  1) sube los asignados de cada subtarea a la tarea RAÍZ (para que quien está
+//     en una subtarea vea también la tarea padre y su avatar lo refleje).
+//  2) adjunta las subtareas DIRECTAS a su padre en `t.subtasks` (anidable),
+//     para poder desplegarlas en el panel de detalle.
+// Devuelve solo las tareas de nivel superior; las subtareas cuyo padre está en
+// el conjunto se pliegan dentro. Las huérfanas (padre no traído) se conservan.
+function rollUpSubtasks(tasks) {
+  const byId = new Map(tasks.map((t) => [t.id, t]));
+  const merge = (into, from) => {
+    for (const a of from) {
+      const key = a.email || a.name;
+      if (!into.some((x) => (x.email || x.name) === key)) into.push(a);
+    }
+  };
+  // Conserva los asignados DIRECTOS de cada tarea antes de heredar (Inicio los
+  // necesita para mostrar la subtarea concreta, no el padre).
+  for (const t of tasks) t.ownAssignees = t.assignees.slice();
+  for (const t of tasks) {
+    // Asignados → suben a la tarea raíz (top-level), salvo si la raíz es de
+    // "Team" (ya representa a todos: no hace falta subir las subtareas).
+    const topId = t.topParentId && t.topParentId !== t.id ? t.topParentId : null;
+    if (topId && byId.has(topId) && !byId.get(topId).everyone) merge(byId.get(topId).assignees, t.assignees);
+    // Subtarea → se adjunta a su padre directo.
+    if (t.parentId && byId.has(t.parentId)) {
+      const p = byId.get(t.parentId);
+      (p.subtasks ??= []).push(t);
+    }
+  }
+  for (const t of tasks) {
+    if (t.subtasks) t.subtasks.sort((a, b) => (a.dueDate ?? Infinity) - (b.dueDate ?? Infinity));
+  }
+  return tasks.filter((t) => !(t.parentId && byId.has(t.parentId)));
 }
 
 const authOpts = () => ({
@@ -139,7 +223,7 @@ export async function getClickUpTasks() {
       // Recorre páginas con unos parámetros extra dados.
       const fetchAll = async (extra) => {
         for (let page = 0; page < 30; page++) {
-          const params = new URLSearchParams({ page: String(page), subtasks: "false", order_by: "due_date", ...extra });
+          const params = new URLSearchParams({ page: String(page), subtasks: "true", order_by: "due_date", ...extra });
           for (const id of visibleIds) params.append("list_ids[]", id);
           const res = await fetch(`${BASE}/team/${team}/task?${params}`, opts);
           if (!res.ok) break;
@@ -157,7 +241,8 @@ export async function getClickUpTasks() {
       const seen = new Set();
       const out = [];
       for (const t of raw) if (!seen.has(t.id)) { seen.add(t.id); out.push(mapTask(t)); }
-      return out;
+      // Subtareas → pliega sus asignados en la tarea padre y devuelve top-level.
+      return rollUpSubtasks(out);
     }
 
     if (process.env.CLICKUP_VIEW_ID) {
@@ -180,6 +265,94 @@ export async function getClickUpTasks() {
   } catch {
     return [];
   }
+}
+
+// Listas de la "Agenda F*cts" (Space Agenda F*cts › folder Calendario). Fuente
+// de la agenda de empresa: festivos, cumpleaños e hitos generales. Vacaciones
+// se gestiona desde la intranet y se espeja a esta lista (ver actions/vacations).
+export const AGENDA_LISTS = {
+  vacaciones: "901520598266",
+  festivos: "901520598213",
+  cumples: "901520597103",
+  hitos: "901520598257",
+};
+
+const toMadridISO = (ms) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date(Number(ms)));
+
+// Trae todas las tareas de una lista (paginado).
+async function fetchListTasks(listId) {
+  const opts = authOpts();
+  const out = [];
+  for (let page = 0; page < 10; page++) {
+    const res = await fetch(`${BASE}/list/${listId}/task?include_closed=true&subtasks=false&page=${page}`, opts);
+    if (!res.ok) break;
+    const json = await res.json();
+    const batch = json.tasks ?? [];
+    out.push(...batch);
+    if (batch.length < 100) break;
+  }
+  return out;
+}
+
+// Eventos de la agenda de empresa desde ClickUp: festivos, cumpleaños e hitos.
+// Shape de evento: { id, type, title, start, end, who }.
+export async function getAgendaEvents() {
+  if (!isClickUpConfigured()) return [];
+  const range = (t) => {
+    const due = t.due_date ? toMadridISO(t.due_date) : null;
+    const start = t.start_date ? toMadridISO(t.start_date) : due;
+    return { start: start || due, end: due || start };
+  };
+  const whoFromGroups = (t) => {
+    const g = (t.group_assignees || [])[0];
+    if (!g) return null;
+    const m = TEAM_BY_FIRST.get(stripAccents(g.name).split(" ")[0]);
+    return m?.name ?? g.name;
+  };
+  try {
+    const [fest, cum, hit] = await Promise.all([
+      fetchListTasks(AGENDA_LISTS.festivos),
+      fetchListTasks(AGENDA_LISTS.cumples),
+      fetchListTasks(AGENDA_LISTS.hitos),
+    ]);
+    const events = [];
+    for (const t of fest) if (t.due_date || t.start_date) events.push({ id: `fest-${t.id}`, type: "festivo", title: t.name, ...range(t), who: null });
+    for (const t of cum) if (t.due_date || t.start_date) events.push({ id: `cum-${t.id}`, type: "cumple", title: t.name, ...range(t), who: whoFromGroups(t) });
+    for (const t of hit) if (t.due_date || t.start_date) events.push({ id: `hito-${t.id}`, type: "hito", title: t.name, ...range(t), who: null });
+    return events;
+  } catch {
+    return [];
+  }
+}
+
+// Hitos (milestones, custom_item_id === 1) de TODO el workspace, para el
+// calendario de eventos. Independiente de las listas activadas (un hito puede
+// crearse en cualquier lista). Shape de evento: { id, type:'hito', title, start, end }.
+export async function getClickUpMilestones() {
+  if (!isClickUpConfigured()) return [];
+  const opts = authOpts();
+  const team = process.env.CLICKUP_TEAM_ID;
+  const toISO = (ms) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date(Number(ms)));
+  const out = [];
+  try {
+    for (let page = 0; page < 15; page++) {
+      const params = new URLSearchParams({ page: String(page), subtasks: "false", include_closed: "true", order_by: "due_date" });
+      const res = await fetch(`${BASE}/team/${team}/task?${params}`, opts);
+      if (!res.ok) break;
+      const json = await res.json();
+      const batch = json.tasks ?? [];
+      for (const t of batch) {
+        if (t.custom_item_id !== 1 || !t.due_date) continue;
+        const due = Number(t.due_date);
+        const start = t.start_date ? Number(t.start_date) : due;
+        out.push({ id: `hito-cu-${t.id}`, type: "hito", title: t.name, start: toISO(Math.min(start, due)), end: toISO(due), who: null });
+      }
+      if (batch.length < 100) break;
+    }
+  } catch {
+    return out;
+  }
+  return out;
 }
 
 // Jerarquía completa desde ClickUp (Space → Folder → List) aplanada a filas de
@@ -249,7 +422,8 @@ const endOfToday = (now = Date.now()) => {
   return d.getTime();
 };
 
-const assignedTo = (t, email) => !email || t.assignees.some((a) => a.email === email);
+// Una tarea es "tuya" si no filtras, si es de Team (everyone) o si estás asignado.
+const assignedTo = (t, email) => !email || t.everyone || t.assignees.some((a) => a.email === email);
 const isOpen = (t) => t.statusType !== "closed" && t.statusType !== "done";
 
 // Tareas "de hoy" de una persona: vencen hoy o están vencidas y siguen abiertas.
@@ -272,16 +446,27 @@ export function myTasks(tasks, email, now = Date.now()) {
 
 // Tareas de LA SEMANA para el inicio: abiertas, con fecha, vencidas o que vencen
 // en los próximos 7 días, y que sean TUYAS o SIN DUEÑO (sin asignar).
+// A NIVEL DE ASIGNACIÓN REAL: si estás en una subtarea (y no en el padre), se
+// muestra la SUBTAREA marcada (`isSubtask` + `parentName`), no la tarea padre.
 export function weekTasks(tasks, email, now = Date.now()) {
   const horizon = new Date(now);
   horizon.setHours(23, 59, 59, 999);
   horizon.setDate(horizon.getDate() + 7);
   const limit = horizon.getTime();
-  const mineOrUnowned = (t) =>
-    (t.assignees?.length ?? 0) === 0 || (email && t.assignees.some((a) => a.email === email));
-  return tasks
-    .filter((t) => isOpen(t) && mineOrUnowned(t) && t.dueDate && t.dueDate <= limit)
-    .sort((a, b) => a.dueDate - b.dueDate);
+  const out = [];
+  const visit = (t, parent) => {
+    // Asignación DIRECTA a esta tarea/subtarea (no heredada), o tarea de Team.
+    const own = t.ownAssignees ?? t.assignees;
+    const direct = t.everyone || (email && own.some((a) => a.email === email));
+    // "Sin dueño" solo aplica a tareas de nivel superior sin nadie asignado.
+    const unowned = !parent && (t.assignees?.length ?? 0) === 0;
+    if (isOpen(t) && t.dueDate && t.dueDate <= limit && (direct || unowned)) {
+      out.push(parent ? { ...t, isSubtask: true, parentName: parent.name } : t);
+    }
+    for (const s of t.subtasks ?? []) visit(s, t);
+  };
+  for (const t of tasks) visit(t, null);
+  return out.sort((a, b) => a.dueDate - b.dueDate);
 }
 
 // Tareas abiertas (de todo el equipo) para el espacio de gestión.
