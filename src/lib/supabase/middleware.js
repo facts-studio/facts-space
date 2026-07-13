@@ -35,6 +35,7 @@ export async function updateSession(request) {
     pathname === "/login" ||
     pathname.startsWith("/auth") ||
     pathname.startsWith("/_next") ||
+    pathname.startsWith("/api/clickup/webhook") || // webhook de ClickUp (sin sesión)
     pathname === "/favicon.ico";
 
   // Sin sesión → al login.
