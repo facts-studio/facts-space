@@ -18,6 +18,20 @@ export async function getTimeEntries(employeeId, fromISO, toISO) {
   return data ?? [];
 }
 
+// Último día fichado (work_date ISO) del empleado, o null si nunca ha fichado.
+export async function getLastWorkedDate(employeeId) {
+  if (!isConfigured() || !employeeId) return null;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("time_entries")
+    .select("work_date")
+    .eq("employee_id", employeeId)
+    .eq("voided", false)
+    .order("work_date", { ascending: false })
+    .limit(1);
+  return data?.[0]?.work_date ?? null;
+}
+
 // Marcas del calendario en [from, to]: festivos (todos) y vacaciones aprobadas
 // del empleado, como listas de días ISO.
 export async function getDayMarks(employee, fromISO, toISO) {

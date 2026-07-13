@@ -65,7 +65,7 @@ function joinNodes(nodes) {
   ));
 }
 
-export default function TodayHero({ nombre = "equipo", events = [] }) {
+export default function TodayHero({ nombre = "equipo", events = [], fichajeReminder = null }) {
   const now = new Date();
   const hoy = startOfDay(now);
 
@@ -157,12 +157,21 @@ export default function TodayHero({ nombre = "equipo", events = [] }) {
   // skipIcon: omite el emoji cuando el evento anterior es del mismo tipo (no
   // repetir 🏖️ 🏖️ seguidos).
   const ICON = { cumple: "🎂", festivo: "🗓️", hito: "🎯", vacaciones: "🏖️" };
+  // Rango de un evento: "el 2 de julio" (un día) o "del 2 al 6 de julio" /
+  // "del 2 de julio al 3 de agosto" (varios). Se usa para dar la duración de
+  // las vacaciones cuando abarcan más de un día.
+  const rango = (e) => {
+    if (!e.end || e.end === e.start) return <>el <Hi>{corto(e.start)}</Hi></>;
+    const a = diaMes(e.start), b = diaMes(e.end);
+    if (a.month === b.month) return <>del <Hi>{a.day}</Hi> al <Hi>{b.day} de {b.month}</Hi></>;
+    return <>del <Hi>{corto(e.start)}</Hi> al <Hi>{corto(e.end)}</Hi></>;
+  };
   const nodeFor = (e, skipIcon = false) => {
     const ico = skipIcon ? null : <><Ico>{ICON[e.type]}</Ico> </>;
     if (e.type === "cumple") return <>{ico}el cumple de <Hi>{e.who}</Hi> el <Hi>{corto(e.start)}</Hi></>;
     if (e.type === "festivo") return <>{ico}el festivo <Hi>«{e.title}»</Hi> el <Hi>{corto(e.start)}</Hi></>;
     if (e.type === "hito") return <>{ico}el hito <Hi>«{e.title}»</Hi> el <Hi>{corto(e.start)}</Hi></>;
-    return <>{ico}las vacaciones de <Hi>{e.who}</Hi> el <Hi>{corto(e.start)}</Hi></>;
+    return <>{ico}las vacaciones de <Hi>{e.who}</Hi> {rango(e)}</>;
   };
 
   // Agrupa eventos consecutivos de la misma persona (p. ej. dos tramos de
@@ -192,6 +201,8 @@ export default function TodayHero({ nombre = "equipo", events = [] }) {
     if (g.type === "cumple") return <>{ico}el cumple de <Hi>{g.who}</Hi> {fechasNode(g.events)}</>;
     if (g.type === "festivo") return <>{ico}el festivo <Hi>«{g.title}»</Hi> {fechasNode(g.events)}</>;
     if (g.type === "hito") return <>{ico}el hito <Hi>«{g.title}»</Hi> {fechasNode(g.events)}</>;
+    // Vacaciones: un solo tramo → rango con duración; varios → fechas de inicio.
+    if (g.events.length === 1) return <>{ico}las vacaciones de <Hi>{g.who}</Hi> {rango(g.events[0])}</>;
     return <>{ico}las vacaciones de <Hi>{g.who}</Hi> {fechasNode(g.events)}</>;
   };
 
@@ -251,6 +262,9 @@ export default function TodayHero({ nombre = "equipo", events = [] }) {
           <>Parece que de momento nada más. Buen momento para avanzar con calma.</>
         )}
       </p>
+
+      {/* Aviso de fichaje (encima de "Lo más cercano") */}
+      {fichajeReminder}
 
       {/* Lo más cercano — agenda por día (minimal, alineada) */}
       {proxEvento && (
