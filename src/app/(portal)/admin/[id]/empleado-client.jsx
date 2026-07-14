@@ -135,7 +135,7 @@ const FICHA_GROUPS = [
     ["id_doc_type", "Tipo de documento", "select", IDDOC], ["dni", "Nº de documento", "text"], ["nss", "Nº Seguridad Social (NAF)", "text"],
   ]],
   ["Datos de contacto", [
-    ["email", "Email de la empresa", "email"], ["phone", "Teléfono", "text"], ["mobile", "Móvil", "text"],
+    ["email", "Email de la empresa", "email"], ["personal_email", "Email personal", "email"], ["phone", "Teléfono", "text"], ["mobile", "Móvil", "text"],
     ["address", "Dirección", "text"], ["postal_code", "Código postal", "text"], ["city", "Ciudad", "text"],
     ["province", "Provincia", "text"], ["country", "País", "text"], ["emergency_contact", "Contacto de emergencia", "text"],
     ["photo", "Foto (URL)", "text"],
