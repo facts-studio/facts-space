@@ -39,8 +39,8 @@ export default function EquipoView({ team, events, vacUsed = {}, year }) {
       />
 
       <div className={m ? "lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-6 lg:items-start" : ""}>
-        {/* Directorio de personas */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+        {/* Retícula de personas — imagen arriba, info debajo */}
+        <div className={cn("grid grid-cols-2 sm:grid-cols-3 gap-3", m ? "xl:grid-cols-3" : "lg:grid-cols-4")}>
           {team.map((p) => {
             const active = p.id === openId;
             return (
@@ -48,17 +48,31 @@ export default function EquipoView({ team, events, vacUsed = {}, year }) {
                 key={p.id}
                 onClick={() => setOpenId(active ? null : p.id)}
                 className={cn(
-                  "group flex items-center gap-4 rounded-2xl bg-surface/55 p-4 text-left transition hover:bg-surface hover:shadow-soft",
+                  "group rounded-2xl overflow-hidden bg-surface/55 text-left transition hover:bg-surface hover:shadow-soft",
                   active && "bg-surface ring-1 ring-borderStrong"
                 )}
               >
-                <Avatar src={p.photo} name={p.name} className="w-14 h-14 shrink-0 text-[18px] group-hover:ring-borderStrong transition" />
-                <div className="min-w-0 flex-1">
-                  <p className="font-display text-[17px] leading-tight text-ink truncate">{p.name}{p.last_name ? ` ${p.last_name}` : ""}</p>
-                  <p className="text-micro text-muted truncate mt-0.5">{p.role}</p>
-                  <p className="text-micro text-mutedSoft truncate mt-1.5">{p.email}</p>
+                <div className="aspect-[4/5] overflow-hidden bg-surface2">
+                  {p.photo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={p.photo} alt={p.name} className="w-full h-full object-cover group-hover:scale-[1.04] transition duration-500" />
+                  ) : (
+                    <span className="w-full h-full grid place-items-center font-display text-[40px] text-mutedSoft">{initial(p.name)}</span>
+                  )}
                 </div>
-                <svg className="h-4 w-4 shrink-0 text-mutedSoft/50 group-hover:text-mutedSoft transition" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>
+                <div className="p-4">
+                  <p className="font-display text-[16px] leading-tight text-ink truncate">{p.name}{p.last_name ? ` ${p.last_name}` : ""}</p>
+                  <p className="text-micro text-muted truncate mt-0.5">{p.role}</p>
+                  <div className="mt-3 pt-3 border-t border-border/50 space-y-1.5">
+                    <p className="text-micro text-mutedSoft truncate flex items-center gap-1.5">
+                      <svg className="h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 7 9 6 9-6" /></svg>
+                      {p.email}
+                    </p>
+                    {p.birthday && (
+                      <p className="text-micro text-mutedSoft flex items-center gap-1.5">🎂 {fmtDate(p.birthday)}</p>
+                    )}
+                  </div>
+                </div>
               </button>
             );
           })}
