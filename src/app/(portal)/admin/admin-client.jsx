@@ -347,15 +347,16 @@ function Equipo({ employees, vacUsed, year, onDone }) {
   return (
     <div className="rounded-2xl bg-surface/55 p-6">
       <div className="flex items-center justify-between gap-3 mb-4">
-        <p className="section-eyebrow">Empleados · saldo de vacaciones {year}</p>
+        <p className="section-eyebrow">Empleados · {employees.length}</p>
         <button onClick={() => setAdding((o) => !o)} className="btn-primary h-8 text-[12.5px]">{adding ? "Cancelar" : "+ Añadir empleado"}</button>
       </div>
       {adding && <AddEmployee onDone={() => { setAdding(false); onDone?.(); }} />}
       <div className="flex flex-col divide-y divide-border/50">
         <div className="flex items-center gap-3 px-3 pb-2 text-micro uppercase tracking-wide text-mutedSoft">
           <span className="flex-1">Persona</span>
-          <span className="w-[90px] text-right">Saldo</span>
-          <span className="w-[50px]" />
+          <span className="w-[200px] hidden md:block">Email</span>
+          <span className="w-[80px] text-right">Vac. {year}</span>
+          <span className="w-[46px]" />
           <span className="w-[10px]" />
         </div>
         {employees.map((e) => (
@@ -404,15 +405,15 @@ function EmployeeRow({ e, used }) {
     >
       <div className="flex items-center gap-2.5 flex-1 min-w-0">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        {e.photo ? <img src={e.photo} alt="" className="w-7 h-7 rounded-full object-cover" /> : <span className="w-7 h-7 rounded-full bg-surface2" />}
+        {e.photo ? <img src={e.photo} alt="" className="w-8 h-8 rounded-full object-cover" /> : <span className="w-8 h-8 rounded-full bg-surface2" />}
         <div className="min-w-0">
-          <p className="text-small text-ink truncate">{e.name}</p>
+          <p className="text-small text-ink truncate">{e.name}{e.last_name ? ` ${e.last_name}` : ""}</p>
           <p className="text-micro text-mutedSoft truncate">{e.role || "—"}</p>
         </div>
       </div>
-      <span className="w-[90px] text-right text-small tabular-nums text-ink">{remaining} <span className="text-mutedSoft">/ {allowance}</span></span>
-      {e.is_admin && <span className="text-micro text-mutedSoft w-[50px] text-center">Admin</span>}
-      {!e.is_admin && <span className="w-[50px]" />}
+      <span className="w-[200px] hidden md:block text-micro text-mutedSoft truncate">{e.email}</span>
+      <span className="w-[80px] text-right text-small tabular-nums text-ink">{remaining} <span className="text-mutedSoft">/ {allowance}</span></span>
+      <span className="w-[46px] text-center">{e.is_admin && <span className="text-[10px] uppercase tracking-wide text-mutedSoft bg-surface2 rounded px-1.5 py-0.5">Admin</span>}</span>
       <span className="text-mutedSoft">›</span>
     </Link>
   );
