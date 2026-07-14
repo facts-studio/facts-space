@@ -33,6 +33,7 @@ export async function updateEmployee({ id, patch }) {
     "dni", "nss", "iban", "phone", "address", "emergency_contact", "contract_type",
     "last_name", "nationality", "gender", "marital_status", "id_doc_type",
     "mobile", "city", "postal_code", "province", "country", "bank_name", "swift", "personal_email",
+    "work_schedule", "work_mode",
   ]) {
     if (k in patch) allowed[k] = String(patch[k] ?? "");
   }

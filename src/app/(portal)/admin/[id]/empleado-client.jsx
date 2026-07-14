@@ -53,16 +53,28 @@ function Resumen({ e, employees, requests, documents, time, vacUsed, year, onDon
   const nominas = documents.filter((d) => d.category === "nomina").slice(0, 3);
   const upcoming = requests.filter((r) => r.status === "approved" && r.end_date >= new Date().toISOString().slice(0, 10)).slice(0, 4);
 
+  const fullName = [e.name, e.last_name].filter(Boolean).join(" ");
+  const fullAddress = [e.address, e.postal_code, e.city, e.province, e.country].filter(Boolean).join(" · ");
   const personal = [
-    ["Teléfono", e.phone], ["Email", e.email], ["Dirección", e.address],
-    ["DNI / NIE", e.dni], ["Nº Seguridad Social", e.nss], ["IBAN", e.iban],
-    ["Cumpleaños", e.birthday ? fmtDate(e.birthday) : ""],
+    ["Nombre completo", fullName], ["Fecha de nacimiento", e.birthday ? fmtDate(e.birthday) : ""],
+    ["Nacionalidad", e.nationality], ["Género", e.gender], ["Estado civil", e.marital_status],
+    ["DNI / NIE", e.dni], ["Nº Seguridad Social (NAF)", e.nss],
+    ["Email empresa", e.email], ["Email personal", e.personal_email],
+    ["Teléfono", e.phone], ["Móvil", e.mobile],
+    ["Dirección", fullAddress], ["Contacto de emergencia", e.emergency_contact],
+  ];
+  const banco = [
+    ["Banco", e.bank_name], ["IBAN", e.iban], ["SWIFT / BIC", e.swift],
   ];
   const contrato = [
-    ["Tipo de contrato", e.contract_type], ["Jornada", e.weekly_hours ? `${Number(e.weekly_hours)}h semanales` : ""],
+    ["Puesto", e.role], ["Tipo de contrato", e.contract_type],
     ["Inicio del contrato", e.start_date ? fmtDate(e.start_date) : ""],
+    ["Jornada", e.weekly_hours ? `${Number(e.weekly_hours)}h semanales` : ""],
+    ["Jornada laboral", e.work_schedule], ["Modalidad", e.work_mode],
     ["Salario bruto anual", e.gross_salary ? `${Number(e.gross_salary).toLocaleString("es-ES")} €` : ""],
-    ["Contacto de emergencia", e.emergency_contact],
+  ];
+  const empresa = [
+    ["Razón social", COMPANY.name], ["CIF", COMPANY.cif], ["Centro", COMPANY.center],
   ];
 
   return (
@@ -80,6 +92,8 @@ function Resumen({ e, employees, requests, documents, time, vacUsed, year, onDon
 
         <Info title="Datos personales" rows={personal} />
         <Info title="Contrato" rows={contrato} />
+        <Info title="Datos bancarios" rows={banco} />
+        <Info title="Empresa" rows={empresa} />
 
         <div className="rounded-2xl bg-surface/55 p-6">
           <p className="section-eyebrow mb-4">Últimas nóminas</p>
@@ -128,6 +142,9 @@ function FichaCard({ e, employees, onEdit }) {
 const GENDER = ["", "Masculino", "Femenino", "Otro"];
 const MARITAL = ["", "Soltero/a", "Casado/a", "Pareja de hecho", "Divorciado/a", "Viudo/a"];
 const IDDOC = ["", "DNI", "NIE", "Pasaporte"];
+const WORK_MODE = ["", "Presencial", "Remoto", "Híbrido"];
+// Datos de la empresa (comunes a toda la plantilla).
+const COMPANY = { name: "NEW BRANCH STUDIO SL", cif: "B75522276", center: "NEW BRANCH STUDIO SL" };
 const FICHA_GROUPS = [
   ["Datos de filiación", [
     ["name", "Nombre", "text"], ["last_name", "Apellidos", "text"], ["birthday", "Fecha de nacimiento", "date"],
@@ -145,7 +162,8 @@ const FICHA_GROUPS = [
   ]],
   ["Contrato", [
     ["role", "Puesto", "text"], ["contract_type", "Tipo de contrato", "text"], ["start_date", "Fecha de alta", "date"],
-    ["weekly_hours", "Jornada (h/sem)", "number"], ["gross_salary", "Salario bruto anual (€)", "number"],
+    ["weekly_hours", "Jornada (h/sem)", "number"], ["work_schedule", "Jornada laboral", "text"], ["work_mode", "Modalidad", "select", WORK_MODE],
+    ["gross_salary", "Salario bruto anual (€)", "number"],
     ["vacation_allowance", "Días vacaciones/año (base)", "number"], ["vacation_adjustment", "Días extra (+/−)", "number"],
   ]],
 ];
