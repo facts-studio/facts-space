@@ -24,7 +24,12 @@ export default async function PortalLayout({ children }) {
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar user={user} isAdmin={Boolean(emp?.is_admin)} />
+      <Sidebar
+        user={user}
+        isAdmin={Boolean(emp?.is_admin)}
+        serverTheme={emp?.theme ?? null}
+        initialCollapsed={Boolean(emp?.nav_collapsed)}
+      />
       <main className="flex-1 min-w-0 px-5 md:px-10 py-8 md:py-10">
         <div className="fade-up mx-auto w-full max-w-[1440px]">{children}</div>
       </main>

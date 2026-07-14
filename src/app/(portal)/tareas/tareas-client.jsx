@@ -323,15 +323,16 @@ export default function TareasClient({ tasks, events = [], myEmail, isAdmin = fa
   const [area, setArea] = useState(""); // "" = todas las disciplinas
   const [showClosed, setShowClosed] = useState(false); // false = solo abiertas
   const [scope, setScope] = useState("all"); // all | mine
-  const [teamPreview, setTeamPreview] = useState(false); // admin: ver como el equipo (sin Management ni columna Área)
+  // Tarea abierta en el panel / deep-links desde Inicio: ?task=id y ?status=1
+  // (este último, solo admin, arranca en modo Status acotado a esta semana).
+  const searchParams = useSearchParams();
+  const statusMode = isAdmin && searchParams.get("status") === "1";
+  const [teamPreview, setTeamPreview] = useState(statusMode); // admin: ver como el equipo (sin Management ni columna Área)
   const myPhoto = teamPhoto(myEmail);
   const showAreaCol = isAdmin && !teamPreview;
-  const [tscope, setTscope] = useState("todo"); // todo | hoy | semana | mes
+  const [tscope, setTscope] = useState(statusMode ? "semana" : "todo"); // todo | hoy | semana | mes
   const cycleTscope = () => { const i = SCOPES.findIndex((s) => s.key === tscope); setTscope(SCOPES[(i + 1) % SCOPES.length].key); };
   const [view, setView] = useState("lista"); // lista | tablero
-  // Tarea abierta en el panel derecho; se puede preseleccionar vía ?task=id
-  // (deep-link desde Inicio para el equipo no-admin).
-  const searchParams = useSearchParams();
   const [selectedId, setSelectedId] = useState(() => searchParams.get("task"));
   const openTask = (t) => setSelectedId(t.id);
   const [expanded, setExpanded] = useState(() => new Set()); // ids con subtareas desplegadas
@@ -491,7 +492,13 @@ export default function TareasClient({ tasks, events = [], myEmail, isAdmin = fa
               {isAdmin && (
               <button
                 type="button"
-                onClick={() => setTeamPreview((v) => !v)}
+                onClick={() => setTeamPreview((v) => {
+                  const next = !v;
+                  // Al entrar en modo Status, acotar automáticamente a esta semana;
+                  // al salir, volver a "Todo".
+                  setTscope(next ? "semana" : "todo");
+                  return next;
+                })}
                 title="Ver como lo ve el equipo (sin Management ni columna de lista)"
                 aria-pressed={teamPreview}
                 className={cn(

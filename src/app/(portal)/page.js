@@ -1,20 +1,22 @@
 import BirthdayConfetti from "@/components/BirthdayConfetti";
 import TodayHero from "@/components/TodayHero";
 import FichajeReminder from "@/components/FichajeReminder";
-import NovedadesPanel from "@/components/NovedadesPanel";
-import TareasHoy from "@/components/TareasHoy";
-import { NEWS } from "@/lib/mock";
+import HomePanels from "@/components/HomePanels";
 import { getCalendarEvents } from "@/lib/data/calendar";
 import { getCurrentEmployee } from "@/lib/data/helpers";
-import { getPendingVacations } from "@/lib/data/admin";
+import { getMyNotes } from "@/lib/data/notes";
 import { getLastWorkedDate } from "@/lib/data/time";
 import { madridDateISO } from "@/lib/dates";
 import { getClickUpTasks, weekTasks, workspaceOverview } from "@/lib/data/clickup";
 
 export default async function HomePage() {
-  const [events, me, tasks] = await Promise.all([getCalendarEvents(), getCurrentEmployee(), getClickUpTasks()]);
+  const [events, me, tasks, notes] = await Promise.all([
+    getCalendarEvents(),
+    getCurrentEmployee(),
+    getClickUpTasks(),
+    getMyNotes(),
+  ]);
   const nombre = me?.name?.split(" ")[0] || "equipo";
-  const pendingApprovals = me?.is_admin ? (await getPendingVacations()).length : 0;
   const mine = weekTasks(tasks, me?.email);
   const overview = workspaceOverview(tasks);
 
@@ -24,7 +26,7 @@ export default async function HomePage() {
     ? Math.round((new Date(madridDateISO() + "T00:00:00") - new Date(lastWorked + "T00:00:00")) / 86400000)
     : null;
   return (
-    <div className="grid lg:grid-cols-[minmax(0,1fr)_320px] gap-8 lg:gap-12 items-start">
+    <div className="grid gap-8 lg:gap-12 items-start max-w-4xl mx-auto">
       <BirthdayConfetti />
       {/* Columna principal */}
       <div className="min-w-0">
@@ -35,11 +37,15 @@ export default async function HomePage() {
           fichajeReminder={me ? <FichajeReminder days={daysSinceFichaje} /> : null}
         />
 
-        <TareasHoy tasks={mine} overview={overview} isAdmin={Boolean(me?.is_admin)} />
+        <HomePanels
+          events={events}
+          tasks={mine}
+          overview={overview}
+          isAdmin={Boolean(me?.is_admin)}
+          initialNotes={notes}
+          canUseNotes={Boolean(me)}
+        />
       </div>
-
-      {/* Columna derecha — Novedades */}
-      <NovedadesPanel news={NEWS} events={events} pendingApprovals={pendingApprovals} />
     </div>
   );
 }

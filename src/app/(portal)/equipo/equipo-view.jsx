@@ -26,7 +26,7 @@ function Avatar({ src, name, className }) {
   );
 }
 
-export default function EquipoView({ team, events, vacUsed = {}, year }) {
+export default function EquipoView({ team, events, vacUsed = {} }) {
   const [openId, setOpenId] = useState(null);
   const m = team.find((x) => x.id === openId) || null;
 
@@ -100,7 +100,7 @@ export default function EquipoView({ team, events, vacUsed = {}, year }) {
               return (
                 <div className="grid grid-cols-2 gap-3 mb-5">
                   <div className="rounded-xl bg-surface2/50 px-4 py-3">
-                    <p className="text-caption uppercase text-mutedSoft">Vac. restantes {year}</p>
+                    <p className="text-caption uppercase text-mutedSoft">Vac. restantes</p>
                     <p className="font-display text-[22px] text-ink tabular-nums mt-0.5">{allowance - used}<span className="text-mutedSoft text-[14px]"> / {allowance}</span></p>
                   </div>
                   <div className="rounded-xl bg-surface2/50 px-4 py-3">

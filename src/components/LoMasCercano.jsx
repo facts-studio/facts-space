@@ -55,14 +55,14 @@ export default function LoMasCercano({ events = [], className = "" }) {
       <div className="divide-y divide-border/50">
         {agenda.map((day) => (
           <div key={day.iso} className="flex gap-4 py-4 first:pt-3 last:pb-1">
-            <div className="w-[76px] shrink-0 flex items-center gap-2.5">
+            <div className="w-[76px] shrink-0 flex items-start gap-2.5">
               <span className="font-display text-[28px] leading-none text-ink tabular-nums w-[1.1em] text-right shrink-0">{day.num}</span>
               <span className="leading-tight">
                 <span className="block text-[13px] leading-none text-ink capitalize">{day.weekday}</span>
                 <span className="block text-micro leading-none text-mutedSoft capitalize mt-1">{day.month}</span>
               </span>
             </div>
-            <div className="flex-1 min-w-0 space-y-3 self-center">
+            <div className="flex-1 min-w-0 space-y-3">
               {day.events.length === 0 ? (
                 <p className="text-small text-mutedSoft">No hay más eventos hoy</p>
               ) : (

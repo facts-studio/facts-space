@@ -195,6 +195,15 @@ html, body {
   .fade-up { animation: fadeOnly 0.2s ease both; }
 }
 
+/* Skeleton de carga — pulso suave sobre superficie. */
+@keyframes skeletonPulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 0.9; } }
+.skeleton {
+  animation: skeletonPulse 1.3s ease-in-out infinite;
+  background: rgb(var(--ct-surface2) / 0.8);
+  border-radius: 0.75rem;
+}
+@media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
+
 /* Entrada lateral (panel archivo) — desliza desde la derecha + fade */
 @keyframes slideInRight {
   from { opacity: 0; transform: translateX(14px); }

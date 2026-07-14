@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV_GROUPS } from "@/lib/nav";
 import { createClient } from "@/lib/supabase/client";
+import { setNavCollapsed } from "@/lib/actions/prefs";
 import FctsMark from "@/components/FctsMark";
 import ThemeToggle from "@/components/ThemeToggle";
 import NavIcon from "@/components/NavIcon";
@@ -20,9 +21,8 @@ function NavLink({ href, label, icon, active, collapsed }) {
   return (
     <Link
       href={href}
-      title={collapsed ? label : undefined}
       className={[
-        "flex items-center rounded-xl text-[14px] transition-[background-color,color] duration-150",
+        "group/nav relative flex items-center rounded-xl text-[14px] transition-[background-color,color] duration-150",
         collapsed ? "justify-center h-10 w-10 mx-auto" : "gap-3 px-3 py-2.5",
         active
           ? "bg-surface2 text-ink shadow-card"
@@ -31,6 +31,12 @@ function NavLink({ href, label, icon, active, collapsed }) {
     >
       <span className={`shrink-0 ${active ? "opacity-100" : "opacity-70"}`}><NavIcon name={icon} /></span>
       {!collapsed && label}
+      {/* Menú recogido: burbuja con el nombre de la acción al pasar el ratón. */}
+      {collapsed && (
+        <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded-full bg-surface2 border border-border/70 px-3 py-1 text-[12px] text-ink opacity-0 transition-opacity group-hover/nav:opacity-100 z-50">
+          {label}
+        </span>
+      )}
     </Link>
   );
 }
@@ -49,16 +55,15 @@ function SubLink({ href, label, active }) {
   );
 }
 
-export default function Sidebar({ user, isAdmin = false }) {
+export default function Sidebar({ user, isAdmin = false, serverTheme = null, initialCollapsed = false }) {
   const pathname = usePathname();
-  // Estado recordado entre sesiones (se lee en cliente; SSR arranca expandido).
-  const [collapsed, setCollapsed] = useState(
-    () => typeof window !== "undefined" && localStorage.getItem("nav-collapsed") === "1"
-  );
+  // Estado recordado EN EL USUARIO (employees.nav_collapsed): el SSR ya llega
+  // con el valor correcto (prop), así que no hay parpadeo de ancho.
+  const [collapsed, setCollapsed] = useState(initialCollapsed);
   const toggle = () =>
     setCollapsed((c) => {
       const next = !c;
-      localStorage.setItem("nav-collapsed", next ? "1" : "0");
+      setNavCollapsed(next);
       return next;
     });
 
@@ -98,7 +103,7 @@ export default function Sidebar({ user, isAdmin = false }) {
           <span className="absolute inset-0 grid place-items-center text-inkSoft opacity-0 transition-opacity group-hover/toggle:opacity-100">
             <PanelIcon />
           </span>
-          <span className="pointer-events-none absolute left-full ml-2 whitespace-nowrap rounded-lg bg-ink px-2.5 py-1 text-[12px] text-bg opacity-0 shadow-float transition-opacity group-hover/toggle:opacity-100 z-50">
+          <span className="pointer-events-none absolute left-full ml-2 whitespace-nowrap rounded-full bg-surface2 border border-border/70 px-3 py-1 text-[12px] text-ink opacity-0 transition-opacity group-hover/toggle:opacity-100 z-50">
             Abrir barra lateral
           </span>
         </button>
@@ -159,7 +164,7 @@ export default function Sidebar({ user, isAdmin = false }) {
                 {name[0]?.toUpperCase()}
               </div>
             )}
-            <ThemeToggle />
+            <ThemeToggle serverTheme={serverTheme} />
           </div>
         ) : (
           <div className="flex items-center gap-3 px-2">
@@ -184,7 +189,7 @@ export default function Sidebar({ user, isAdmin = false }) {
                 </button>
               )}
             </div>
-            <ThemeToggle />
+            <ThemeToggle serverTheme={serverTheme} />
           </div>
         )}
       </div>

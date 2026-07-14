@@ -40,8 +40,7 @@ export default function TareasHoyList({ tasks, isAdmin = false }) {
       {visible.map((t) => {
         const e = eff(t);
         const due = dueLabel(t.dueDate);
-        const clickHref = t.url && t.url !== "#" ? t.url : null;
-        // Admin → abre ClickUp; resto → /tareas con la tarea abierta en el panel.
+        // Siempre abre la tarea en el panel de /tareas (nunca ClickUp).
         const rowCls = "group min-w-0 flex-1 flex items-center gap-3";
         const inner = (
           <>
@@ -73,15 +72,9 @@ export default function TareasHoyList({ tasks, isAdmin = false }) {
             {/* Círculo de estado (unificado con /tareas): marca y cambia el estado. */}
             <StatusMenu variant="dot" current={e.status} color={e.statusColor} done={!isOpen(t)} listId={t.listId} onPick={(s) => pick(t, s)} milestone={t.isMilestone} />
 
-            {isAdmin ? (
-              <a href={clickHref ?? undefined} target={clickHref ? "_blank" : undefined} rel="noreferrer" className={rowCls}>
-                {inner}
-              </a>
-            ) : (
-              <Link href={`/tareas?task=${t.id}`} className={rowCls}>
-                {inner}
-              </Link>
-            )}
+            <Link href={`/tareas?task=${t.id}`} className={rowCls}>
+              {inner}
+            </Link>
           </li>
         );
       })}

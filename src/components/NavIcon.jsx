@@ -12,6 +12,8 @@ const PATHS = {
   clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3.5 2" /></>,
   tasks: <><path d="M4 6.5l1.8 1.8L9 5" /><path d="M4 15.5l1.8 1.8L9 12.5" /><path d="M12.5 7h7.5M12.5 16h7.5" /></>,
   user: <><circle cx="12" cy="8" r="3.6" /><path d="M5 20a7 7 0 0 1 14 0" /></>,
+  note: <><rect x="4.5" y="3.5" width="15" height="17" rx="2.2" /><path d="M8.5 9h7M8.5 12.5h7M8.5 16h4.5" /></>,
+  eye: <><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" /><circle cx="12" cy="12" r="3" /></>,
 };
 
 export default function NavIcon({ name, className = "w-[18px] h-[18px]" }) {

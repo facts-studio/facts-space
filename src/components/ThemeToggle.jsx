@@ -1,31 +1,34 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { setTheme as persistTheme } from "@/lib/actions/prefs";
 
-// Switch claro/oscuro. Manual (persiste en localStorage) y, si no hay
-// preferencia guardada, sigue la del sistema en vivo.
-export default function ThemeToggle() {
+// Switch claro/oscuro. La preferencia se guarda EN EL USUARIO (employees.theme)
+// vía server action + cookie espejo, así que viaja entre navegadores/dispositivos.
+// serverTheme: valor guardado del empleado ('light'|'dark'|null). Si no hay
+// cookie todavía (p. ej. primer acceso en este navegador) se aplica ese valor.
+export default function ThemeToggle({ serverTheme = null }) {
   const [dark, setDark] = useState(false);
 
   useEffect(() => {
-    setDark(document.documentElement.classList.contains("dark"));
-    // Si el usuario no ha elegido manualmente, seguir el sistema.
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const onChange = (e) => {
-      if (!localStorage.getItem("theme")) {
-        document.documentElement.classList.toggle("dark", e.matches);
-        setDark(e.matches);
-      }
-    };
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, []);
+    const hasCookie = document.cookie.includes("theme=");
+    let d = document.documentElement.classList.contains("dark");
+    // Navegador nuevo sin cookie pero con preferencia del usuario en BBDD:
+    // aplícala y persístela (siembra la cookie).
+    if (!hasCookie && (serverTheme === "dark" || serverTheme === "light")) {
+      d = serverTheme === "dark";
+      document.documentElement.classList.toggle("dark", d);
+      persistTheme(serverTheme);
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sincroniza el estado del switch con la clase del <html> (sistema externo)
+    setDark(d);
+  }, [serverTheme]);
 
   const toggle = () => {
     const next = !dark;
     setDark(next);
     document.documentElement.classList.toggle("dark", next);
-    try { localStorage.setItem("theme", next ? "dark" : "light"); } catch {}
+    persistTheme(next ? "dark" : "light");
   };
 
   return (

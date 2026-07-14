@@ -13,3 +13,4 @@ export { default as Switch } from "./Switch";
 export { DataList, DataRow } from "./DataRow";
 export { default as EmptyState } from "./EmptyState";
 export { default as Button } from "./Button";
+export { default as PageLoading, Skeleton } from "./PageLoading";

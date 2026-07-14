@@ -1,8 +1,10 @@
 "use client";
 
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { TEAM } from "@/lib/mock";
-import LoMasCercano from "@/components/LoMasCercano";
-
+import { cn } from "@/lib/cn";
+import { refreshClickUpTasks } from "@/lib/actions/clickup";
 const MEMBER = new Map(TEAM.map((m) => [m.name, m]));
 
 function saludo(h) {
@@ -52,6 +54,29 @@ function Face({ name }) {
   );
 }
 const Hi = ({ children }) => <span className="text-ink font-medium">{children}</span>;
+
+// Botón de recarga desde ClickUp (idéntico al de la vista Tareas).
+function RefreshButton() {
+  const router = useRouter();
+  const [, start] = useTransition();
+  const [refreshing, setRefreshing] = useState(false);
+  const refresh = () => {
+    setRefreshing(true);
+    start(async () => { await refreshClickUpTasks(); router.refresh(); setTimeout(() => setRefreshing(false), 600); });
+  };
+  return (
+    <button
+      type="button"
+      onClick={refresh}
+      disabled={refreshing}
+      title="Recargar desde ClickUp"
+      aria-label="Recargar"
+      className="h-8 w-8 grid place-items-center rounded-lg bg-surface2/70 text-mutedSoft hover:text-ink hover:bg-surface2 transition disabled:opacity-50"
+    >
+      <svg className={cn("h-4 w-4", refreshing && "animate-spin")} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36" /><path d="M21 3v6h-6" /></svg>
+    </button>
+  );
+}
 // Emoji inline, un punto más pequeño que el texto.
 const Ico = ({ children }) => <span className="text-[0.8em] align-[0.04em]">{children}</span>;
 
@@ -214,7 +239,10 @@ export default function TodayHero({ nombre = "equipo", events = [], fichajeRemin
 
   return (
     <header className="pb-2 mb-8 fade-up">
-      <p className="text-caption uppercase text-mutedSoft mb-5">{fecha}</p>
+      <div className="flex items-center justify-between gap-3 mb-5">
+        <p className="text-caption uppercase text-mutedSoft">{fecha}</p>
+        <RefreshButton />
+      </div>
 
       <h1 className="font-display text-[44px] md:text-[64px] leading-[1.0] tracking-[-0.03em] text-ink">
         {saludo(now.getHours())}, {nombre} <span className="inline-block align-baseline">👋</span>
@@ -250,11 +278,8 @@ export default function TodayHero({ nombre = "equipo", events = [], fichajeRemin
         )}
       </p>
 
-      {/* Aviso de fichaje (encima de "Lo más cercano") */}
+      {/* Aviso de fichaje */}
       {fichajeReminder}
-
-      {/* Lo más cercano — agenda por día (componente reutilizable) */}
-      <LoMasCercano events={events} className="mt-10" />
     </header>
   );
 }
