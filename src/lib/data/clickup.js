@@ -125,6 +125,7 @@ function mapTask(t) {
     resources: resourcesFromField(t), // ficheros del campo "📁 Recursos"
     dueDate: t.due_date ? Number(t.due_date) : null,
     startDate: t.start_date ? Number(t.start_date) : null,
+    dateDone: t.date_done ? Number(t.date_done) : null, // para "completadas" en Status
     // Jerarquía: para plegar subtareas en su tarea de nivel superior.
     parentId: t.parent ?? null,
     topParentId: t.top_level_parent ?? null,
@@ -470,6 +471,45 @@ export function weekTasks(tasks, email, now = Date.now()) {
   };
   for (const t of tasks) visit(t, null);
   return out.sort((a, b) => a.dueDate - b.dueDate);
+}
+
+// Igual que weekTasks pero de TODO el equipo (sin filtrar por asignación).
+// Alimenta el modo "Status" de Inicio, donde se agrupan por cliente. Trabaja con
+// semanas de calendario (lunes–domingo) y etiqueta cada tarea con `bucket`:
+//   "activa"     → abierta, vence esta semana (incluye vencidas)
+//   "siguiente"  → abierta, vence la semana que viene
+//   "completada" → cerrada esta semana o la pasada
+// La privacidad ya está resuelta aguas arriba: getClickUpTasks no trae las listas
+// admin_only (p. ej. Management) a quien no es admin, así que no expone de más.
+export function teamWeekTasks(tasks, now = Date.now()) {
+  const n = new Date(now);
+  const startOfWeek = new Date(n.getFullYear(), n.getMonth(), n.getDate() - ((n.getDay() + 6) % 7)).getTime();
+  const DAY = 86400000;
+  const endOfWeek = startOfWeek + 7 * DAY - 1;      // domingo 23:59:59.999
+  const endOfNextWeek = startOfWeek + 14 * DAY - 1; // domingo siguiente
+  const doneFrom = startOfWeek - 7 * DAY;           // lunes de la semana pasada
+
+  const out = [];
+  const visit = (t, parent) => {
+    const base = parent ? { ...t, isSubtask: true, parentName: parent.name } : t;
+    if (isOpen(t)) {
+      if (t.dueDate && t.dueDate <= endOfWeek) out.push({ ...base, bucket: "activa" });
+      else if (t.dueDate && t.dueDate <= endOfNextWeek) out.push({ ...base, bucket: "siguiente" });
+    } else if (t.dateDone && t.dateDone >= doneFrom) {
+      out.push({ ...base, bucket: "completada" });
+    }
+    for (const s of t.subtasks ?? []) visit(s, t);
+  };
+  for (const t of tasks) visit(t, null);
+
+  // Orden cronológico: completadas (la más reciente al final) → activas →
+  // semana siguiente, estas dos por vencimiento.
+  const ORDER = { completada: 0, activa: 1, siguiente: 2 };
+  return out.sort((a, b) => {
+    if (a.bucket !== b.bucket) return ORDER[a.bucket] - ORDER[b.bucket];
+    if (a.bucket === "completada") return (a.dateDone ?? 0) - (b.dateDone ?? 0);
+    return (a.dueDate ?? Infinity) - (b.dueDate ?? Infinity);
+  });
 }
 
 // Tareas abiertas (de todo el equipo) para el espacio de gestión.

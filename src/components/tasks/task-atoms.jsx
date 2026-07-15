@@ -150,7 +150,9 @@ export function StatusMenu({ current, color, statuses = [], listId, onPick, done
 const ROW = "grid grid-cols-[minmax(0,1fr)_132px_92px_84px] gap-3 items-center px-3 py-2.5 rounded-lg hover:bg-surface2/40 transition-colors";
 const ROW_NO_AREA = "grid grid-cols-[minmax(0,1fr)_92px_84px] gap-3 items-center px-3 py-2.5 rounded-lg hover:bg-surface2/40 transition-colors";
 
-export function TaskRow({ t, eff, open, statuses, onPickStatus, onOpen, active, depth = 0, hasSubtasks = false, expanded = false, onToggle, showArea = true }) {
+// showCaret: reserva el hueco del caret de subtareas para alinear filas. En
+// listas sin desplegables (p. ej. el Status de Inicio) se puede quitar.
+export function TaskRow({ t, eff, open, statuses, onPickStatus, onOpen, active, depth = 0, hasSubtasks = false, expanded = false, onToggle, showArea = true, showCaret = true }) {
   const due = dueLabel(t.dueDate);
   const nameCls = cn("min-w-0 text-small text-ink hover:text-brand transition-colors truncate text-left", !open && "line-through text-mutedSoft");
   // Indenta el cluster izquierdo completo (caret+estado+nombre) según profundidad.
@@ -170,9 +172,9 @@ export function TaskRow({ t, eff, open, statuses, onPickStatus, onOpen, active, 
           >
             <svg className={cn("h-3 w-3 transition-transform", expanded && "rotate-90")} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>
           </button>
-        ) : (
+        ) : showCaret ? (
           <span className="h-4 w-4 shrink-0" aria-hidden />
-        )}
+        ) : null}
         <StatusMenu variant="dot" current={eff.status} color={eff.statusColor} done={!open} statuses={statuses} listId={t.listId} onPick={(s) => onPickStatus(t.id, s)} milestone={t.isMilestone} />
         {onOpen ? (
           // La fila entera es clicable; el nombre es texto (no un botón anidado).
