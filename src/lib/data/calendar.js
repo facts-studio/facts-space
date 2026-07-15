@@ -4,6 +4,53 @@ import { EVENTS as MOCK_EVENTS } from "@/lib/mock";
 import { isConfigured } from "./helpers";
 import { getAgendaEvents, getClickUpMilestones } from "./clickup";
 
+const ABS_LABEL = { vacaciones: "Vacaciones", baja: "Baja", permiso: "Permiso", asuntos_propios: "Asuntos propios", teletrabajo: "Teletrabajo", otro: "Ausencia" };
+
+// vacation_requests → evento del calendario. `pending` marca las solicitadas
+// pero aún sin aprobar (se pintan con pastilla discontinua).
+//
+// OJO: la nota de la solicitud NO se trae aquí. Es un mensaje privado del
+// solicitante a su responsable (se lee en Administrar › Aprobaciones), y las
+// ausencias aprobadas las ve TODO el equipo: usarla de título la publicaría.
+// El evento se registra siempre como "Vacaciones {nombre}" (o el tipo que sea).
+function absenceToEvent(v, nameById) {
+  const who = nameById.get(v.employee_id) ?? null;
+  const isVac = (v.type ?? "vacaciones") === "vacaciones";
+  return {
+    id: `vac-${v.id}`,
+    type: isVac ? "vacaciones" : "ausencia",
+    title: `${ABS_LABEL[v.type] ?? "Ausencia"} ${who ?? ""}`.trim(),
+    start: v.start_date,
+    end: v.end_date,
+    who,
+    pending: v.status === "pending",
+  };
+}
+
+/**
+ * Ausencias SOLICITADAS pero aún sin aprobar, como eventos de calendario.
+ * Va aparte de getCalendarEvents a propósito: esos eventos los consumen también
+ * TodayHero ("hoy X está de vacaciones"), LoMasCercano y Equipo, que los tratan
+ * como hechos — una solicitud sin aprobar no debe colarse ahí. Solo las usa
+ * /calendario, que las pinta en discontinuo.
+ *
+ * La visibilidad la resuelve la RLS: una 'pending' solo la ven el solicitante,
+ * su responsable y admin (las 'approved' las ve todo el equipo).
+ */
+export async function getPendingAbsenceEvents() {
+  if (!isConfigured()) return [];
+  const supabase = await createClient();
+  const [vac, emps] = await Promise.all([
+    supabase
+      .from("vacation_requests")
+      .select("id, start_date, end_date, employee_id, type, status")
+      .eq("status", "pending"),
+    supabase.from("employees").select("id, name"),
+  ]);
+  const nameById = new Map((emps.data ?? []).map((m) => [m.id, m.name]));
+  return (vac.data ?? []).map((v) => absenceToEvent(v, nameById));
+}
+
 // Eventos unificados para el calendario, en el MISMO shape que consume
 // CalendarMonth/TodayHero/equipo: { id, type, title, start, end, who }.
 // Fuentes:
@@ -19,7 +66,7 @@ export async function getCalendarEvents() {
   const [vac, emps, agenda, milestones] = await Promise.all([
     supabase
       .from("vacation_requests")
-      .select("id, start_date, end_date, note, employee_id, type")
+      .select("id, start_date, end_date, employee_id, type, status")
       .eq("status", "approved"),
     supabase.from("employees").select("id, name"),
     getAgendaEvents(),        // festivos + cumpleaños + hitos de empresa (ClickUp)
@@ -31,19 +78,7 @@ export async function getCalendarEvents() {
 
   const events = [];
 
-  const ABS_LABEL = { vacaciones: "Vacaciones", baja: "Baja", permiso: "Permiso", asuntos_propios: "Asuntos propios", teletrabajo: "Teletrabajo", otro: "Ausencia" };
-  for (const v of vac.data ?? []) {
-    const who = nameById.get(v.employee_id) ?? null;
-    const isVac = (v.type ?? "vacaciones") === "vacaciones";
-    events.push({
-      id: `vac-${v.id}`,
-      type: isVac ? "vacaciones" : "ausencia",
-      title: v.note?.trim() || `${ABS_LABEL[v.type] ?? "Ausencia"} ${who ?? ""}`.trim(),
-      start: v.start_date,
-      end: v.end_date,
-      who,
-    });
-  }
+  for (const v of vac.data ?? []) events.push(absenceToEvent(v, nameById));
 
   // Agenda de empresa (festivos, cumpleaños, hitos) + hitos a nivel de tarea.
   for (const e of agenda ?? []) events.push(e);

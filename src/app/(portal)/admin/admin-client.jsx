@@ -11,6 +11,9 @@ import { createClient } from "@/lib/supabase/client";
 import { fmtRange, fmtDate } from "@/lib/mock";
 import { formatDuration } from "@/lib/dates";
 import { absenceLabel } from "@/lib/absences";
+import { evaluateVacation } from "@/lib/vacation-policy";
+import { Badge } from "@/components/ui";
+import { cn } from "@/lib/cn";
 import ClickUpSources from "@/components/admin/ClickUpSources";
 
 const TABS = [
@@ -21,7 +24,7 @@ const TABS = [
   ["informes", "Informes"],
 ];
 
-export default function AdminClient({ employees, pending, recent, timeStats, vacUsed, timeHours = {}, documents = [], clickupLists = [], month, year }) {
+export default function AdminClient({ employees, pending, recent, timeStats, vacUsed, timeHours = {}, documents = [], clickupLists = [], events = [], month, year }) {
   const router = useRouter();
   const refresh = () => router.refresh();
   const [tab, setTab] = useState("aprobaciones");
@@ -46,7 +49,7 @@ export default function AdminClient({ employees, pending, recent, timeStats, vac
 
       {tab === "aprobaciones" && (
         <div className="space-y-3">
-          <Solicitudes pending={pending} recent={recent} nameById={nameById} onDone={refresh} />
+          <Solicitudes pending={pending} recent={recent} nameById={nameById} events={events} onDone={refresh} />
           <Fichaje employees={employees} timeStats={timeStats} month={month} onDone={refresh} />
         </div>
       )}
@@ -255,7 +258,7 @@ function Field({ label, children }) {
 }
 
 // ── Solicitudes de vacaciones ────────────────────────────────────────────────
-function Solicitudes({ pending, recent, nameById, onDone }) {
+function Solicitudes({ pending, recent, nameById, events = [], onDone }) {
   return (
     <div className="space-y-3">
       <div className="rounded-2xl bg-surface/55 p-6">
@@ -265,7 +268,7 @@ function Solicitudes({ pending, recent, nameById, onDone }) {
         ) : (
           <ul className="flex flex-col gap-2">
             {pending.map((r) => (
-              <PendingRow key={r.id} r={r} who={nameById.get(r.employee_id)} onDone={onDone} />
+              <PendingRow key={r.id} r={r} who={nameById.get(r.employee_id)} events={events} onDone={onDone} />
             ))}
           </ul>
         )}
@@ -287,16 +290,41 @@ function Solicitudes({ pending, recent, nameById, onDone }) {
   );
 }
 
-function PendingRow({ r, who, onDone }) {
+// Veredicto de política → píldora semántica + tono de cada motivo.
+const VERDICT_KIND = { ok: "success", warn: "pending", bad: "danger" };
+const REASON_TONE = { ok: "text-mutedSoft", warn: "text-warn", bad: "text-danger" };
+
+function PendingRow({ r, who, events = [], onDone }) {
   const [pending, run] = useTransition();
   const decide = (approve) => run(async () => { const res = await decideVacation({ id: r.id, approve }); if (res.ok) onDone(); });
+  // La política es solo de vacaciones. La antelación se mide desde que se pidió
+  // (created_at), no desde hoy, para no penalizar la tardanza en resolver.
+  const verdict = r.type === "vacaciones"
+    ? evaluateVacation(r.start_date, r.end_date, events, r.created_at ? new Date(r.created_at) : new Date())
+    : null;
+
   return (
-    <li className="flex items-center justify-between gap-3 rounded-xl bg-surface2/40 px-4 py-3">
+    <li className="flex items-start justify-between gap-3 rounded-xl bg-surface2/40 px-4 py-3">
       <div className="min-w-0">
         <p className="text-small text-ink">{who} <span className="text-mutedSoft font-normal">· {absenceLabel(r.type)}</span></p>
         <p className="text-micro text-mutedSoft">
           {fmtRange(r.start_date, r.end_date)} · {Number(r.working_days)} laborables{r.note ? ` · ${r.note}` : ""}
         </p>
+
+        {/* Parámetros de aceptación: carga del trimestre, antelación y cobertura */}
+        {verdict && (
+          <div className="mt-2">
+            <Badge kind={VERDICT_KIND[verdict.status]}>{verdict.title}</Badge>
+            <ul className="mt-1.5 space-y-0.5">
+              {verdict.reasons.map((x, i) => (
+                <li key={i} className={cn("text-micro flex gap-1.5", REASON_TONE[x.tone])}>
+                  <span aria-hidden>·</span>
+                  <span>{x.text}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
       <div className="flex items-center gap-2 shrink-0">
         <button onClick={() => decide(false)} disabled={pending} className="btn-ghost h-8 text-[12.5px]">Rechazar</button>

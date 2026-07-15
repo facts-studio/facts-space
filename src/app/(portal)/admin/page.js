@@ -11,6 +11,7 @@ import {
   getTimeHoursByEmployee,
 } from "@/lib/data/admin";
 import { getAllDocuments } from "@/lib/data/documents";
+import { getCalendarEvents } from "@/lib/data/calendar";
 import { getConfiguredLists } from "@/lib/data/clickup";
 import { madridDateISO } from "@/lib/dates";
 
@@ -29,7 +30,7 @@ export default async function AdminPage() {
 
   const month = madridDateISO().slice(0, 7);
   const year = Number(month.slice(0, 4));
-  const [employees, pending, recent, timeStats, vacUsed, calendarEvents, timeHours] = await Promise.all([
+  const [employees, pending, recent, timeStats, vacUsed, calendarEvents, timeHours, events] = await Promise.all([
     getAllEmployees(),
     getPendingVacations(),
     getRecentDecided(),
@@ -37,6 +38,7 @@ export default async function AdminPage() {
     getApprovedVacationDays(year),
     getCalendarManaged(year),
     getTimeHoursByEmployee(month),
+    getCalendarEvents(), // ausencias aprobadas → cobertura del equipo en el veredicto
   ]);
   const documents = await getAllDocuments();
   const clickupLists = await getConfiguredLists();
@@ -51,6 +53,7 @@ export default async function AdminPage() {
         timeStats={timeStats}
         vacUsed={vacUsed}
         calendarEvents={calendarEvents}
+        events={events}
         timeHours={timeHours}
         documents={documents}
         clickupLists={clickupLists}

@@ -17,6 +17,21 @@ const POLICY_GLYPH = { ok: "✓", warn: "!", bad: "✕" };
 const MEMBER = new Map(TEAM.map((m) => [m.name, m]));
 // Tipos con persona asociada → mostramos miniatura.
 const WITH_PERSON = new Set(["cumple", "vacaciones", "ausencia"]);
+// Tipos en los que la duración aporta (un festivo o un cumple duran 1 día y
+// decirlo es ruido).
+const WITH_SPAN = new Set(["vacaciones", "ausencia"]);
+
+// "1 día" · "20–24 jul" · "28 jun – 3 jul"
+const dayMonth = (isoStr) =>
+  new Date(isoStr + "T00:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short" }).replace(".", "");
+function spanLabel(e) {
+  if (!e.end || e.end === e.start) return "1 día";
+  const a = new Date(e.start + "T00:00:00");
+  const b = new Date(e.end + "T00:00:00");
+  return a.getMonth() === b.getMonth()
+    ? `${a.getDate()}–${dayMonth(e.end)}`
+    : `${dayMonth(e.start)} – ${dayMonth(e.end)}`;
+}
 
 function MiniAvatar({ member, ring = "ring-white/70" }) {
   if (!member) return null;
@@ -431,11 +446,17 @@ export default function CalendarMonth({ events = [], tasks = [], canRequest = fa
                     // el color quede reservado a los clientes.
                     const tint = e.type === "tarea" ? e.tint : null;
                     const muted = showTasks && e.type !== "tarea";
+                    // Solicitada sin aprobar → contorno discontinuo, sin relleno.
+                    const pending = Boolean(e.pending);
                     return (
                       <button
                         key={bi}
                         type="button"
-                        title={tint && e.client ? `${e.title} · ${e.client}` : e.title}
+                        title={
+                          tint && e.client ? `${e.title} · ${e.client}`
+                            : pending ? `${e.title} · pendiente de aprobar`
+                              : e.title
+                        }
                         onClick={(ev) => { ev.stopPropagation(); setSelected(iso(week[b.cs])); }}
                         style={{
                           gridColumn: `${b.cs + 1} / span ${b.span}`,
@@ -445,7 +466,15 @@ export default function CalendarMonth({ events = [], tasks = [], canRequest = fa
                         className={cn(
                           "pointer-events-auto mx-1 flex items-center gap-1 h-[20px] text-[11px] leading-none rounded-full",
                           withAvatar ? "pl-0.5 pr-2" : "px-2",
-                          !tint && (muted ? "bg-surface2/70 text-mutedSoft" : CHIP[e.type] || "bg-surface2 text-ink"),
+                          // Cada rama excluye a las otras: cn() no hace merge de
+                          // Tailwind, así que no se pueden solapar clases de bg.
+                          !tint && (
+                            pending
+                              ? cn("bg-transparent border border-dashed border-current", muted ? "text-mutedSoft" : TEXT[TYPE[e.type]?.color] || "text-mutedSoft")
+                              : muted
+                                ? "bg-surface2/70 text-mutedSoft"
+                                : CHIP[e.type] || "bg-surface2 text-ink"
+                          ),
                           b.continuesLeft && "rounded-l-none",
                           b.continuesRight && "rounded-r-none",
                         )}
@@ -568,12 +597,19 @@ export default function CalendarMonth({ events = [], tasks = [], canRequest = fa
                     const person = WITH_PERSON.has(e.type) && e.who ? MEMBER.get(e.who) : null;
                     const tint = e.type === "tarea" ? e.tint : null;
                     const muted = showTasks && e.type !== "tarea";
+                    const pending = Boolean(e.pending);
                     return (
                       <li
                         key={j}
                         className={cn(
                           "rounded-lg border p-2.5 flex items-center gap-3",
-                          !tint && (muted ? "bg-surface2/50 border-border/60" : TILE[t.color])
+                          !tint && (
+                            pending
+                              ? "border-dashed border-borderStrong bg-transparent"
+                              : muted
+                                ? "bg-surface2/50 border-border/60"
+                                : TILE[t.color]
+                          )
                         )}
                         style={tint ? { background: tint.bg, borderColor: `${tint.fg}26` } : undefined}
                       >
@@ -591,9 +627,11 @@ export default function CalendarMonth({ events = [], tasks = [], canRequest = fa
                             className={cn("text-micro font-medium", !tint && (muted ? "text-mutedSoft" : TEXT[t.color]))}
                             style={tint ? { color: tint.fg } : undefined}
                           >
-                            {/* En tareas, la etiqueta es el cliente al que pertenecen. */}
-                            {tint ? (e.client || t.label) : t.label}
-                            {e.who ? <span className="text-mutedSoft font-normal"> · {e.who}</span> : null}
+                            {/* En ausencias el tipo y la persona ya van en el título
+                                ("Vacaciones Carles"): aquí la duración. En tareas,
+                                el cliente; en el resto, el tipo. */}
+                            {WITH_SPAN.has(e.type) ? spanLabel(e) : tint ? (e.client || t.label) : t.label}
+                            {pending ? <span className="text-mutedSoft font-normal"> · pendiente de aprobar</span> : null}
                           </p>
                         </div>
                       </li>

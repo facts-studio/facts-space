@@ -30,11 +30,16 @@ function coverage(events, a, b) {
 
 // Devuelve { status: 'ok'|'warn'|'bad', title, natDays, workDays, reasons:[{tone,text}] }
 // o null si no hay fecha de inicio.
-export function evaluateVacation(startISO, endISO, events = []) {
+//
+// asOf: momento desde el que se mide la ANTELACIÓN. Por defecto hoy (panel de
+// solicitud). Al revisar una solicitud ya hecha se pasa su fecha de creación:
+// si no, una petición con 40 días de antelación parecería "insuficiente" solo
+// porque el responsable tarda en resolverla.
+export function evaluateVacation(startISO, endISO, events = [], asOf = new Date()) {
   const start = parse(startISO);
   if (!start) return null;
   const end = parse(endISO || startISO);
-  const today = startOfDay(new Date());
+  const today = startOfDay(asOf);
 
   const natDays = Math.round((startOfDay(end) - startOfDay(start)) / DAY) + 1;
   const workDays = workingDays(start, end);

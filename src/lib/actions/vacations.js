@@ -89,6 +89,23 @@ export async function requestVacation({ startDate, endDate, note = "", type = "v
   return { ok: true, workingDays: wd, autoApproved: autoApprove };
 }
 
+// Marca como vistas MIS decisiones (aviso de Inicio descartado). Sin ids, marca
+// todas las pendientes de ver. Acotado a employee_id además de la RLS.
+export async function markDecisionsSeen(ids = []) {
+  const me = await getCurrentEmployee();
+  if (!me) return { ok: false, error: "No has iniciado sesión." };
+  const supabase = await createClient();
+  let q = supabase
+    .from("vacation_requests")
+    .update({ decision_seen_at: new Date().toISOString() })
+    .eq("employee_id", me.id);
+  q = ids.length ? q.in("id", ids) : q.in("status", ["approved", "rejected"]).is("decision_seen_at", null);
+  const { error } = await q;
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/");
+  return { ok: true };
+}
+
 // Mis ausencias (todas, recientes primero).
 export async function getMyRequests() {
   const me = await getCurrentEmployee();
@@ -135,7 +152,9 @@ export async function setVacationStatus({ id, status }) {
   if (!req) return { ok: false, error: "Solicitud no encontrada." };
   if (req.employees?.manager_id !== me.id && !me.is_admin) return { ok: false, error: "Sin permiso." };
 
-  const patch = { status };
+  // decision_seen_at a null: si se resuelve (o se revierte a pendiente), el
+  // solicitante vuelve a recibir el aviso.
+  const patch = { status, decision_seen_at: null };
   if (status === "approved" || status === "rejected") { patch.decided_by = me.id; patch.decided_at = new Date().toISOString(); }
   else { patch.decided_by = null; patch.decided_at = null; }
   const { error } = await supabase.from("vacation_requests").update(patch).eq("id", id);
@@ -202,6 +221,7 @@ export async function decideVacation({ id, approve, decisionNote = "" }) {
       decided_by: me.id,
       decided_at: new Date().toISOString(),
       decision_note: decisionNote.trim(),
+      decision_seen_at: null, // vuelve a avisar al solicitante
     })
     .eq("id", id);
   if (error) return { ok: false, error: error.message };

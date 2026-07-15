@@ -1,5 +1,5 @@
 import CalendarMonth from "@/components/CalendarMonth";
-import { getCalendarEvents } from "@/lib/data/calendar";
+import { getCalendarEvents, getPendingAbsenceEvents } from "@/lib/data/calendar";
 import { getCurrentEmployee } from "@/lib/data/helpers";
 import { getClickUpTasks, getConfiguredLists } from "@/lib/data/clickup";
 import { paletteColor } from "@/lib/client-palette";
@@ -24,13 +24,14 @@ function toEvent(t, colorsByClient) {
 }
 
 export default async function CalendarioPage() {
-  const [events, me, tasks, lists] = await Promise.all([
+  const [events, pending, me, tasks, lists] = await Promise.all([
     getCalendarEvents(),
+    getPendingAbsenceEvents(), // solicitadas sin aprobar → pastilla discontinua
     getCurrentEmployee(),
     getClickUpTasks(),
     getConfiguredLists(),
   ]);
   const colorsByClient = Object.fromEntries(lists.filter((l) => l.color && l.folder_name).map((l) => [l.folder_name, l.color]));
   const taskEvents = tasks.filter((t) => t.dueDate).map((t) => toEvent(t, colorsByClient));
-  return <CalendarMonth events={events} tasks={taskEvents} canRequest={Boolean(me)} />;
+  return <CalendarMonth events={events.concat(pending)} tasks={taskEvents} canRequest={Boolean(me)} />;
 }
