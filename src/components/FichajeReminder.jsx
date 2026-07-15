@@ -12,7 +12,7 @@ export default function FichajeReminder({ days }) {
       : `Llevas ${days} días sin fichar`;
 
   return (
-    <Surface variant="raised" pad="none" className="mt-8 rounded-2xl px-4 py-3">
+    <Surface variant="raised" pad="none" className="rounded-2xl px-4 py-3">
       <div className="flex items-center gap-3">
         <span className="text-[14px] leading-none opacity-70">⏱️</span>
         <span className="text-small text-ink">{texto}</span>

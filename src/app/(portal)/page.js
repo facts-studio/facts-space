@@ -1,8 +1,10 @@
 import BirthdayConfetti from "@/components/BirthdayConfetti";
 import TodayHero from "@/components/TodayHero";
 import FichajeReminder from "@/components/FichajeReminder";
+import AprobacionesReminder from "@/components/AprobacionesReminder";
 import HomePanels from "@/components/HomePanels";
 import { getCalendarEvents } from "@/lib/data/calendar";
+import { getPendingApprovals } from "@/lib/data/admin";
 import { getCurrentEmployee } from "@/lib/data/helpers";
 import { getMyNotes } from "@/lib/data/notes";
 import { getLastWorkedDate } from "@/lib/data/time";
@@ -10,12 +12,13 @@ import { madridDateISO } from "@/lib/dates";
 import { getClickUpTasks, getConfiguredLists, weekTasks, teamWeekTasks, workspaceOverview } from "@/lib/data/clickup";
 
 export default async function HomePage() {
-  const [events, me, tasks, notes, lists] = await Promise.all([
+  const [events, me, tasks, notes, lists, approvals] = await Promise.all([
     getCalendarEvents(),
     getCurrentEmployee(),
     getClickUpTasks(),
     getMyNotes(),
     getConfiguredLists(),
+    getPendingApprovals(), // solicitudes que me toca resolver (responsable/admin)
   ]);
   const nombre = me?.name?.split(" ")[0] || "equipo";
   const mine = weekTasks(tasks, me?.email);
@@ -42,7 +45,13 @@ export default async function HomePage() {
           nombre={nombre}
           events={events}
           taskCount={mine.length}
-          fichajeReminder={me ? <FichajeReminder days={daysSinceFichaje} /> : null}
+          avisos={
+            // empty:mt-0 → sin avisos, el contenedor no deja hueco.
+            <div className="mt-8 empty:mt-0 space-y-3">
+              {me && <FichajeReminder days={daysSinceFichaje} />}
+              <AprobacionesReminder requests={approvals} />
+            </div>
+          }
         />
 
         <HomePanels

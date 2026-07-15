@@ -425,17 +425,27 @@ export default function CalendarMonth({ events = [], tasks = [], canRequest = fa
                     const e = b.e;
                     const person = WITH_PERSON.has(e.type) && e.who ? MEMBER.get(e.who) : null;
                     const withAvatar = person && !b.continuesLeft;
+                    // Las tareas van con el color de su cliente (tinte inline);
+                    // el resto de eventos, con el color de su tipo. Con la vista
+                    // de tareas activa, lo que NO es tarea pasa a gris para que
+                    // el color quede reservado a los clientes.
+                    const tint = e.type === "tarea" ? e.tint : null;
+                    const muted = showTasks && e.type !== "tarea";
                     return (
                       <button
                         key={bi}
                         type="button"
-                        title={e.title}
+                        title={tint && e.client ? `${e.title} · ${e.client}` : e.title}
                         onClick={(ev) => { ev.stopPropagation(); setSelected(iso(week[b.cs])); }}
-                        style={{ gridColumn: `${b.cs + 1} / span ${b.span}`, gridRow: b.lane + 1 }}
+                        style={{
+                          gridColumn: `${b.cs + 1} / span ${b.span}`,
+                          gridRow: b.lane + 1,
+                          ...(tint ? { background: tint.bg, color: tint.fg } : null),
+                        }}
                         className={cn(
                           "pointer-events-auto mx-1 flex items-center gap-1 h-[20px] text-[11px] leading-none rounded-full",
                           withAvatar ? "pl-0.5 pr-2" : "px-2",
-                          CHIP[e.type] || "bg-surface2 text-ink",
+                          !tint && (muted ? "bg-surface2/70 text-mutedSoft" : CHIP[e.type] || "bg-surface2 text-ink"),
                           b.continuesLeft && "rounded-l-none",
                           b.continuesRight && "rounded-r-none",
                         )}
@@ -556,8 +566,17 @@ export default function CalendarMonth({ events = [], tasks = [], canRequest = fa
                   {selItems.map((e, j) => {
                     const t = TYPE[e.type];
                     const person = WITH_PERSON.has(e.type) && e.who ? MEMBER.get(e.who) : null;
+                    const tint = e.type === "tarea" ? e.tint : null;
+                    const muted = showTasks && e.type !== "tarea";
                     return (
-                      <li key={j} className={`rounded-lg border p-2.5 flex items-center gap-3 ${TILE[t.color]}`}>
+                      <li
+                        key={j}
+                        className={cn(
+                          "rounded-lg border p-2.5 flex items-center gap-3",
+                          !tint && (muted ? "bg-surface2/50 border-border/60" : TILE[t.color])
+                        )}
+                        style={tint ? { background: tint.bg, borderColor: `${tint.fg}26` } : undefined}
+                      >
                         {person?.photo ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={person.photo} alt="" className="w-9 h-9 rounded-full object-cover shrink-0 ring-2 ring-paper" />
@@ -568,8 +587,13 @@ export default function CalendarMonth({ events = [], tasks = [], canRequest = fa
                         )}
                         <div className="min-w-0 flex-1">
                           <p className="text-small text-ink font-medium leading-snug truncate">{e.title}</p>
-                          <p className={`text-micro font-medium ${TEXT[t.color]}`}>
-                            {t.label}{e.who ? <span className="text-mutedSoft font-normal"> · {e.who}</span> : null}
+                          <p
+                            className={cn("text-micro font-medium", !tint && (muted ? "text-mutedSoft" : TEXT[t.color]))}
+                            style={tint ? { color: tint.fg } : undefined}
+                          >
+                            {/* En tareas, la etiqueta es el cliente al que pertenecen. */}
+                            {tint ? (e.client || t.label) : t.label}
+                            {e.who ? <span className="text-mutedSoft font-normal"> · {e.who}</span> : null}
                           </p>
                         </div>
                       </li>

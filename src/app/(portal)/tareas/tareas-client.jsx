@@ -152,6 +152,8 @@ function weekBars(weekDates, tasks) {
 }
 
 function CalendarView({ tasks, colorsByClient = {}, onOpen }) {
+  // Color de la tarea = el de su cliente (tinte de fondo + color legible).
+  const clientCol = (t) => paletteColor(t.project || "Sin cliente", colorsByClient[t.project]);
   const [cur, setCur] = useState(thisMonth);
   const [selDay, setSelDay] = useState(null); // iso del día seleccionado
   const cells = useMemo(() => monthMatrix(cur.y, cur.m), [cur]);
@@ -216,7 +218,7 @@ function CalendarView({ tasks, colorsByClient = {}, onOpen }) {
                   <div key={laneIdx} className="grid grid-cols-7 gap-1">
                     {shown.filter((s) => s.lane === laneIdx).map((s) => {
                       const t = s.t;
-                      const col = t.statusColor || "rgb(var(--ct-mutedSoft))";
+                      const c = clientCol(t);
                       const a = t.assignees?.[0];
                       const photo = a ? teamPhoto(a.email) : null;
                       return (
@@ -225,14 +227,14 @@ function CalendarView({ tasks, colorsByClient = {}, onOpen }) {
                           type="button"
                           onClick={() => onOpen?.(t)}
                           title={`${t.name}${a ? ` · ${a.name}` : ""}${t.project ? ` · ${t.project}` : ""} · ${t.status}`}
-                          style={{ gridColumn: `${s.a + 1} / span ${s.b - s.a + 1}`, background: col + "24" }}
+                          style={{ gridColumn: `${s.a + 1} / span ${s.b - s.a + 1}`, background: c.bg }}
                           className={cn(
                             "pointer-events-auto flex items-center gap-1.5 h-[24px] px-2 mx-1.5 text-[11.5px] leading-none text-ink hover:brightness-95 transition backdrop-blur-sm text-left",
                             s.contPrev ? "rounded-l-none" : "rounded-l-lg", s.contNext ? "rounded-r-none" : "rounded-r-lg"
                           )}
                         >
-                          {/* Estado (aro tipo checkbox) */}
-                          <span className="h-3 w-3 rounded-full border-[1.6px] shrink-0" style={{ borderColor: col }} />
+                          {/* Aro con el color del cliente */}
+                          <span className="h-3 w-3 rounded-full border-[1.6px] shrink-0" style={{ borderColor: c.fg }} />
                           <span className="truncate flex-1">{t.name}</span>
                           {/* Persona asignada */}
                           {a && (photo ? (
@@ -270,12 +272,12 @@ function CalendarView({ tasks, colorsByClient = {}, onOpen }) {
             ) : (
               <div className="divide-y divide-border/50">
                 {dayList.map((t) => {
-                  const col = t.statusColor || "rgb(var(--ct-mutedSoft))";
+                  const c = clientCol(t);
                   const a = t.assignees?.[0];
                   const photo = a ? teamPhoto(a.email) : null;
                   return (
                     <div key={t.id} className="py-2.5 flex items-start gap-2.5">
-                      <span className="h-3.5 w-3.5 mt-0.5 rounded-full border-[1.6px] shrink-0" style={{ borderColor: col }} title={t.status} />
+                      <span className="h-3.5 w-3.5 mt-0.5 rounded-full border-[1.6px] shrink-0" style={{ borderColor: c.fg }} title={t.project || "Sin cliente"} />
                       <div className="min-w-0 flex-1">
                         <button type="button" onClick={() => onOpen?.(t)} className="text-small text-ink hover:text-brand transition block truncate text-left w-full">{t.name}</button>
                         <p className="text-micro text-mutedSoft truncate">{[t.project, t.status].filter(Boolean).join(" · ")}</p>

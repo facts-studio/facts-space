@@ -90,7 +90,7 @@ function joinNodes(nodes) {
   ));
 }
 
-export default function TodayHero({ nombre = "equipo", events = [], fichajeReminder = null, taskCount = 0 }) {
+export default function TodayHero({ nombre = "equipo", events = [], avisos = null, taskCount = 0 }) {
   const now = new Date();
   const hoy = startOfDay(now);
 
@@ -278,8 +278,8 @@ export default function TodayHero({ nombre = "equipo", events = [], fichajeRemin
         )}
       </p>
 
-      {/* Aviso de fichaje */}
-      {fichajeReminder}
+      {/* Avisos (fichaje, aprobaciones pendientes…) */}
+      {avisos}
     </header>
   );
 }
