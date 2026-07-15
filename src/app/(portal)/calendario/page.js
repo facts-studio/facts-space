@@ -33,5 +33,15 @@ export default async function CalendarioPage() {
   ]);
   const colorsByClient = Object.fromEntries(lists.filter((l) => l.color && l.folder_name).map((l) => [l.folder_name, l.color]));
   const taskEvents = tasks.filter((t) => t.dueDate).map((t) => toEvent(t, colorsByClient));
-  return <CalendarMonth events={events.concat(pending)} tasks={taskEvents} canRequest={Boolean(me)} />;
+  // Los hitos que pertenecen a un cliente (sprints y milestones de tarea) llevan
+  // su tinte: el calendario lo usa cuando la vista de tareas está activa.
+  const withTint = (e) =>
+    e.type === "hito" && e.client ? { ...e, tint: paletteColor(e.client, colorsByClient[e.client]) } : e;
+  return (
+    <CalendarMonth
+      events={events.concat(pending).map(withTint)}
+      tasks={taskEvents}
+      canRequest={Boolean(me)}
+    />
+  );
 }

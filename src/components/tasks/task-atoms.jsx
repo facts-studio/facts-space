@@ -147,8 +147,9 @@ export function StatusMenu({ current, color, statuses = [], listId, onPick, done
 // celda que se indenta en las subtareas; las columnas de la derecha (área, fecha,
 // asignados) son fijas para que coincidan siempre entre padres y subtareas.
 // La columna Área solo se muestra a admins (el resto solo ve listas "Tareas").
-const ROW = "grid grid-cols-[minmax(0,1fr)_132px_92px_84px] gap-3 items-center px-3 py-2.5 rounded-lg hover:bg-surface2/40 transition-colors";
-const ROW_NO_AREA = "grid grid-cols-[minmax(0,1fr)_92px_84px] gap-3 items-center px-3 py-2.5 rounded-lg hover:bg-surface2/40 transition-colors";
+// Rejilla de la fila: la comparten TaskRow y las filas de hito de la lista.
+export const ROW = "grid grid-cols-[minmax(0,1fr)_132px_92px_84px] gap-3 items-center px-3 py-2.5 rounded-lg hover:bg-surface2/40 transition-colors";
+export const ROW_NO_AREA = "grid grid-cols-[minmax(0,1fr)_92px_84px] gap-3 items-center px-3 py-2.5 rounded-lg hover:bg-surface2/40 transition-colors";
 
 // showCaret: reserva el hueco del caret de subtareas para alinear filas. En
 // listas sin desplegables (p. ej. el Status de Inicio) se puede quitar.

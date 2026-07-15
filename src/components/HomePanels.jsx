@@ -17,6 +17,7 @@ export default function HomePanels({
   teamTasks = [],
   campaigns = [],
   statusesByList = {},
+  sprintMeta = {},
   overview,
   isAdmin = false,
   initialNotes = [],
@@ -42,7 +43,7 @@ export default function HomePanels({
           <>
             <LoMasCercano events={events} />
             {mode === "status" ? (
-              <TareasEquipoSemana tasks={teamTasks} campaigns={campaigns} statusesByList={statusesByList} className="mt-4" />
+              <TareasEquipoSemana tasks={teamTasks} campaigns={campaigns} statusesByList={statusesByList} sprintMeta={sprintMeta} className="mt-4" />
             ) : (
               <TareasHoy tasks={tasks} overview={overview} isAdmin={isAdmin} className="mt-4" />
             )}

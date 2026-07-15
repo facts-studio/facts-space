@@ -9,7 +9,7 @@ import { dueLabel, PRIORITY } from "@/lib/clickup-ui";
 import { setClickUpTaskStatus, refreshClickUpTasks } from "@/lib/actions/clickup";
 import { clientIcon } from "@/lib/client-icons";
 import { paletteColor } from "@/lib/client-palette";
-import { TaskRow, StatusMenu, Avatars, teamPhoto } from "@/components/tasks/task-atoms";
+import { TaskRow, StatusMenu, Avatars, teamPhoto, ROW, ROW_NO_AREA } from "@/components/tasks/task-atoms";
 import TaskDetail from "@/components/tasks/task-detail";
 
 
@@ -31,6 +31,10 @@ const SCOPES = [
   { key: "semana", label: "Esta semana" },
   { key: "mes", label: "Este mes" },
 ];
+// Clave de selección de un sprint (para no chocar con los nombres de cliente).
+const SPRINT_PREFIX = "\u2726";
+const sprintKey = (project, sprint) => `${SPRINT_PREFIX}${project}::${sprint}`;
+
 function matchScope(t, scope) {
   if (scope === "todo") return true;
   if (!t.dueDate) return false;
@@ -42,6 +46,13 @@ function matchScope(t, scope) {
 }
 
 /* ── Átomos ─────────────────────────────────────────────────────────────── */
+
+// Banderita de hito (toma el color del chip).
+const FlagIcon = () => (
+  <svg className="h-[9px] w-[9px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M5 21V4M5 4h11l-2 3.5L16 11H5" />
+  </svg>
+);
 
 const SearchIcon = () => (
   <svg className="h-[16px] w-[16px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
@@ -151,11 +162,28 @@ function weekBars(weekDates, tasks) {
   return segs;
 }
 
-function CalendarView({ tasks, colorsByClient = {}, onOpen }) {
+function CalendarView({ tasks, milestones = [], colorsByClient = {}, onOpen }) {
   // Color de la tarea = el de su cliente (tinte de fondo + color legible).
   const clientCol = (t) => paletteColor(t.project || "Sin cliente", colorsByClient[t.project]);
   const [cur, setCur] = useState(thisMonth);
   const [selDay, setSelDay] = useState(null); // iso del día seleccionado
+  // Tooltip propio: el nativo (title=) es un recuadro gris del navegador y aquí
+  // el texto es largo. { title, meta, x, y }
+  const [tip, setTip] = useState(null);
+  const showTip = (ev, title, meta) => {
+    const r = ev.currentTarget.getBoundingClientRect();
+    setTip({ title, meta, x: r.left + r.width / 2, y: r.top });
+  };
+  const hideTip = () => setTip(null);
+  // Hitos (inicio/fin de sprint) indexados por día, con el color de su cliente.
+  const msByDay = useMemo(() => {
+    const m = new Map();
+    for (const e of milestones) {
+      if (!m.has(e.start)) m.set(e.start, []);
+      m.get(e.start).push({ ...e, col: paletteColor(e.client || "Sin cliente", colorsByClient[e.client]) });
+    }
+    return m;
+  }, [milestones, colorsByClient]);
   const cells = useMemo(() => monthMatrix(cur.y, cur.m), [cur]);
   const today = todayISO();
   const shift = (delta) => setCur((c) => { const d = new Date(c.y, c.m + delta, 1); return { y: d.getFullYear(), m: d.getMonth() }; });
@@ -214,6 +242,27 @@ function CalendarView({ tasks, colorsByClient = {}, onOpen }) {
               </div>
               {/* Barras — capa superpuesta DEBAJO de los números, alineada a la rejilla */}
               <div className="absolute inset-x-0 top-[30px] space-y-1 pointer-events-none">
+                {/* Hitos de sprint (inicio/fin), por encima de las tareas */}
+                {week.some((c) => msByDay.has(c.iso)) && (
+                  <div className="grid grid-cols-7 gap-1">
+                    {week.map((c) => (
+                      <div key={c.iso} className="min-w-0 space-y-0.5 px-1.5">
+                        {(msByDay.get(c.iso) || []).map((e) => (
+                          <span
+                            key={e.id}
+                            onMouseEnter={(ev) => showTip(ev, e.title, e.client || null)}
+                            onMouseLeave={hideTip}
+                            style={{ background: e.col.bg, color: e.col.fg }}
+                            className="pointer-events-auto flex items-center gap-1 h-[20px] px-1.5 rounded-full text-[10.5px] leading-none"
+                          >
+                            <FlagIcon />
+                            <span className="truncate">{e.title}</span>
+                          </span>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {Array.from({ length: lanes }).map((_, laneIdx) => (
                   <div key={laneIdx} className="grid grid-cols-7 gap-1">
                     {shown.filter((s) => s.lane === laneIdx).map((s) => {
@@ -226,15 +275,18 @@ function CalendarView({ tasks, colorsByClient = {}, onOpen }) {
                           key={t.id}
                           type="button"
                           onClick={() => onOpen?.(t)}
-                          title={`${t.name}${a ? ` · ${a.name}` : ""}${t.project ? ` · ${t.project}` : ""} · ${t.status}`}
-                          style={{ gridColumn: `${s.a + 1} / span ${s.b - s.a + 1}`, background: c.bg }}
+                          onMouseEnter={(ev) => showTip(ev, t.name, [a?.name, t.project, t.status].filter(Boolean).join(" · "))}
+                          onMouseLeave={hideTip}
+                          // Mismo criterio que el chip de /calendario: fondo y TEXTO
+                          // con el color del cliente (el aro hereda por currentColor).
+                          style={{ gridColumn: `${s.a + 1} / span ${s.b - s.a + 1}`, background: c.bg, color: c.fg }}
                           className={cn(
-                            "pointer-events-auto flex items-center gap-1.5 h-[24px] px-2 mx-1.5 text-[11.5px] leading-none text-ink hover:brightness-95 transition backdrop-blur-sm text-left",
+                            "pointer-events-auto flex items-center gap-1.5 h-[24px] px-2 mx-1.5 text-[11.5px] leading-none hover:brightness-95 transition backdrop-blur-sm text-left",
                             s.contPrev ? "rounded-l-none" : "rounded-l-lg", s.contNext ? "rounded-r-none" : "rounded-r-lg"
                           )}
                         >
-                          {/* Aro con el color del cliente */}
-                          <span className="h-3 w-3 rounded-full border-[1.6px] shrink-0" style={{ borderColor: c.fg }} />
+                          {/* Aro de estado, con el color del cliente */}
+                          <span className="h-3 w-3 rounded-full border-[1.6px] border-current shrink-0" />
                           <span className="truncate flex-1">{t.name}</span>
                           {/* Persona asignada */}
                           {a && (photo ? (
@@ -296,6 +348,17 @@ function CalendarView({ tasks, colorsByClient = {}, onOpen }) {
           </aside>
         )}
       </div>
+
+      {/* Tooltip del calendario — crema, como el resto del portal */}
+      {tip && typeof document !== "undefined" && createPortal(
+        <div className="pointer-events-none fixed z-[90] -translate-x-1/2 -translate-y-full" style={{ left: tip.x, top: tip.y - 8 }}>
+          <div className="max-w-[280px] rounded-xl bg-surface2 border border-border/70 px-3 py-2 shadow-float">
+            <p className="text-[12px] leading-snug text-ink">{tip.title}</p>
+            {tip.meta && <p className="text-micro text-mutedSoft mt-0.5">{tip.meta}</p>}
+          </div>
+        </div>,
+        document.body
+      )}
     </Surface>
   );
 }
@@ -317,7 +380,7 @@ function Section({ label, count, campaign, children }) {
 
 /* ── Pantalla ───────────────────────────────────────────────────────────── */
 
-export default function TareasClient({ tasks, myEmail, isAdmin = false, visibleCount, campaigns = [], statusesByList = {}, iconsByClient = {}, colorsByClient = {} }) {
+export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin = false, visibleCount, campaigns = [], statusesByList = {}, iconsByClient = {}, colorsByClient = {} }) {
   const [q, setQ] = useState("");
   const [clientSet, setClientSet] = useState(() => new Set()); // multi-selección de clientes/campañas
   const [hoverCtx, setHoverCtx] = useState(null); // tooltip por portal {name,count,x,y}
@@ -359,10 +422,25 @@ export default function TareasClient({ tasks, myEmail, isAdmin = false, visibleC
       if (t.project) cnt.set(t.project, (cnt.get(t.project) || 0) + 1);
     }
     return [...cnt.keys()]
-      .map((name) => ({ name, count: cnt.get(name), campaign: campaignSet.has(name) }))
+      .map((name) => ({ key: name, label: name, avatarName: name, colorSrc: name, count: cnt.get(name), campaign: campaignSet.has(name) }))
       // Clientes fijos primero (por nº de tareas), campañas/lanzamientos al final.
-      .sort((a, b) => (a.campaign - b.campaign) || (b.count - a.count) || a.name.localeCompare(b.name));
+      .sort((a, b) => (a.campaign - b.campaign) || (b.count - a.count) || a.label.localeCompare(b.label));
   }, [tasks, campaignSet]);
+
+  // Sprints: mini-proyectos temporales DENTRO de un cliente (una lista marcada
+  // como sprint en el admin). Píldora propia, pero con el color y el icono del
+  // cliente para que se lea de quién es.
+  const sprints = useMemo(() => {
+    const cnt = new Map();
+    for (const t of tasks) {
+      if (t.statusType === "closed" || t.statusType === "done") continue;
+      if (!t.sprint || !t.project) continue;
+      const key = sprintKey(t.project, t.sprint);
+      if (!cnt.has(key)) cnt.set(key, { key, label: `${t.project} › ${t.sprint}`, avatarName: t.sprint, colorSrc: t.project, campaign: true, sprint: true, count: 0 });
+      cnt.get(key).count++;
+    }
+    return [...cnt.values()].sort((a, b) => (b.count - a.count) || a.label.localeCompare(b.label));
+  }, [tasks]);
 
   const filtered = useMemo(() => {
     const ql = q.trim().toLowerCase();
@@ -371,7 +449,16 @@ export default function TareasClient({ tasks, myEmail, isAdmin = false, visibleC
       // tocar (override) para que no desaparezcan de golpe al completarlas.
       if (!showClosed && !isOpen(t) && !overrides.has(t.id)) return false;
       if (!matchScope(t, tscope)) return false;
-      if (clientSet.size && !clientSet.has(t.project)) return false;
+      // La selección mezcla clientes y sprints. Elegir un cliente incluye sus
+      // sprints (son suyos); elegir un sprint acota solo a esa lista.
+      if (clientSet.size) {
+        const hit = [...clientSet].some((k) => {
+          if (!k.startsWith(SPRINT_PREFIX)) return t.project === k;
+          const [p, sp] = k.slice(SPRINT_PREFIX.length).split("::");
+          return t.project === p && t.sprint === sp;
+        });
+        if (!hit) return false;
+      }
       if (area && t.listName !== area) return false;
       if (scope === "mine" && !(t.everyone || (myEmail && t.assignees.some((a) => a.email === myEmail)))) return false;
       if (ql && !t.name.toLowerCase().includes(ql)) return false;
@@ -381,6 +468,28 @@ export default function TareasClient({ tasks, myEmail, isAdmin = false, visibleC
   }, [tasks, q, clientSet, area, showClosed, scope, tscope, overrides]);
 
   // Agrupación implícita: 1 cliente → por Área; varios/ninguno → por Cliente.
+  // Los hitos siguen la misma selección que las tareas: elegir un cliente deja
+  // solo los suyos; elegir un sprint, solo los de ese sprint.
+  const filteredMilestones = useMemo(() => {
+    if (!clientSet.size) return milestones;
+    return milestones.filter((e) =>
+      [...clientSet].some((k) => {
+        if (!k.startsWith(SPRINT_PREFIX)) return e.client === k;
+        const [p, sp] = k.slice(SPRINT_PREFIX.length).split("::");
+        return e.client === p && e.sprint === sp;
+      })
+    );
+  }, [milestones, clientSet]);
+
+  // La selección guarda claves internas (un sprint es «✦proyecto::sprint»); para
+  // pintarlas hay que traducirlas a su etiqueta.
+  const labelByKey = useMemo(() => {
+    const m = new Map();
+    for (const c of clients) m.set(c.key, c.label);
+    for (const sp of sprints) m.set(sp.key, sp.label);
+    return m;
+  }, [clients, sprints]);
+
   const groupByArea = clientSet.size === 1;
   const sections = useMemo(() => {
     const map = new Map();
@@ -390,11 +499,20 @@ export default function TareasClient({ tasks, myEmail, isAdmin = false, visibleC
       if (!map.has(key)) map.set(key, { key, label, campaign: !groupByArea && campaignSet.has(t.project), items: [] });
       map.get(key).items.push(t);
     }
+    // Inicio/fin de sprint como hitos dentro del grupo que les corresponde
+    // (agrupando por área, su grupo es la propia lista del sprint). Solo se
+    // añaden a grupos que ya existen: la lista es de tareas, no de hitos.
+    for (const e of filteredMilestones) {
+      const key = groupByArea ? (e.sprint || "—") : (e.client || "—");
+      const g = map.get(key);
+      if (!g) continue;
+      g.items.push({ milestone: true, id: e.id, name: e.title, client: e.client, area: e.sprint || null, dueDate: new Date(e.start + "T00:00:00").getTime() });
+    }
     const arr = [...map.values()];
     arr.forEach((s) => s.items.sort((a, b) => (a.dueDate ?? Infinity) - (b.dueDate ?? Infinity)));
     // Campañas al final cuando agrupamos por cliente; alfabético dentro.
     return arr.sort((a, b) => (a.campaign - b.campaign) || a.label.localeCompare(b.label));
-  }, [filtered, groupByArea, campaignSet]);
+  }, [filtered, filteredMilestones, groupByArea, campaignSet]);
 
   // Tarea abierta en el panel derecho (persiste aunque cambien los filtros).
   // Busca también dentro de las subtareas anidadas.
@@ -428,6 +546,28 @@ export default function TareasClient({ tasks, myEmail, isAdmin = false, visibleC
   };
 
   // Fila + subtareas anidadas (desplegable estilo ClickUp) para la vista Lista.
+  // Fila de hito (inicio/fin de sprint): misma rejilla y peso visual que una
+  // tarea; lo único que cambia es el ROMBO en vez del círculo de estado (mismo
+  // lenguaje que StatusMenu usa para los hitos de ClickUp).
+  const renderMilestone = (m) => {
+    const c = paletteColor(m.client || "Sin cliente", colorsByClient[m.client]);
+    const due = dueLabel(m.dueDate);
+    return (
+      <div key={m.id} className={showAreaCol ? ROW : ROW_NO_AREA}>
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="h-4 w-4 shrink-0" aria-hidden />
+          <span className="h-[18px] w-[18px] shrink-0 grid place-items-center" title="Hito">
+            <span className="h-3 w-3 rotate-45 rounded-[3px]" style={{ boxShadow: `inset 0 0 0 2px ${c.fg}` }} />
+          </span>
+          <span className="min-w-0 text-small text-ink truncate">{m.name}</span>
+        </div>
+        {showAreaCol && <span className="text-micro text-mutedSoft truncate">{m.area || "—"}</span>}
+        <span className={cn("text-micro text-right tabular-nums", due.tone)}>{due.text}</span>
+        <div className="justify-self-end" />
+      </div>
+    );
+  };
+
   const renderRow = (t, depth = 0) => {
     const subs = t.subtasks ?? [];
     const isExp = expanded.has(t.id);
@@ -471,7 +611,7 @@ export default function TareasClient({ tasks, myEmail, isAdmin = false, visibleC
     <>
       <ScreenHeader
         kicker="ClickUp"
-        title={clientSet.size === 1 ? [...clientSet][0] : "Tareas"}
+        title={clientSet.size === 1 ? (labelByKey.get([...clientSet][0]) ?? "Tareas") : "Tareas"}
         actions={
           <div className="flex items-center gap-2">
             <span className="text-micro text-mutedSoft tabular-nums hidden sm:inline -mr-1">{filtered.length}</span>
@@ -495,20 +635,21 @@ export default function TareasClient({ tasks, myEmail, isAdmin = false, visibleC
         <div className="flex items-center flex-1 min-w-0 overflow-x-auto scrollbar-none -mx-1 px-1 py-1">
           {(() => {
             const fixed = clients.filter((c) => !c.campaign);
-            const camps = clients.filter((c) => c.campaign);
+            // Temporales: campañas (carpeta entera) + sprints (lista de un cliente).
+            const camps = [...clients.filter((c) => c.campaign), ...sprints];
             const Avatar = (c, i, fanClass) => {
-              const sel = clientSet.has(c.name);
+              const sel = clientSet.has(c.key);
               const dim = clientSet.size > 0 && !sel;
               return (
                 <button
-                  key={c.name}
+                  key={c.key}
                   type="button"
-                  onClick={() => toggleClient(c.name)}
-                  onMouseEnter={(e) => { const r = e.currentTarget.getBoundingClientRect(); setHoverCtx({ name: c.name, count: c.count, x: r.left + r.width / 2, y: r.top }); }}
+                  onClick={() => toggleClient(c.key)}
+                  onMouseEnter={(e) => { const r = e.currentTarget.getBoundingClientRect(); setHoverCtx({ name: c.label, count: c.count, x: r.left + r.width / 2, y: r.top }); }}
                   onMouseLeave={() => setHoverCtx(null)}
                   className={cn("relative shrink-0 transition-all duration-200 hover:z-20 active:scale-95", i > 0 && fanClass, dim ? "opacity-30 hover:opacity-90" : "opacity-100")}
                 >
-                  <ClientAvatar name={c.name} active={sel} campaign={c.campaign} icon={clientIcon(c.name, iconsByClient[c.name])} colorKey={colorsByClient[c.name]} />
+                  <ClientAvatar name={c.avatarName} active={sel} campaign={c.campaign && !c.sprint} icon={clientIcon(c.colorSrc, iconsByClient[c.colorSrc])} colorKey={colorsByClient[c.colorSrc]} />
                 </button>
               );
             };
@@ -596,8 +737,8 @@ export default function TareasClient({ tasks, myEmail, isAdmin = false, visibleC
           <div className="space-y-3">
             {sections.map((sec) => (
               <Surface key={sec.key} pad="sm">
-                <Section label={sec.label} count={sec.items.length} campaign={sec.campaign}>
-                  {sec.items.map((t) => renderRow(t))}
+                <Section label={sec.label} count={sec.items.filter((t) => !t.milestone).length} campaign={sec.campaign}>
+                  {sec.items.map((t) => (t.milestone ? renderMilestone(t) : renderRow(t)))}
                 </Section>
               </Surface>
             ))}
@@ -606,7 +747,7 @@ export default function TareasClient({ tasks, myEmail, isAdmin = false, visibleC
       )}
 
       {/* CALENDARIO — mes con las tareas en su fecha */}
-      {view === "calendario" && <CalendarView tasks={filtered} colorsByClient={colorsByClient} onOpen={openTask} />}
+      {view === "calendario" && <CalendarView tasks={filtered} milestones={filteredMilestones} colorsByClient={colorsByClient} onOpen={openTask} />}
         </div>
 
         {selected && (

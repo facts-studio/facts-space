@@ -218,6 +218,10 @@ export async function getClickUpTasks() {
         && (!l.admin_only || isAdmin)
         && (isAdmin || (l.list_name || "").trim().toLowerCase() !== "management"))
       .map((l) => l.list_id);
+    // Listas marcadas como sprint: mini-proyecto temporal DENTRO de un cliente.
+    // La tarea conserva su cliente (project) y añade `sprint` con el nombre de
+    // la lista; no es un cliente aparte.
+    const sprintByList = new Map(configured.filter((l) => l.is_sprint).map((l) => [l.list_id, l.list_name]));
 
     if (visibleIds.length) {
       const raw = [];
@@ -244,7 +248,13 @@ export async function getClickUpTasks() {
       // Dedup por id (una tarea puede venir en ambas si cambió de estado).
       const seen = new Set();
       const out = [];
-      for (const t of raw) if (!seen.has(t.id)) { seen.add(t.id); out.push(mapTask(t)); }
+      for (const t of raw) {
+        if (seen.has(t.id)) continue;
+        seen.add(t.id);
+        const m = mapTask(t);
+        m.sprint = sprintByList.get(m.listId) ?? null;
+        out.push(m);
+      }
       // Subtareas → pliega sus asignados en la tarea padre y devuelve top-level.
       return rollUpSubtasks(out);
     }
@@ -329,6 +339,31 @@ export async function getAgendaEvents() {
   }
 }
 
+/**
+ * Hitos de sprint: el inicio y el fin de cada lista marcada como sprint, según
+ * las fechas de la propia lista en ClickUp. Salen en el calendario y en las
+ * listas de agenda (Lo más cercano) como hitos normales.
+ * `note` lleva la definición del sprint (el "content" de la lista).
+ */
+export async function getSprintEvents() {
+  const lists = await getConfiguredLists();
+  const iso = (ts) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date(ts));
+  const out = [];
+  for (const l of lists) {
+    if (!l.is_sprint || !l.visible) continue;
+    const base = { type: "hito", who: null, sprint: l.list_name, client: l.folder_name ?? null, note: (l.list_content || "").trim() || null };
+    if (l.list_start) {
+      const d = iso(l.list_start);
+      out.push({ ...base, id: `sprint-${l.list_id}-ini`, title: `${l.list_name} · inicio`, start: d, end: d });
+    }
+    if (l.list_due) {
+      const d = iso(l.list_due);
+      out.push({ ...base, id: `sprint-${l.list_id}-fin`, title: `${l.list_name} · fin`, start: d, end: d });
+    }
+  }
+  return out;
+}
+
 // Hitos (milestones, custom_item_id === 1) de TODO el workspace, para el
 // calendario de eventos. Independiente de las listas activadas (un hito puede
 // crearse en cualquier lista). Shape de evento: { id, type:'hito', title, start, end }.
@@ -349,7 +384,10 @@ export async function getClickUpMilestones() {
         if (t.custom_item_id !== 1 || !t.due_date) continue;
         const due = Number(t.due_date);
         const start = t.start_date ? Number(t.start_date) : due;
-        out.push({ id: `hito-cu-${t.id}`, type: "hito", title: t.name, start: toISO(Math.min(start, due)), end: toISO(due), who: null });
+        // `client`: mismo criterio que las tareas (tag de cliente → carpeta), para
+        // poder teñir el hito con el color de su cliente en el calendario.
+        const client = clientFromTags(t) ?? (t.folder?.name && !t.folder?.hidden ? t.folder.name : null);
+        out.push({ id: `hito-cu-${t.id}`, type: "hito", title: t.name, start: toISO(Math.min(start, due)), end: toISO(due), who: null, client });
       }
       if (batch.length < 100) break;
     }
@@ -374,10 +412,16 @@ export async function getClickUpHierarchy() {
   const rows = [];
   const mapStatuses = (space) =>
     (space.statuses ?? []).map((s) => ({ status: s.status, type: s.type, color: s.color, orderindex: s.orderindex }));
+  // ms epoch de ClickUp → ISO (o null). Las fechas de la lista se usan para los
+  // hitos de sprint; la descripción ("content"), como definición del sprint.
+  const stamp = (ms) => (ms ? new Date(Number(ms)).toISOString() : null);
   const push = (list, folder, space, statuses, sort) =>
     rows.push({
       list_id: list.id,
       list_name: list.name,
+      list_content: list.content ?? "",
+      list_start: stamp(list.start_date),
+      list_due: stamp(list.due_date),
       folder_id: folder?.id ?? null,
       folder_name: folder && !folder.hidden ? folder.name : null,
       space_id: space.id,

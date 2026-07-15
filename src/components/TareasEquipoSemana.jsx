@@ -6,6 +6,16 @@ import { Surface, EmptyState } from "@/components/ui";
 import { TaskRow } from "@/components/tasks/task-atoms";
 import { setClickUpTaskStatus } from "@/lib/actions/clickup";
 
+// Duración del sprint a partir de las fechas de su lista: "8 sep – 22 sep".
+const dm = (ts) => new Date(ts).toLocaleDateString("es-ES", { day: "numeric", month: "short" }).replace(".", "");
+function sprintRange(m) {
+  if (!m) return null;
+  if (m.start && m.due) return `${dm(m.start)} – ${dm(m.due)}`;
+  if (m.due) return `hasta el ${dm(m.due)}`;
+  if (m.start) return `desde el ${dm(m.start)}`;
+  return null;
+}
+
 // Flecha del navegador de clientes.
 function Arrow({ dir, onClick, disabled }) {
   return (
@@ -30,9 +40,10 @@ function Arrow({ dir, onClick, disabled }) {
  * cronológico y cada uno en su caja: completadas → esta semana → semana siguiente.
  * Las filas usan el mismo formato que el área de Tareas (TaskRow).
  */
-export default function TareasEquipoSemana({ tasks = [], campaigns = [], statusesByList = {}, className = "" }) {
+export default function TareasEquipoSemana({ tasks = [], campaigns = [], statusesByList = {}, sprintMeta = {}, className = "" }) {
   const router = useRouter();
   const [index, setIndex] = useState(0);
+  const meta = (g) => (g.listId ? sprintMeta[g.listId] : null);
   const [overrides, setOverrides] = useState(() => new Map()); // id → estado optimista
   const [, start] = useTransition();
 
@@ -56,31 +67,37 @@ export default function TareasEquipoSemana({ tasks = [], campaigns = [], statuse
     const campaignSet = new Set(campaigns);
     const map = new Map();
     for (const t of tasks) {
-      const key = t.project || "Sin cliente";
-      if (!map.has(key)) map.set(key, []);
-      map.get(key).push(t);
+      const client = t.project || "Sin cliente";
+      // Un sprint es un mini-proyecto DENTRO del cliente: caja propia, pero sin
+      // dejar de ser suyo (por eso la clave lleva las dos partes).
+      const key = t.sprint ? `${client} · ${t.sprint}` : client;
+      if (!map.has(key)) map.set(key, { client, sprint: t.sprint || null, listId: t.listId ?? null, items: [] });
+      map.get(key).items.push(t);
     }
     return [...map.entries()]
-      .map(([name, items]) => {
-        const active = items.filter((t) => t.bucket === "activa");
-        const next = items.filter((t) => t.bucket === "siguiente");
-        const done = items.filter((t) => t.bucket === "completada");
+      .map(([name, g]) => {
+        const active = g.items.filter((t) => t.bucket === "activa");
+        const next = g.items.filter((t) => t.bucket === "siguiente");
+        const done = g.items.filter((t) => t.bucket === "completada");
         return {
           name,
+          client: g.client,
+          sprint: g.sprint,
+          listId: g.listId,
           active,
           next,
           done,
-          campaign: campaignSet.has(name),
+          campaign: campaignSet.has(g.client),
           // 0 = tiene activas · 1 = solo semana siguiente · 2 = solo completadas
           rank: active.length ? 0 : next.length ? 1 : 2,
           first: active[0]?.dueDate ?? next[0]?.dueDate ?? Infinity,
         };
       })
-      // Primero los clientes con actividad; dentro de cada nivel, las campañas
-      // (proyectos temporales) primero; luego urgencia y nombre.
+      // Primero los que tienen actividad; dentro de cada nivel, lo temporal
+      // (sprint o campaña) delante; luego urgencia y nombre.
       .sort((a, b) =>
         (a.rank - b.rank) ||
-        (b.campaign - a.campaign) ||
+        ((b.sprint || b.campaign ? 1 : 0) - (a.sprint || a.campaign ? 1 : 0)) ||
         ((a.first === b.first) ? 0 : a.first - b.first) ||
         a.name.localeCompare(b.name)
       );
@@ -120,14 +137,23 @@ export default function TareasEquipoSemana({ tasks = [], campaigns = [], statuse
       {/* Un cliente a la vez; key → re-dispara el fade al cambiar */}
       <div key={g.name} className="fade-up">
         <div className="flex items-center gap-2 mb-2 px-1">
-          <p className="text-small text-ink font-medium truncate">{g.name}</p>
-          {g.campaign && (
+          {/* En un sprint, el cliente sigue por delante: «TradingLab · Sprint Academia» */}
+          <p className="text-small text-ink font-medium truncate">
+            {g.sprint ? <>{g.client} <span className="text-mutedSoft font-normal">·</span> {g.sprint}</> : g.name}
+          </p>
+          {(g.sprint || g.campaign) && (
             <span className="shrink-0 text-micro text-mutedSoft border border-border/70 rounded-full px-1.5 leading-[1.5]">
-              Temporal
+              {g.sprint ? "✦ Sprint" : "Temporal"}
             </span>
           )}
           <span className="text-micro text-mutedSoft/70 tabular-nums shrink-0">{g.active.length}</span>
         </div>
+
+        {/* Duración del sprint. La definición no: aquí interesa el estado de la
+            semana, no el briefing (se lee en ClickUp). */}
+        {g.sprint && sprintRange(meta(g)) && (
+          <p className="px-1 mb-2 -mt-1 text-micro text-mutedSoft">{sprintRange(meta(g))}</p>
+        )}
 
         <div className="flex flex-col gap-2.5">
           {blocks.map((b) => (

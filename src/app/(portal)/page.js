@@ -28,6 +28,10 @@ export default async function HomePage() {
   const teamWeek = teamWeekTasks(tasks); // modo Status: todo el equipo, por cliente
   // Proyectos temporales (campañas): van primero en el modo Status.
   const campaigns = [...new Set(lists.filter((l) => l.is_campaign && l.folder_name).map((l) => l.folder_name))];
+  // Definición y fechas de cada sprint (campos de la lista en ClickUp).
+  const sprintMeta = Object.fromEntries(
+    lists.filter((l) => l.is_sprint).map((l) => [l.list_id, { note: (l.list_content || "").trim(), start: l.list_start, due: l.list_due }])
+  );
   // Estados por lista: alimentan el menú del punto de estado en las filas.
   const statusesByList = Object.fromEntries(lists.filter((l) => (l.statuses || []).length).map((l) => [l.list_id, l.statuses]));
   const overview = workspaceOverview(tasks);
@@ -64,6 +68,7 @@ export default async function HomePage() {
           teamTasks={teamWeek}
           campaigns={campaigns}
           statusesByList={statusesByList}
+          sprintMeta={sprintMeta}
           overview={overview}
           isAdmin={Boolean(me?.is_admin)}
           initialNotes={notes}

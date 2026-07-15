@@ -101,6 +101,26 @@ export async function setFolderCampaign(listIds, isCampaign) {
   }
 }
 
+// Marca UNA lista como sprint (mini-proyecto temporal dentro de un cliente).
+// A diferencia de setFolderCampaign, no se propaga a la carpeta: el cliente
+// sigue siendo el dueño y el sprint es una capa dentro de él.
+export async function setListSprint(listId, isSprint) {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard;
+  if (!listId) return { ok: false, error: "Sin lista" };
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.from("clickup_lists").update({ is_sprint: isSprint }).eq("list_id", listId);
+    if (error) return { ok: false, error: error.message };
+    revalidatePath("/");
+    revalidatePath("/admin");
+    revalidatePath("/tareas");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
 // Fija el acceso de un conjunto de listas: "off" (oculta) · "all" (todos) ·
 // "admin" (solo perfiles admin). Es la fuente de verdad de visibilidad.
 export async function setListsAccess(listIds, access) {

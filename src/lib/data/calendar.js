@@ -2,7 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { EVENTS as MOCK_EVENTS } from "@/lib/mock";
 import { isConfigured } from "./helpers";
-import { getAgendaEvents, getClickUpMilestones } from "./clickup";
+import { getAgendaEvents, getClickUpMilestones, getSprintEvents } from "./clickup";
 
 const ABS_LABEL = { vacaciones: "Vacaciones", baja: "Baja", permiso: "Permiso", asuntos_propios: "Asuntos propios", teletrabajo: "Teletrabajo", otro: "Ausencia" };
 
@@ -63,7 +63,7 @@ export async function getCalendarEvents() {
   if (!isConfigured()) return MOCK_EVENTS;
 
   const supabase = await createClient();
-  const [vac, emps, agenda, milestones] = await Promise.all([
+  const [vac, emps, agenda, milestones, sprints] = await Promise.all([
     supabase
       .from("vacation_requests")
       .select("id, start_date, end_date, employee_id, type, status")
@@ -71,6 +71,7 @@ export async function getCalendarEvents() {
     supabase.from("employees").select("id, name"),
     getAgendaEvents(),        // festivos + cumpleaños + hitos de empresa (ClickUp)
     getClickUpMilestones(),   // hitos a nivel de tarea (milestones, cualquier lista)
+    getSprintEvents(),        // inicio y fin de las listas marcadas como sprint
   ]);
 
   // Nombre por id (vacation_requests tiene 2 FKs a employees → no usamos embed).
@@ -80,9 +81,11 @@ export async function getCalendarEvents() {
 
   for (const v of vac.data ?? []) events.push(absenceToEvent(v, nameById));
 
-  // Agenda de empresa (festivos, cumpleaños, hitos) + hitos a nivel de tarea.
+  // Agenda de empresa (festivos, cumpleaños, hitos) + hitos a nivel de tarea +
+  // inicio/fin de los sprints.
   for (const e of agenda ?? []) events.push(e);
   for (const m of milestones ?? []) events.push(m);
+  for (const s of sprints ?? []) events.push(s);
 
   return events;
 }

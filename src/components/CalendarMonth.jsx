@@ -17,6 +17,11 @@ const POLICY_GLYPH = { ok: "✓", warn: "!", bad: "✕" };
 const MEMBER = new Map(TEAM.map((m) => [m.name, m]));
 // Tipos con persona asociada → mostramos miniatura.
 const WITH_PERSON = new Set(["cumple", "vacaciones", "ausencia"]);
+// Con la vista de tareas activa, el resto de eventos se apaga a gris para que el
+// color quede en los clientes. Estos NO: los hitos marcan fechas clave y deben
+// leerse igual con tareas encendidas o apagadas.
+const KEEP_COLOR = new Set(["tarea", "hito"]);
+
 // Tipos en los que la duración aporta (un festivo o un cumple duran 1 día y
 // decirlo es ruido).
 const WITH_SPAN = new Set(["vacaciones", "ausencia"]);
@@ -32,6 +37,13 @@ function spanLabel(e) {
     ? `${a.getDate()}–${dayMonth(e.end)}`
     : `${dayMonth(e.start)} – ${dayMonth(e.end)}`;
 }
+
+// Banderita de hito: toma el color del chip (currentColor).
+const FlagIcon = () => (
+  <svg className="h-[10px] w-[10px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M5 21V4M5 4h11l-2 3.5L16 11H5" />
+  </svg>
+);
 
 function MiniAvatar({ member, ring = "ring-white/70" }) {
   if (!member) return null;
@@ -444,8 +456,10 @@ export default function CalendarMonth({ events = [], tasks = [], canRequest = fa
                     // el resto de eventos, con el color de su tipo. Con la vista
                     // de tareas activa, lo que NO es tarea pasa a gris para que
                     // el color quede reservado a los clientes.
-                    const tint = e.type === "tarea" ? e.tint : null;
-                    const muted = showTasks && e.type !== "tarea";
+                    // Tarea → siempre con el color de su cliente. Hito → solo cuando la vista
+                    // de tareas está activa (fuera de ella conserva su rojo de hito).
+                    const tint = e.type === "tarea" ? e.tint : (showTasks && e.type === "hito" ? e.tint ?? null : null);
+                    const muted = showTasks && !KEEP_COLOR.has(e.type);
                     // Solicitada sin aprobar → contorno discontinuo, sin relleno.
                     const pending = Boolean(e.pending);
                     return (
@@ -480,6 +494,8 @@ export default function CalendarMonth({ events = [], tasks = [], canRequest = fa
                         )}
                       >
                         {withAvatar && <MiniAvatar member={person} ring="ring-bg" />}
+                        {/* Los hitos se marcan con banderita (el color solo no basta) */}
+                        {e.type === "hito" && !b.continuesLeft && <FlagIcon />}
                         <span className="truncate">{e.title}</span>
                       </button>
                     );
@@ -595,8 +611,10 @@ export default function CalendarMonth({ events = [], tasks = [], canRequest = fa
                   {selItems.map((e, j) => {
                     const t = TYPE[e.type];
                     const person = WITH_PERSON.has(e.type) && e.who ? MEMBER.get(e.who) : null;
-                    const tint = e.type === "tarea" ? e.tint : null;
-                    const muted = showTasks && e.type !== "tarea";
+                    // Tarea → siempre con el color de su cliente. Hito → solo cuando la vista
+                    // de tareas está activa (fuera de ella conserva su rojo de hito).
+                    const tint = e.type === "tarea" ? e.tint : (showTasks && e.type === "hito" ? e.tint ?? null : null);
+                    const muted = showTasks && !KEEP_COLOR.has(e.type);
                     const pending = Boolean(e.pending);
                     return (
                       <li
