@@ -149,15 +149,18 @@ export function StatusMenu({ current, color, statuses = [], listId, onPick, done
 // La columna Área solo se muestra a admins (el resto solo ve listas "Tareas").
 // Rejilla de la fila (nombre + columnas opcionales + fecha + asignados). La
 // comparten TaskRow y las filas de hito de la lista, para que todo cuadre.
+// En móvil la fila es solo nombre + fecha (2 columnas): la píldora de estado y
+// los avatares se ocultan (hidden sm:...) y las columnas fijas solo entran en sm+.
 const GRID = {
-  "area+status": "grid-cols-[minmax(0,1fr)_132px_112px_92px_84px]",
-  area:          "grid-cols-[minmax(0,1fr)_132px_92px_84px]",
-  status:        "grid-cols-[minmax(0,1fr)_112px_92px_84px]",
-  none:          "grid-cols-[minmax(0,1fr)_92px_84px]",
+  "area+status": "sm:grid-cols-[minmax(0,1fr)_132px_112px_92px_84px]",
+  area:          "sm:grid-cols-[minmax(0,1fr)_132px_92px_84px]",
+  status:        "sm:grid-cols-[minmax(0,1fr)_112px_92px_84px]",
+  none:          "sm:grid-cols-[minmax(0,1fr)_92px_84px]",
 };
 export const rowCls = ({ showArea = true, showStatus = false } = {}) =>
   cn(
     "grid gap-3 items-center px-3 py-2.5 rounded-lg hover:bg-surface2/40 transition-colors",
+    "grid-cols-[minmax(0,1fr)_auto]", // móvil: nombre + fecha
     GRID[showArea && showStatus ? "area+status" : showArea ? "area" : showStatus ? "status" : "none"]
   );
 
@@ -208,10 +211,10 @@ export function TaskRow({ t, eff, open, statuses, onPickStatus, onOpen, active, 
           <svg className="h-3.5 w-3.5 shrink-0 text-mutedSoft/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-label="Tiene recursos"><title>Tiene recursos</title><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
         )}
       </div>
-      {showArea && <span className="text-micro text-mutedSoft truncate">{t.listName || "—"}</span>}
-      {/* Estado con su color de ClickUp (tinte suave + texto). */}
+      {showArea && <span className="hidden sm:block text-micro text-mutedSoft truncate">{t.listName || "—"}</span>}
+      {/* Estado con su color de ClickUp — oculto en móvil (lo dice el punto). */}
       {showStatus && (
-        <span className="min-w-0">
+        <span className="hidden sm:block min-w-0">
           <span
             className="inline-flex max-w-full items-center h-5 px-2 rounded-full text-micro capitalize truncate"
             style={{ background: `${eff.statusColor || "#8a8a85"}1f`, color: eff.statusColor || "rgb(var(--ct-mutedSoft))" }}
@@ -221,7 +224,7 @@ export function TaskRow({ t, eff, open, statuses, onPickStatus, onOpen, active, 
         </span>
       )}
       <span className={cn("text-micro text-right tabular-nums", due.tone)}>{due.text}</span>
-      <div className="justify-self-end"><Avatars assignees={t.assignees} /></div>
+      <div className="hidden sm:block justify-self-end"><Avatars assignees={t.assignees} /></div>
     </div>
   );
 }

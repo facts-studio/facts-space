@@ -5,6 +5,14 @@
 @tailwind utilities;
 
 :root {
+  /* ── Curvas de easing del sistema (antes duplicadas a mano) ── */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);      /* ease-out expo, para entradas */
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);  /* movimiento en pantalla */
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);   /* curva de drawer estilo iOS */
+  /* Safe-area del dispositivo (notch / barra de gestos). 0 fuera de PWA. */
+  --sa-top: env(safe-area-inset-top, 0px);
+  --sa-bottom: env(safe-area-inset-bottom, 0px);
+
   /* ── Canales de color (RGB) — estética Claude. Conmutan en .dark ── */
   --ct-bg: 239 238 235;        /* #EFEEEB */
   --ct-surface: 248 248 246;   /* #F8F8F6 */
@@ -96,6 +104,8 @@ html, body {
   /* Evita el rebote (rubber-band) al hacer scroll, que descoloca los elementos
      sticky como el menú lateral y el panel de novedades. */
   overscroll-behavior-y: none;
+  /* Ningún desbordamiento horizontal debe generar scroll lateral en móvil. */
+  overflow-x: hidden;
 }
 
 * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
@@ -226,6 +236,14 @@ html, body {
 @media (prefers-reduced-motion: reduce) {
   .group\/task:hover .marquee > * { max-width: 100%; animation: none; }
 }
+
+/* Safe-area del dispositivo (PWA con viewport-fit=cover). */
+.pt-safe { padding-top: var(--sa-top); }
+.pb-safe { padding-bottom: var(--sa-bottom); }
+.top-safe { top: var(--sa-top); }
+/* Feedback de pulsación para elementos táctiles. */
+.press { transition: transform 140ms var(--ease-out); }
+.press:active { transform: scale(0.96); }
 
 /* Skeleton de carga — pulso suave sobre superficie. */
 @keyframes skeletonPulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 0.9; } }

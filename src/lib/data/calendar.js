@@ -6,6 +6,41 @@ import { getAgendaEvents, getClickUpMilestones, getSprintEvents } from "./clicku
 
 const ABS_LABEL = { vacaciones: "Vacaciones", baja: "Baja", permiso: "Permiso", asuntos_propios: "Asuntos propios", teletrabajo: "Teletrabajo", otro: "Ausencia" };
 
+// ISO (YYYY-MM-DD) del día siguiente, sin tocar zonas horarias.
+function isoNextDay(iso) {
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(y, m - 1, d + 1);
+  const p = (n) => String(n).padStart(2, "0");
+  return `${dt.getFullYear()}-${p(dt.getMonth() + 1)}-${p(dt.getDate())}`;
+}
+
+// Une ausencias contiguas o solapadas del MISMO empleado y tipo en un solo
+// tramo. En la intranet una baja larga puede partirse en varias solicitudes
+// (p. ej. 16→22 y 23→23); para el calendario es una sola ausencia 16→23.
+function mergeAbsences(rows) {
+  const byKey = new Map();
+  for (const r of rows) {
+    const k = `${r.employee_id}|${r.type ?? "vacaciones"}`;
+    if (!byKey.has(k)) byKey.set(k, []);
+    byKey.get(k).push(r);
+  }
+  const out = [];
+  for (const arr of byKey.values()) {
+    arr.sort((a, b) => (a.start_date < b.start_date ? -1 : 1));
+    let cur = null;
+    for (const r of arr) {
+      // Contigua = empieza el día siguiente al fin del tramo actual (o antes).
+      if (cur && r.start_date <= isoNextDay(cur.end_date)) {
+        if (r.end_date > cur.end_date) cur.end_date = r.end_date;
+      } else {
+        cur = { ...r };
+        out.push(cur);
+      }
+    }
+  }
+  return out;
+}
+
 // vacation_requests → evento del calendario. `pending` marca las solicitadas
 // pero aún sin aprobar (se pintan con pastilla discontinua).
 //
@@ -48,7 +83,7 @@ export async function getPendingAbsenceEvents() {
     supabase.from("employees").select("id, name"),
   ]);
   const nameById = new Map((emps.data ?? []).map((m) => [m.id, m.name]));
-  return (vac.data ?? []).map((v) => absenceToEvent(v, nameById));
+  return mergeAbsences(vac.data ?? []).map((v) => absenceToEvent(v, nameById));
 }
 
 // Eventos unificados para el calendario, en el MISMO shape que consume
@@ -79,7 +114,7 @@ export async function getCalendarEvents() {
 
   const events = [];
 
-  for (const v of vac.data ?? []) events.push(absenceToEvent(v, nameById));
+  for (const v of mergeAbsences(vac.data ?? [])) events.push(absenceToEvent(v, nameById));
 
   // Agenda de empresa (festivos, cumpleaños, hitos) + hitos a nivel de tarea +
   // inicio/fin de los sprints.

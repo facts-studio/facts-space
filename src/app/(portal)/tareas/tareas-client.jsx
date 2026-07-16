@@ -232,7 +232,7 @@ function CalendarView({ tasks, milestones = [], colorsByClient = {}, onOpen }) {
         {WEEKDAYS.map((w) => <div key={w} className="text-center text-micro text-mutedSoft">{w}</div>)}
       </div>
 
-      <div className="flex flex-col gap-1 h-[calc(100vh-15rem)] min-h-[540px]">
+      <div className="flex flex-col gap-1 h-[calc(100dvh-15rem)] min-h-[540px]">
         {weeks.map((week, wi) => {
           const segs = weekBars(week, tasks);
           const lanes = Math.min(MAX_LANES, Math.max(0, ...segs.map((s) => s.lane + 1), 0));
@@ -638,9 +638,9 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
           <span className="min-w-0 text-small text-ink truncate">{m.name}</span>
           {m.kind && <Badge kind="danger" className="shrink-0">{m.kind}</Badge>}
         </div>
-        <span aria-hidden />
+        <span aria-hidden className="hidden sm:block" />
         <span className={cn("text-micro text-right tabular-nums", due.tone)}>{due.text}</span>
-        <div className="justify-self-end" />
+        <div className="hidden sm:block justify-self-end" />
       </div>
     );
   };
@@ -708,9 +708,10 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
         }
       />
 
-      {/* Clientes (izq, apilados) + filtros (der) — en una sola línea */}
-      <div className="flex items-center gap-4 mb-3">
-        <div className="flex items-center flex-1 min-w-0 overflow-x-auto scrollbar-none -mx-1 px-1 py-1">
+      {/* Clientes (apilados) + filtros. En móvil se apilan: avatares arriba,
+          controles debajo con wrap; en sm+, una sola línea. */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-3">
+        <div className="flex items-center w-full sm:flex-1 min-w-0 overflow-x-auto scrollbar-none -mx-1 px-1 py-1">
           {(() => {
             const fixed = clients.filter((c) => !c.campaign);
             // Temporales: campañas (carpeta entera) + sprints (lista de un cliente).
@@ -747,7 +748,7 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
           })()}
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap sm:shrink-0">
           <SearchField value={q} onChange={setQ} />
           <button
             type="button"

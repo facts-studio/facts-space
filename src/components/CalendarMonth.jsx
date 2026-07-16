@@ -285,7 +285,7 @@ export default function CalendarMonth({ events = [], tasks = [], canRequest = fa
   };
 
   return (
-    <div className={`h-[calc(100vh-5rem)] ${selected ? "lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-5 lg:items-stretch" : ""}`}>
+    <div className={`h-[calc(100dvh-5rem)] ${selected ? "lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-5 lg:items-stretch" : ""}`}>
       <div className="flex flex-col min-h-0 h-full">
         {/* Cabecera */}
         <div className="flex items-center justify-between gap-3 mb-3">

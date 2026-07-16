@@ -238,11 +238,11 @@ export default function TodayHero({ nombre = "equipo", events = [], avisos = nul
         <RefreshButton />
       </div>
 
-      <h1 className="font-display text-[44px] md:text-[64px] leading-[1.0] tracking-[-0.03em] text-ink">
+      <h1 className="font-display text-[32px] md:text-[64px] leading-[1.05] md:leading-[1.0] tracking-[-0.03em] text-ink">
         {saludo(now.getHours())}, {nombre} <span className="inline-block align-baseline">👋</span>
       </h1>
 
-      <p className="mt-7 text-[22px] md:text-[30px] leading-[1.4] tracking-[-0.01em] text-mutedSoft max-w-[44ch]">
+      <p className="mt-5 md:mt-7 text-[17px] md:text-[30px] leading-[1.45] md:leading-[1.4] tracking-[-0.01em] text-mutedSoft max-w-[44ch]">
         {tareasFrase && <>{tareasFrase} </>}
         {showIntro && <>{intro} </>}
         {hasNow ? (

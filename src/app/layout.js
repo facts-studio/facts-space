@@ -13,7 +13,12 @@ export const metadata = {
 export const viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#EFEEEB",
+  // Necesario para que env(safe-area-inset-*) tenga valor bajo el notch (PWA).
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#EFEEEB" },
+    { media: "(prefers-color-scheme: dark)", color: "#1c1c1a" },
+  ],
 };
 
 // Preferencia de tema del usuario (cookie espejo de employees.theme). Si existe,
