@@ -86,7 +86,10 @@ export default function Sidebar({ user, isAdmin = false, serverTheme = null, ini
     <aside
       suppressHydrationWarning
       className={[
-        "shrink-0 h-screen sticky top-0 hidden md:flex flex-col border-r border-border py-6 transition-[width] duration-200 ease-out",
+        // z-30: `sticky` crea contexto de apilamiento, así que el z-50 de las
+        // burbujas solo compite dentro del aside. Sin esto, el <main> (posterior
+        // en el DOM) las tapa al salirse del sidebar.
+        "shrink-0 h-screen sticky top-0 z-30 hidden md:flex flex-col border-r border-border py-6 transition-[width] duration-200 ease-out",
         collapsed ? "w-[76px] px-3" : "w-[248px] px-4",
       ].join(" ")}
     >

@@ -38,10 +38,10 @@ function spanLabel(e) {
     : `${dayMonth(e.start)} – ${dayMonth(e.end)}`;
 }
 
-// Banderita de hito: toma el color del chip (currentColor).
-const FlagIcon = () => (
-  <svg className="h-[10px] w-[10px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-    <path d="M5 21V4M5 4h11l-2 3.5L16 11H5" />
+// Marcador de hito: moneda con el rombo calado (toma el color del chip).
+const MilestoneIcon = () => (
+  <svg className="h-[11px] w-[11px] shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+    <path d="M12 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2m-.707 6.464-2.829 2.829a1 1 0 0 0 0 1.414l2.829 2.829a1 1 0 0 0 1.414 0l2.829-2.829a1 1 0 0 0 0-1.414l-2.829-2.829a1 1 0 0 0-1.414 0" />
   </svg>
 );
 
@@ -495,7 +495,7 @@ export default function CalendarMonth({ events = [], tasks = [], canRequest = fa
                       >
                         {withAvatar && <MiniAvatar member={person} ring="ring-bg" />}
                         {/* Los hitos se marcan con banderita (el color solo no basta) */}
-                        {e.type === "hito" && !b.continuesLeft && <FlagIcon />}
+                        {e.type === "hito" && !b.continuesLeft && <MilestoneIcon />}
                         <span className="truncate">{e.title}</span>
                       </button>
                     );

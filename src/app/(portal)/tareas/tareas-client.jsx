@@ -3,13 +3,13 @@
 import { useMemo, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Surface, Tabs, Switch, EmptyState, ScreenHeader } from "@/components/ui";
+import { Surface, Tabs, Switch, EmptyState, ScreenHeader, Badge } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { dueLabel, PRIORITY } from "@/lib/clickup-ui";
 import { setClickUpTaskStatus, refreshClickUpTasks } from "@/lib/actions/clickup";
 import { clientIcon } from "@/lib/client-icons";
 import { paletteColor } from "@/lib/client-palette";
-import { TaskRow, StatusMenu, Avatars, teamPhoto, ROW, ROW_NO_AREA } from "@/components/tasks/task-atoms";
+import { TaskRow, StatusMenu, Avatars, teamPhoto, rowCls } from "@/components/tasks/task-atoms";
 import TaskDetail from "@/components/tasks/task-detail";
 
 
@@ -47,10 +47,11 @@ function matchScope(t, scope) {
 
 /* ── Átomos ─────────────────────────────────────────────────────────────── */
 
-// Banderita de hito (toma el color del chip).
-const FlagIcon = () => (
-  <svg className="h-[9px] w-[9px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-    <path d="M5 21V4M5 4h11l-2 3.5L16 11H5" />
+// Marcador de hito: moneda con el rombo calado. El círculo rima con el punto de
+// estado de las tareas y el rombo lo distingue. Toma el color del contexto.
+const MilestoneIcon = ({ className = "h-[11px] w-[11px]" }) => (
+  <svg className={`${className} shrink-0`} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+    <path d="M12 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2m-.707 6.464-2.829 2.829a1 1 0 0 0 0 1.414l2.829 2.829a1 1 0 0 0 1.414 0l2.829-2.829a1 1 0 0 0 0-1.414l-2.829-2.829a1 1 0 0 0-1.414 0" />
   </svg>
 );
 
@@ -255,7 +256,7 @@ function CalendarView({ tasks, milestones = [], colorsByClient = {}, onOpen }) {
                             style={{ background: e.col.bg, color: e.col.fg }}
                             className="pointer-events-auto flex items-center gap-1 h-[20px] px-1.5 rounded-full text-[10.5px] leading-none"
                           >
-                            <FlagIcon />
+                            <MilestoneIcon />
                             <span className="truncate">{e.title}</span>
                           </span>
                         ))}
@@ -387,10 +388,14 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
   const [area, setArea] = useState(""); // "" = todas las disciplinas
   const [showClosed, setShowClosed] = useState(false); // false = solo abiertas
   const [scope, setScope] = useState("all"); // all | mine
+  // "Mía" = asignada a mí, o de Team (que es de todos).
+  const isMine = (t) => t.everyone || (myEmail && t.assignees.some((a) => a.email === myEmail));
   // Tarea abierta en el panel; deep-link desde Inicio con ?task=id.
   const searchParams = useSearchParams();
   const myPhoto = teamPhoto(myEmail);
-  const showAreaCol = isAdmin;
+  // La columna "Área" repetía la lista en cada fila; ahora esa información la da
+  // el subgrupo (o el propio filtro por cliente), así que sobra.
+  const showAreaCol = false;
   const [tscope, setTscope] = useState("todo"); // todo | hoy | semana | mes
   const cycleTscope = () => { const i = SCOPES.findIndex((s) => s.key === tscope); setTscope(SCOPES[(i + 1) % SCOPES.length].key); };
   const [view, setView] = useState("lista"); // lista | tablero
@@ -415,17 +420,22 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
   const toggleClient = (name) => setClientSet((prev) => { const n = new Set(prev); n.has(name) ? n.delete(name) : n.add(name); return n; });
 
   // Clientes/campañas con tareas abiertas, ordenados por nº (más activos primero).
+  // Arriba solo salen los clientes con tareas ABIERTAS; y en modo "Mis tareas",
+  // solo aquellos en los que tengo algo (si no, el filtro ofrece callejones sin
+  // salida: clientes que al pulsarlos no muestran nada).
   const clients = useMemo(() => {
     const cnt = new Map();
     for (const t of tasks) {
       if (t.statusType === "closed" || t.statusType === "done") continue;
+      if (scope === "mine" && !isMine(t)) continue;
       if (t.project) cnt.set(t.project, (cnt.get(t.project) || 0) + 1);
     }
     return [...cnt.keys()]
       .map((name) => ({ key: name, label: name, avatarName: name, colorSrc: name, count: cnt.get(name), campaign: campaignSet.has(name) }))
       // Clientes fijos primero (por nº de tareas), campañas/lanzamientos al final.
       .sort((a, b) => (a.campaign - b.campaign) || (b.count - a.count) || a.label.localeCompare(b.label));
-  }, [tasks, campaignSet]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks, campaignSet, scope, myEmail]);
 
   // Sprints: mini-proyectos temporales DENTRO de un cliente (una lista marcada
   // como sprint en el admin). Píldora propia, pero con el color y el icono del
@@ -434,13 +444,25 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
     const cnt = new Map();
     for (const t of tasks) {
       if (t.statusType === "closed" || t.statusType === "done") continue;
+      if (scope === "mine" && !isMine(t)) continue;
       if (!t.sprint || !t.project) continue;
       const key = sprintKey(t.project, t.sprint);
       if (!cnt.has(key)) cnt.set(key, { key, label: `${t.project} › ${t.sprint}`, avatarName: t.sprint, colorSrc: t.project, campaign: true, sprint: true, count: 0 });
       cnt.get(key).count++;
     }
     return [...cnt.values()].sort((a, b) => (b.count - a.count) || a.label.localeCompare(b.label));
-  }, [tasks]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks, scope, myEmail]);
+
+  // Si un cliente seleccionado deja de estar arriba (p. ej. al pasar a "Mis
+  // tareas" y no tener nada suyo), su filtro deja de aplicarse: si no, la lista
+  // se quedaría vacía y sin avatar donde pulsar para deshacerlo. La selección
+  // original se conserva, así que al volver a "Todas" reaparece.
+  const selection = useMemo(() => {
+    const avail = new Set([...clients.map((c) => c.key), ...sprints.map((sp) => sp.key)]);
+    return new Set([...clientSet].filter((k) => avail.has(k)));
+  }, [clientSet, clients, sprints]);
+
 
   const filtered = useMemo(() => {
     const ql = q.trim().toLowerCase();
@@ -451,8 +473,8 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
       if (!matchScope(t, tscope)) return false;
       // La selección mezcla clientes y sprints. Elegir un cliente incluye sus
       // sprints (son suyos); elegir un sprint acota solo a esa lista.
-      if (clientSet.size) {
-        const hit = [...clientSet].some((k) => {
+      if (selection.size) {
+        const hit = [...selection].some((k) => {
           if (!k.startsWith(SPRINT_PREFIX)) return t.project === k;
           const [p, sp] = k.slice(SPRINT_PREFIX.length).split("::");
           return t.project === p && t.sprint === sp;
@@ -460,26 +482,26 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
         if (!hit) return false;
       }
       if (area && t.listName !== area) return false;
-      if (scope === "mine" && !(t.everyone || (myEmail && t.assignees.some((a) => a.email === myEmail)))) return false;
+      if (scope === "mine" && !isMine(t)) return false;
       if (ql && !t.name.toLowerCase().includes(ql)) return false;
       return true;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks, q, clientSet, area, showClosed, scope, tscope, overrides]);
+  }, [tasks, q, selection, area, showClosed, scope, tscope, overrides]);
 
   // Agrupación implícita: 1 cliente → por Área; varios/ninguno → por Cliente.
   // Los hitos siguen la misma selección que las tareas: elegir un cliente deja
   // solo los suyos; elegir un sprint, solo los de ese sprint.
   const filteredMilestones = useMemo(() => {
-    if (!clientSet.size) return milestones;
+    if (!selection.size) return milestones;
     return milestones.filter((e) =>
-      [...clientSet].some((k) => {
+      [...selection].some((k) => {
         if (!k.startsWith(SPRINT_PREFIX)) return e.client === k;
         const [p, sp] = k.slice(SPRINT_PREFIX.length).split("::");
         return e.client === p && e.sprint === sp;
       })
     );
-  }, [milestones, clientSet]);
+  }, [milestones, selection]);
 
   // La selección guarda claves internas (un sprint es «✦proyecto::sprint»); para
   // pintarlas hay que traducirlas a su etiqueta.
@@ -490,7 +512,7 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
     return m;
   }, [clients, sprints]);
 
-  const groupByArea = clientSet.size === 1;
+  const groupByArea = selection.size === 1;
   const sections = useMemo(() => {
     const map = new Map();
     for (const t of filtered) {
@@ -506,19 +528,39 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
       const key = groupByArea ? (e.sprint || "—") : (e.client || "—");
       const g = map.get(key);
       if (!g) continue;
-      g.items.push({ milestone: true, id: e.id, name: e.title, client: e.client, area: e.sprint || null, dueDate: new Date(e.start + "T00:00:00").getTime() });
+      g.items.push({ milestone: true, id: e.id, name: e.sprint || e.title, kind: e.kind || null, client: e.client, area: e.sprint || null, dueDate: new Date(e.start + "T00:00:00").getTime() });
     }
     const arr = [...map.values()];
     arr.forEach((s) => s.items.sort((a, b) => (a.dueDate ?? Infinity) - (b.dueDate ?? Infinity)));
+
+    // Agrupando por CLIENTE, sus tareas vienen de varias listas (Tareas,
+    // Management, sprints…) y quedaban en un mismo saco. Se subdividen por lista,
+    // pero solo si hay más de una: con una sola, el encabezado sería ruido.
+    const sprintSet = new Set(sprints.map((sp) => `${sp.colorSrc}::${sp.avatarName}`));
+    if (!groupByArea) {
+      for (const sec of arr) {
+        const subs = new Map();
+        for (const it of sec.items) {
+          const k = (it.milestone ? it.area : it.listName) || "—";
+          if (!subs.has(k)) subs.set(k, { key: k, label: k, sprint: sprintSet.has(`${sec.key}::${k}`), items: [] });
+          subs.get(k).items.push(it);
+        }
+        sec.subs = subs.size > 1
+          // Los sprints (temporales) primero; el resto, alfabético.
+          ? [...subs.values()].sort((a, b) => (b.sprint - a.sprint) || a.label.localeCompare(b.label))
+          : null;
+      }
+    }
+
     // Campañas al final cuando agrupamos por cliente; alfabético dentro.
     return arr.sort((a, b) => (a.campaign - b.campaign) || a.label.localeCompare(b.label));
-  }, [filtered, filteredMilestones, groupByArea, campaignSet]);
+  }, [filtered, filteredMilestones, groupByArea, campaignSet, sprints]);
 
   // Tarea abierta en el panel derecho (persiste aunque cambien los filtros).
   // Busca también dentro de las subtareas anidadas.
   const selected = useMemo(() => findTaskById(tasks, selectedId), [tasks, selectedId]);
 
-  const activeFilters = clientSet.size + (area ? 1 : 0) + (scope === "mine" ? 1 : 0) + (showClosed ? 1 : 0) + (tscope !== "todo" ? 1 : 0) + (q ? 1 : 0);
+  const activeFilters = selection.size + (area ? 1 : 0) + (scope === "mine" ? 1 : 0) + (showClosed ? 1 : 0) + (tscope !== "todo" ? 1 : 0) + (q ? 1 : 0);
 
   const setOverride = (id, val) => setOverrides((m) => { const n = new Map(m); val ? n.set(id, val) : n.delete(id); return n; });
 
@@ -553,15 +595,16 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
     const c = paletteColor(m.client || "Sin cliente", colorsByClient[m.client]);
     const due = dueLabel(m.dueDate);
     return (
-      <div key={m.id} className={showAreaCol ? ROW : ROW_NO_AREA}>
+      <div key={m.id} className={rowCls({ showArea: showAreaCol, showStatus: true })}>
         <div className="flex items-center gap-3 min-w-0">
           <span className="h-4 w-4 shrink-0" aria-hidden />
-          <span className="h-[18px] w-[18px] shrink-0 grid place-items-center" title="Hito">
-            <span className="h-3 w-3 rotate-45 rounded-[3px]" style={{ boxShadow: `inset 0 0 0 2px ${c.fg}` }} />
+          <span className="h-[18px] w-[18px] shrink-0 grid place-items-center" title="Hito" style={{ color: c.fg }}>
+            <MilestoneIcon className="h-[18px] w-[18px]" />
           </span>
           <span className="min-w-0 text-small text-ink truncate">{m.name}</span>
+          {m.kind && <Badge kind="danger" className="shrink-0">{m.kind}</Badge>}
         </div>
-        {showAreaCol && <span className="text-micro text-mutedSoft truncate">{m.area || "—"}</span>}
+        <span aria-hidden />
         <span className={cn("text-micro text-right tabular-nums", due.tone)}>{due.text}</span>
         <div className="justify-self-end" />
       </div>
@@ -586,6 +629,7 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
           expanded={isExp}
           onToggle={() => toggleExpand(t.id)}
           showArea={showAreaCol}
+          showStatus
         />
         {isExp && subs.map((s) => renderRow(s, depth + 1))}
       </div>
@@ -611,7 +655,7 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
     <>
       <ScreenHeader
         kicker="ClickUp"
-        title={clientSet.size === 1 ? (labelByKey.get([...clientSet][0]) ?? "Tareas") : "Tareas"}
+        title={selection.size === 1 ? (labelByKey.get([...selection][0]) ?? "Tareas") : "Tareas"}
         actions={
           <div className="flex items-center gap-2">
             <span className="text-micro text-mutedSoft tabular-nums hidden sm:inline -mr-1">{filtered.length}</span>
@@ -638,8 +682,8 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
             // Temporales: campañas (carpeta entera) + sprints (lista de un cliente).
             const camps = [...clients.filter((c) => c.campaign), ...sprints];
             const Avatar = (c, i, fanClass) => {
-              const sel = clientSet.has(c.key);
-              const dim = clientSet.size > 0 && !sel;
+              const sel = selection.has(c.key);
+              const dim = selection.size > 0 && !sel;
               return (
                 <button
                   key={c.key}
@@ -738,7 +782,21 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
             {sections.map((sec) => (
               <Surface key={sec.key} pad="sm">
                 <Section label={sec.label} count={sec.items.filter((t) => !t.milestone).length} campaign={sec.campaign}>
-                  {sec.items.map((t) => (t.milestone ? renderMilestone(t) : renderRow(t)))}
+                  {sec.subs
+                    ? sec.subs.map((sub) => (
+                        <div key={sub.key} className="mt-1 first:mt-0">
+                          <div className="flex items-center gap-2 px-3 pt-2 pb-1">
+                            <span className="text-micro text-mutedSoft truncate">{sub.label}</span>
+                            {sub.sprint && <span className="text-micro text-brandMid shrink-0" title="Sprint">✦</span>}
+                            <span className="text-micro text-mutedSoft/60 tabular-nums shrink-0">
+                              {sub.items.filter((t) => !t.milestone).length}
+                            </span>
+                            <span className="flex-1 h-px bg-border/40" />
+                          </div>
+                          {sub.items.map((t) => (t.milestone ? renderMilestone(t) : renderRow(t)))}
+                        </div>
+                      ))
+                    : sec.items.map((t) => (t.milestone ? renderMilestone(t) : renderRow(t)))}
                 </Section>
               </Surface>
             ))}

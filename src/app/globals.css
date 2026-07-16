@@ -195,6 +195,38 @@ html, body {
   .fade-up { animation: fadeOnly 0.2s ease both; }
 }
 
+/* Marquee de títulos largos (filas de tarea). En reposo: elipsis, como siempre.
+   Al pasar por la fila (.group/task), el texto se suelta y se desplaza SOLO lo
+   que sobra: 100cqw = ancho del contenedor, 100% = ancho del propio texto, así
+   que `min(0px, 100cqw - 100%)` es 0 si cabe y negativo si no. Sin JS ni medir. */
+.marquee {
+  display: block;
+  overflow: hidden;
+  container-type: inline-size;
+}
+.marquee > * {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+.group\/task:hover .marquee > * {
+  max-width: none;
+  animation: marqueeSlide 3.5s linear 0.25s infinite alternate;
+}
+/* Velocidad constante (linear, sin ease). La pausa va SOLO al principio: con
+   `alternate`, una pausa al final se duplicaría (fin de la ida + inicio de la
+   vuelta) y el texto se quedaría clavado ahí. Así, al llegar al final vuelve. */
+@keyframes marqueeSlide {
+  0%, 15% { transform: translateX(0); }
+  100%    { transform: translateX(min(0px, calc(100cqw - 100%))); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .group\/task:hover .marquee > * { max-width: 100%; animation: none; }
+}
+
 /* Skeleton de carga — pulso suave sobre superficie. */
 @keyframes skeletonPulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 0.9; } }
 .skeleton {

@@ -35,48 +35,119 @@ const LockIcon = ({ size = 11 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
 );
 
-// Píldora de una lista. Clic cicla: desactivada → activada → bloqueada.
-//  · desactivada: contorno tenue.
-//  · activada (todos): taupe con ✓.
-//  · bloqueada (solo admin): ink con candado.
-// El ✦ marca la lista como sprint (mini-proyecto temporal del cliente); solo
-// asoma al pasar por la fila, o se queda fijo si está activo.
-const CELL_TITLE = { off: "Desactivada — clic para activar", all: "Activada (todos) — clic para bloquear", admin: "Bloqueada (solo admin) — clic para desactivar" };
-function ListChip({ name, access, onCycle, sprint, onToggleSprint }) {
-  const filled = access !== "off";
+// Estados de acceso de una lista, con su glifo. Se pintan igual en la píldora y
+// en el menú, para que uno explique al otro.
+const ACCESS = [
+  { key: "all",   label: "Visible para todos" },
+  { key: "admin", label: "Solo admin" },
+  { key: "off",   label: "Desactivada" },
+];
+const AccessGlyph = ({ access }) => {
+  if (access === "admin") return <LockIcon size={10} />;
   return (
     <span
       className={cn(
-        "inline-flex items-center h-7 rounded-full border text-[12px] transition shrink-0",
-        access === "admin" ? "bg-ink text-bg border-ink"
-          : access === "all" ? "bg-brandMid text-bg border-brandMid"
-          : "border-border/60 text-mutedSoft"
+        "h-2 w-2 rounded-full shrink-0",
+        access === "all" ? "bg-brandMid" : "border border-borderStrong"
       )}
-    >
+    />
+  );
+};
+
+// Opción del menú de lista.
+const MenuRow = ({ glyph, label, on, onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-small text-inkSoft hover:bg-surface2/70 hover:text-ink transition text-left"
+  >
+    <span className="w-3 grid place-items-center shrink-0">{glyph}</span>
+    <span className="flex-1 truncate">{label}</span>
+    {on && <span className="text-ink text-[11px]">✓</span>}
+  </button>
+);
+
+// Píldora de lista + menú. Antes ciclaba estados a ciegas con cada clic y el
+// sprint era un ✦ que solo asomaba al hacer hover: imposible de adivinar. Ahora
+// la píldora MUESTRA su estado y el menú lo dice con palabras.
+function ListMenu({ name, access, sprint, onAccess, onToggleSprint }) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState(null);
+  const btnRef = useRef(null);
+
+  const toggle = () => {
+    if (!open) {
+      const r = btnRef.current?.getBoundingClientRect();
+      if (r) setPos({ x: r.left, y: r.bottom + 6 });
+    }
+    setOpen((o) => !o);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <>
       <button
+        ref={btnRef}
         type="button"
-        onClick={onCycle}
-        title={CELL_TITLE[access]}
-        className={cn("inline-flex items-center gap-1.5 h-full pl-2.5 pr-1.5 rounded-l-full transition active:scale-95", !filled && "hover:text-ink")}
+        onClick={toggle}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className={cn(
+          "inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border text-[12px] transition shrink-0",
+          open && "ring-2 ring-ink/15",
+          access === "off"
+            ? "border-border/60 text-mutedSoft hover:text-ink hover:border-borderStrong"
+            : "border-border/60 bg-surface2/70 text-ink hover:border-borderStrong"
+        )}
       >
-        {access === "admin" && <LockIcon size={10} />}
+        <AccessGlyph access={access} />
         {name}
+        {sprint && <span className="text-brandMid text-[10px] leading-none" title="Sprint">✦</span>}
       </button>
-      {onToggleSprint && (
-        <button
-          type="button"
-          onClick={onToggleSprint}
-          title={sprint ? "Sprint — pulsa para quitarlo" : `Marcar «${name}» como sprint`}
-          aria-pressed={Boolean(sprint)}
-          className={cn(
-            "h-full pr-2 pl-1 rounded-r-full text-[10px] leading-none transition",
-            sprint ? "opacity-100" : cn("opacity-0 group-hover/row:opacity-60 hover:!opacity-100", filled ? "" : "text-mutedSoft")
-          )}
-        >
-          ✦
-        </button>
+
+      {open && pos && typeof document !== "undefined" && createPortal(
+        <>
+          <div className="fixed inset-0 z-[90]" onClick={() => setOpen(false)} />
+          <div className="fixed z-[91] min-w-[200px] rounded-xl bg-paper border border-border shadow-float p-1" style={{ left: pos.x, top: pos.y }}>
+            <p className="px-2.5 pt-1 pb-1.5 text-[10px] uppercase tracking-[0.12em] text-mutedSoft truncate">{name}</p>
+            {ACCESS.map((o) => (
+              <MenuRow
+                key={o.key}
+                glyph={<AccessGlyph access={o.key} />}
+                label={o.label}
+                on={access === o.key}
+                onClick={() => { onAccess(o.key); setOpen(false); }}
+              />
+            ))}
+            {onToggleSprint && (
+              <>
+                <div className="my-1 h-px bg-border/60" />
+                <MenuRow
+                  glyph={<span className="text-brandMid text-[11px] leading-none">✦</span>}
+                  label="Sprint"
+                  on={Boolean(sprint)}
+                  onClick={() => { onToggleSprint(); setOpen(false); }}
+                />
+              </>
+            )}
+          </div>
+        </>,
+        document.body
       )}
-    </span>
+    </>
   );
 }
 
@@ -199,7 +270,6 @@ export default function ClickUpSources({ lists }) {
       }
     });
   };
-  const cycleCell = (id) => { const cur = accessOf(id); setAccess([id], cur === "off" ? "all" : cur === "all" ? "admin" : "off"); };
 
   const sync = () => {
     setBusy(true); setMsg(null);
@@ -302,12 +372,12 @@ export default function ClickUpSources({ lists }) {
       </div>
       <div className="mb-6 max-w-[600px] space-y-2">
         <p className="text-micro text-mutedSoft leading-snug">
-          Marca qué listas alimentan el portal. Cada cliente muestra sus propias listas; la píldora cicla en 3 estados y el ✦ marca una lista como sprint (mini-proyecto temporal dentro del cliente).
+          Marca qué listas alimentan el portal. Cada cliente muestra sus propias listas: pulsa una para elegir quién la ve o marcarla como sprint (mini-proyecto temporal dentro del cliente).
         </p>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-micro text-mutedSoft">
-          <span className="inline-flex items-center gap-1.5"><span className="h-4 w-4 rounded-full border border-dashed border-border/60" /> Desactivada</span>
-          <span className="inline-flex items-center gap-1.5"><span className="h-4 w-4 rounded-full bg-brandMid text-bg grid place-items-center text-[9px]">✓</span> Activada (todos)</span>
-          <span className="inline-flex items-center gap-1.5"><span className="h-4 w-4 rounded-full bg-ink text-bg grid place-items-center"><LockIcon size={9} /></span> Bloqueada (solo admin)</span>
+          <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-brandMid" /> Visible para todos</span>
+          <span className="inline-flex items-center gap-1.5"><LockIcon size={10} /> Solo admin</span>
+          <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full border border-borderStrong" /> Desactivada</span>
           <span className="inline-flex items-center gap-1.5"><span className="text-brandMid">✦</span> Sprint</span>
         </div>
       </div>
@@ -386,11 +456,11 @@ export default function ClickUpSources({ lists }) {
                       {/* Sus listas */}
                       <div className="flex items-center gap-1.5 flex-wrap ml-auto">
                         {group.lists.map((l) => (
-                          <ListChip
+                          <ListMenu
                             key={l.list_id}
                             name={l.list_name}
                             access={accessOf(l.list_id)}
-                            onCycle={() => cycleCell(l.list_id)}
+                            onAccess={(a) => setAccess([l.list_id], a)}
                             sprint={isSprint(l.list_id)}
                             onToggleSprint={isClient ? () => toggleSprint(l.list_id) : null}
                           />

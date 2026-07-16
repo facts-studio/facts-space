@@ -11,7 +11,7 @@ import { getCurrentEmployee } from "@/lib/data/helpers";
 import { getMyNotes } from "@/lib/data/notes";
 import { getLastWorkedDate } from "@/lib/data/time";
 import { madridDateISO } from "@/lib/dates";
-import { getClickUpTasks, getConfiguredLists, weekTasks, teamWeekTasks, workspaceOverview } from "@/lib/data/clickup";
+import { getClickUpTasks, getConfiguredLists, weekTasks, teamWeekTasks } from "@/lib/data/clickup";
 
 export default async function HomePage() {
   const [events, me, tasks, notes, lists, approvals, decisions] = await Promise.all([
@@ -26,6 +26,10 @@ export default async function HomePage() {
   const nombre = me?.name?.split(" ")[0] || "equipo";
   const mine = weekTasks(tasks, me?.email);
   const teamWeek = teamWeekTasks(tasks); // modo Status: todo el equipo, por cliente
+  // Vencidas: ya vienen dentro de `mine` (weekTasks no tiene límite inferior),
+  // pero el saludo debe nombrarlas aparte.
+  const startToday = new Date().setHours(0, 0, 0, 0);
+  const overdueCount = mine.filter((t) => t.dueDate && t.dueDate < startToday).length;
   // Proyectos temporales (campañas): van primero en el modo Status.
   const campaigns = [...new Set(lists.filter((l) => l.is_campaign && l.folder_name).map((l) => l.folder_name))];
   // Definición y fechas de cada sprint (campos de la lista en ClickUp).
@@ -34,7 +38,6 @@ export default async function HomePage() {
   );
   // Estados por lista: alimentan el menú del punto de estado en las filas.
   const statusesByList = Object.fromEntries(lists.filter((l) => (l.statuses || []).length).map((l) => [l.list_id, l.statuses]));
-  const overview = workspaceOverview(tasks);
 
   // Días sin fichar (para el aviso en Inicio). null = nunca ha fichado.
   const lastWorked = me ? await getLastWorkedDate(me.id) : null;
@@ -52,6 +55,7 @@ export default async function HomePage() {
           nombre={nombre}
           events={events}
           taskCount={mine.length}
+          overdueCount={overdueCount}
           avisos={
             // empty:mt-0 → sin avisos, el contenedor no deja hueco.
             <div className="mt-8 empty:mt-0 space-y-3">
@@ -69,7 +73,6 @@ export default async function HomePage() {
           campaigns={campaigns}
           statusesByList={statusesByList}
           sprintMeta={sprintMeta}
-          overview={overview}
           isAdmin={Boolean(me?.is_admin)}
           initialNotes={notes}
           canUseNotes={Boolean(me)}

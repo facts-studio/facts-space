@@ -147,20 +147,34 @@ export function StatusMenu({ current, color, statuses = [], listId, onPick, done
 // celda que se indenta en las subtareas; las columnas de la derecha (área, fecha,
 // asignados) son fijas para que coincidan siempre entre padres y subtareas.
 // La columna Área solo se muestra a admins (el resto solo ve listas "Tareas").
-// Rejilla de la fila: la comparten TaskRow y las filas de hito de la lista.
-export const ROW = "grid grid-cols-[minmax(0,1fr)_132px_92px_84px] gap-3 items-center px-3 py-2.5 rounded-lg hover:bg-surface2/40 transition-colors";
-export const ROW_NO_AREA = "grid grid-cols-[minmax(0,1fr)_92px_84px] gap-3 items-center px-3 py-2.5 rounded-lg hover:bg-surface2/40 transition-colors";
+// Rejilla de la fila (nombre + columnas opcionales + fecha + asignados). La
+// comparten TaskRow y las filas de hito de la lista, para que todo cuadre.
+const GRID = {
+  "area+status": "grid-cols-[minmax(0,1fr)_132px_112px_92px_84px]",
+  area:          "grid-cols-[minmax(0,1fr)_132px_92px_84px]",
+  status:        "grid-cols-[minmax(0,1fr)_112px_92px_84px]",
+  none:          "grid-cols-[minmax(0,1fr)_92px_84px]",
+};
+export const rowCls = ({ showArea = true, showStatus = false } = {}) =>
+  cn(
+    "grid gap-3 items-center px-3 py-2.5 rounded-lg hover:bg-surface2/40 transition-colors",
+    GRID[showArea && showStatus ? "area+status" : showArea ? "area" : showStatus ? "status" : "none"]
+  );
 
 // showCaret: reserva el hueco del caret de subtareas para alinear filas. En
 // listas sin desplegables (p. ej. el Status de Inicio) se puede quitar.
-export function TaskRow({ t, eff, open, statuses, onPickStatus, onOpen, active, depth = 0, hasSubtasks = false, expanded = false, onToggle, showArea = true, showCaret = true }) {
+export function TaskRow({ t, eff, open, statuses, onPickStatus, onOpen, active, depth = 0, hasSubtasks = false, expanded = false, onToggle, showArea = true, showCaret = true, showStatus = false }) {
   const due = dueLabel(t.dueDate);
-  const nameCls = cn("min-w-0 text-small text-ink hover:text-brand transition-colors truncate text-left", !open && "line-through text-mutedSoft");
+  // El nombre va envuelto en .marquee: elipsis en reposo y, al pasar por la fila,
+  // se desplaza si no cabe (ver globals.css). OJO: .marquee usa container-type,
+  // que impone contención de tamaño → el ancho NO puede venir del contenido o el
+  // elemento colapsa a 0. Por eso flex-1 (base 0): lo dimensiona el contenedor.
+  const nameCls = cn("marquee flex-1 min-w-0 text-small text-ink hover:text-brand transition-colors text-left", !open && "line-through text-mutedSoft");
   // Indenta el cluster izquierdo completo (caret+estado+nombre) según profundidad.
   const indent = depth ? { paddingLeft: depth * 24 } : undefined;
   return (
     <div
-      className={cn(showArea ? ROW : ROW_NO_AREA, active && "bg-surface2/60", onOpen && "cursor-pointer")}
+      className={cn("group/task", rowCls({ showArea, showStatus }), active && "bg-surface2/60", onOpen && "cursor-pointer")}
       onClick={onOpen ? () => onOpen(t) : undefined}
     >
       <div className="flex items-center gap-3 min-w-0" style={indent}>
@@ -179,7 +193,7 @@ export function TaskRow({ t, eff, open, statuses, onPickStatus, onOpen, active, 
         <StatusMenu variant="dot" current={eff.status} color={eff.statusColor} done={!open} statuses={statuses} listId={t.listId} onPick={(s) => onPickStatus(t.id, s)} milestone={t.isMilestone} />
         {onOpen ? (
           // La fila entera es clicable; el nombre es texto (no un botón anidado).
-          <span className={nameCls}>{t.name}</span>
+          <span className={nameCls}><span>{t.name}</span></span>
         ) : (
           <a
             href={t.url && t.url !== "#" ? t.url : undefined}
@@ -187,7 +201,7 @@ export function TaskRow({ t, eff, open, statuses, onPickStatus, onOpen, active, 
             rel="noreferrer"
             className={nameCls}
           >
-            {t.name}
+            <span>{t.name}</span>
           </a>
         )}
         {t.resources?.length > 0 && (
@@ -195,6 +209,17 @@ export function TaskRow({ t, eff, open, statuses, onPickStatus, onOpen, active, 
         )}
       </div>
       {showArea && <span className="text-micro text-mutedSoft truncate">{t.listName || "—"}</span>}
+      {/* Estado con su color de ClickUp (tinte suave + texto). */}
+      {showStatus && (
+        <span className="min-w-0">
+          <span
+            className="inline-flex max-w-full items-center h-5 px-2 rounded-full text-micro capitalize truncate"
+            style={{ background: `${eff.statusColor || "#8a8a85"}1f`, color: eff.statusColor || "rgb(var(--ct-mutedSoft))" }}
+          >
+            {eff.status}
+          </span>
+        </span>
+      )}
       <span className={cn("text-micro text-right tabular-nums", due.tone)}>{due.text}</span>
       <div className="justify-self-end"><Avatars assignees={t.assignees} /></div>
     </div>

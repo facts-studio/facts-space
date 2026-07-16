@@ -23,6 +23,17 @@ function rel(dias) {
   return `en ${Math.round(dias / 30)} meses`;
 }
 
+const mes = (d) => d.toLocaleDateString("es-ES", { month: "short" }).replace(".", "");
+// Duración de las vacaciones/ausencias: "del 20 al 24 jul" / "del 28 jun al 3 jul".
+function spanText(e) {
+  if (!e.end || e.end === e.start) return rel(e.dias);
+  const a = parse(e.start), b = parse(e.end);
+  return a.getMonth() === b.getMonth()
+    ? `del ${a.getDate()} al ${b.getDate()} ${mes(b)}`
+    : `del ${a.getDate()} ${mes(a)} al ${b.getDate()} ${mes(b)}`;
+}
+const HAS_SPAN = new Set(["vacaciones", "ausencia"]);
+
 export default function LoMasCercano({ events = [], className = "" }) {
   const hoy = startOfDay(new Date());
   const futuros = events
@@ -76,7 +87,7 @@ export default function LoMasCercano({ events = [], className = "" }) {
                     )}
                     <div className="min-w-0">
                       <p className="text-small text-ink truncate leading-tight">{e.title}</p>
-                      <p className="text-micro text-mutedSoft">{EVENT_TYPES[e.type]?.label || e.type} · {rel(e.dias)}</p>
+                      <p className="text-micro text-mutedSoft">{EVENT_TYPES[e.type]?.label || e.type} · {HAS_SPAN.has(e.type) ? spanText(e) : rel(e.dias)}</p>
                     </div>
                   </div>
                 ))

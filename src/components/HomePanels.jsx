@@ -1,11 +1,38 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import QuickLinks from "@/components/QuickLinks";
 import LoMasCercano from "@/components/LoMasCercano";
 import TareasHoy from "@/components/TareasHoy";
 import TareasEquipoSemana from "@/components/TareasEquipoSemana";
 import NotasClient from "@/app/(portal)/notas/notas-client";
+import { TEAM } from "@/lib/mock";
+
+const PHOTO = new Map(TEAM.map((m) => [m.name, m.photo]));
+const DAY = 86400000;
+const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const parseISO = (iso) => new Date(iso + "T00:00:00");
+
+// Quién está de vacaciones o cumple HOY → píldoras de presencia junto a Status.
+function presenceNow(events) {
+  const now = new Date();
+  const hoy = startOfDay(now);
+  const out = [];
+  const back = (endISO) => {
+    // Vuelve el día laborable siguiente al fin; para el aviso basta "en N días".
+    const dias = Math.round((startOfDay(parseISO(endISO)) - hoy) / DAY) + 1;
+    return dias <= 0 ? "ya de vuelta" : dias === 1 ? "vuelve mañana" : `vuelve en ${dias} días`;
+  };
+  for (const e of events) {
+    if (e.type === "vacaciones" && e.who && parseISO(e.start) <= now && parseISO(e.end) >= hoy) {
+      out.push({ key: `vac-${e.id}`, name: e.who, photo: PHOTO.get(e.who) || null, icon: "🏖️", hint: `${e.who} · ${back(e.end)}` });
+    }
+    if (e.type === "cumple" && e.who && e.start === `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-${String(hoy.getDate()).padStart(2, "0")}`) {
+      out.push({ key: `cum-${e.id}`, name: e.who, photo: PHOTO.get(e.who) || null, icon: "🎂", hint: `¡Feliz cumple, ${e.who}!` });
+    }
+  }
+  return out;
+}
 
 // Bloque inferior de Inicio. Los accesos directos quedan fijos y conmutan el modo:
 //   inicio → Lo más cercano + Tus tareas de la semana
@@ -18,17 +45,17 @@ export default function HomePanels({
   campaigns = [],
   statusesByList = {},
   sprintMeta = {},
-  overview,
   isAdmin = false,
   initialNotes = [],
   canUseNotes = false,
   className = "",
 }) {
   const [mode, setMode] = useState("inicio"); // inicio | status | notas
+  const presence = useMemo(() => presenceNow(events), [events]);
 
   return (
     <div className={className}>
-      <QuickLinks className="mt-10" mode={mode} onSelect={setMode} />
+      <QuickLinks className="mt-10" mode={mode} onSelect={setMode} presence={presence} />
 
       <div className="mt-8">
         {mode === "notas" ? (
@@ -45,7 +72,7 @@ export default function HomePanels({
             {mode === "status" ? (
               <TareasEquipoSemana tasks={teamTasks} campaigns={campaigns} statusesByList={statusesByList} sprintMeta={sprintMeta} className="mt-4" />
             ) : (
-              <TareasHoy tasks={tasks} overview={overview} isAdmin={isAdmin} className="mt-4" />
+              <TareasHoy tasks={tasks} isAdmin={isAdmin} className="mt-4" />
             )}
           </>
         )}

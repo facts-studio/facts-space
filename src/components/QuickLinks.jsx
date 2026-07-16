@@ -19,12 +19,34 @@ function Pill({ active, onClick, icon, children }) {
   );
 }
 
-export default function QuickLinks({ mode = "inicio", onSelect, className = "" }) {
+// Píldora de presencia: foto de la persona + icono (vacaciones/cumple). Al pasar
+// el ratón, una burbuja con el detalle ("vuelve en X días", "cumple hoy").
+function PresencePill({ p }) {
+  return (
+    <span className="group/pr relative inline-flex items-center gap-1.5 h-9 pl-1 pr-2.5 rounded-full bg-surface2/60 border border-border/70">
+      {p.photo ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={p.photo} alt="" className="w-7 h-7 rounded-full object-cover ring-1 ring-border" />
+      ) : (
+        <span className="w-7 h-7 rounded-full bg-surface2 grid place-items-center text-[13px]">{(p.name || "?")[0]}</span>
+      )}
+      <span className="text-[13px] leading-none">{p.icon}</span>
+      <span className="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-1.5 whitespace-nowrap rounded-full bg-surface2 border border-border/70 px-2.5 py-1 text-[12px] text-ink opacity-0 transition-opacity group-hover/pr:opacity-100 z-30">
+        {p.hint}
+      </span>
+    </span>
+  );
+}
+
+export default function QuickLinks({ mode = "inicio", onSelect, presence = [], className = "" }) {
   const toggle = (m) => onSelect?.(mode === m ? "inicio" : m);
   return (
-    <nav aria-label="Accesos directos" className={cn("flex flex-wrap gap-2", className)}>
+    <nav aria-label="Accesos directos" className={cn("flex flex-wrap items-center gap-2", className)}>
       <Pill active={mode === "notas"} onClick={() => toggle("notas")} icon="note">Notas</Pill>
       <Pill active={mode === "status"} onClick={() => toggle("status")} icon="eye">Status</Pill>
+
+      {presence.length > 0 && <span className="w-px h-6 bg-border/70 mx-1 shrink-0" />}
+      {presence.map((p) => <PresencePill key={p.key} p={p} />)}
     </nav>
   );
 }

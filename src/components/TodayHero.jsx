@@ -54,6 +54,8 @@ function Face({ name }) {
   );
 }
 const Hi = ({ children }) => <span className="text-ink font-medium">{children}</span>;
+// Resalte de alarma (tareas vencidas).
+const Warn = ({ children }) => <span className="text-danger font-medium">{children}</span>;
 
 // Botón de recarga desde ClickUp (idéntico al de la vista Tareas).
 function RefreshButton() {
@@ -90,71 +92,37 @@ function joinNodes(nodes) {
   ));
 }
 
-export default function TodayHero({ nombre = "equipo", events = [], avisos = null, taskCount = 0 }) {
+export default function TodayHero({ nombre = "equipo", events = [], avisos = null, taskCount = 0, overdueCount = 0 }) {
   const now = new Date();
   const hoy = startOfDay(now);
 
-  const vacHoy = events.filter(
-    (e) => e.type === "vacaciones" && parse(e.start) <= now && parse(e.end) >= hoy
-  );
-  const deVacaciones = vacHoy.map((e) => e.who).filter(Boolean);
-
+  // Solo lo que ESTÁ POR VENIR (start hoy o futuro). Quien ya está de vacaciones
+  // no entra aquí (su start es pasado): eso se ve en la píldora de presencia, no
+  // en el texto — el saludo anuncia lo próximo, no lo que ya pasa.
   const futuros = events
     .map((e) => ({ ...e, dias: diasHasta(e.start, hoy) }))
     .filter((e) => e.dias >= 0)
     .sort((a, b) => a.dias - b.dias);
 
-  // Solo mencionamos lo cercano: cumple/festivo dentro de ~2 semanas, hito ~3.
-  const NEAR_CUMPLE = 14, NEAR_FESTIVO = 14, NEAR_HITO = 21;
-  const proxCumple = futuros.find((e) => e.type === "cumple" && e.dias <= NEAR_CUMPLE);
-  const proxFestivo = futuros.find((e) => e.type === "festivo" && e.dias <= NEAR_FESTIVO);
-  const proxHito = futuros.find((e) => e.type === "hito" && e.dias <= NEAR_HITO);
-  const proxEvento = futuros[0];
-
   const fechaRaw = now.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
   const fecha = fechaRaw.charAt(0).toUpperCase() + fechaRaw.slice(1);
 
-  // Una sola frase, fluida. Iconos (no fotos) y fechas concretas.
-  const vacEnd = vacHoy[0] && diasHasta(vacHoy[0].end, hoy) > 0 ? corto(vacHoy[0].end) : null;
-  const vac =
-    deVacaciones.length === 0 ? (
-      <><Ico>🏖️</Ico> Hoy no hay nadie de vacaciones</>
-    ) : deVacaciones.length === 1 ? (
-      <>
-        <Ico>🏖️</Ico> Hoy <Hi>{deVacaciones[0]}</Hi> está de vacaciones
-        {vacEnd && <> hasta el <Hi>{vacEnd}</Hi></>}
-      </>
-    ) : (
-      <><Ico>🏖️</Ico> Hoy {joinNodes(deVacaciones.map((n) => <Hi key={n}>{n}</Hi>))} están de vacaciones</>
-    );
-
-  const partes = [];
-  if (proxHito) {
-    partes.push(
-      <><Ico>🎯</Ico> el próximo hito es <Hi>«{proxHito.title}»</Hi>, el <Hi>{corto(proxHito.start)}</Hi></>
-    );
+  // Eventos a mencionar, cada tipo dentro de su ventana. Una entrada de
+  // vacaciones por persona (la más próxima). Máx. 3 para no alargar la frase.
+  const NEAR = { vacaciones: 21, cumple: 14, festivo: 14, hito: 21 };
+  const near = [];
+  const vacSeen = new Set();
+  for (const e of futuros) {
+    const lim = NEAR[e.type];
+    if (lim == null || e.dias > lim) continue;
+    if (e.type === "vacaciones") { if (vacSeen.has(e.who)) continue; vacSeen.add(e.who); }
+    near.push(e);
+    if (near.length >= 3) break;
   }
-  if (proxCumple) {
-    const cumpleHoy = proxCumple.dias === 0;
-    partes.push(
-      cumpleHoy ? (
-        <><Ico>🎂</Ico> hoy es el cumple de <Hi>{proxCumple.who}</Hi></>
-      ) : (
-        <><Ico>🎂</Ico> el cumple de <Hi>{proxCumple.who}</Hi> es {rel(proxCumple.dias)} ({corto(proxCumple.start)})</>
-      )
-    );
-  }
-  if (proxFestivo) {
-    partes.push(
-      <><Ico>🗓️</Ico> {proxFestivo.dias === 0 ? <>hoy es festivo: <Hi>«{proxFestivo.title}»</Hi></> : <>el {proxFestivo.dias === 1 ? "mañana" : corto(proxFestivo.start)} es festivo (<Hi>«{proxFestivo.title}»</Hi>)</>}</>
-    );
-  }
-
-  // Hay algo "de ahora"? (vacaciones hoy o eventos dentro de la ventana)
-  const hasNow = deVacaciones.length > 0 || partes.length > 0;
+  const hasNow = near.length > 0;
 
   // Relleno: próximos eventos MÁS ALLÁ de la ventana, sin repetir lo ya dicho.
-  const shown = new Set([proxCumple?.id, proxFestivo?.id, proxHito?.id, ...vacHoy.map((e) => e.id)].filter(Boolean));
+  const shown = new Set(near.map((e) => e.id));
   const fill = futuros.filter((e) => e.dias > 0 && !shown.has(e.id)).slice(0, 2);
 
   // skipIcon: omite el emoji cuando el evento anterior es del mismo tipo (no
@@ -176,6 +144,14 @@ export default function TodayHero({ nombre = "equipo", events = [], avisos = nul
     if (e.type === "hito") return <>{ico}el hito <Hi>«{e.title}»</Hi> el <Hi>{corto(e.start)}</Hi></>;
     return <>{ico}las vacaciones de <Hi>{e.who}</Hi> {rango(e)}</>;
   };
+
+  // Parte del saludo por evento. El cumple de HOY se dice como tal ("hoy es el
+  // cumple de X"); el resto, con su fecha.
+  const parteFor = (e) =>
+    e.type === "cumple" && e.dias === 0
+      ? <><Ico>🎂</Ico> hoy es el cumple de <Hi>{e.who}</Hi></>
+      : nodeFor(e);
+  const partes = near.map(parteFor);
 
   // Agrupa eventos consecutivos de la misma persona (p. ej. dos tramos de
   // vacaciones de Carla) para no repetir "las vacaciones de Carla … Carla …".
@@ -231,11 +207,23 @@ export default function TodayHero({ nombre = "equipo", events = [], avisos = nul
   ];
   const intro = hasNow ? pick(INTROS_NOW) : pick(INTROS_CALM);
   // Frase de tareas activas de la persona esta semana (sin nombrarlas).
-  const tareasFrase = taskCount > 0
-    ? <>Tienes <Hi>{taskCount}</Hi> {taskCount === 1 ? "tarea activa" : "tareas activas"} esta semana.</>
-    : null;
-  // Si hay tareas y nada "ahora mismo", la frase de tareas sustituye al intro de calma.
-  const showIntro = hasContent && !(tareasFrase && !hasNow);
+  // Las vencidas ya van dentro de taskCount; se nombran aparte porque son lo que
+  // más urge. Si TODO lo pendiente está vencido, no tiene sentido decir "esta
+  // semana": se habla solo de las vencidas.
+  const vencidas = (n) => <><Warn>{n}</Warn> {n === 1 ? "vencida" : "vencidas"}</>;
+  const tareasFrase = taskCount === 0
+    ? null
+    : overdueCount === taskCount
+      ? <>Tienes {vencidas(overdueCount)}.</>
+      : (
+        <>
+          Tienes <Hi>{taskCount}</Hi> {taskCount === 1 ? "tarea activa" : "tareas activas"} esta semana
+          {overdueCount > 0 && <>, {vencidas(overdueCount)}</>}.
+        </>
+      );
+  // Con agenda, "En la agenda:" ya hace de lead → nada de intro (evita repetir
+  // "…la agenda. En la agenda:"). En calma, la frase de tareas sustituye al intro.
+  const showIntro = hasContent && !hasNow && !tareasFrase;
 
   return (
     <header className="pb-2 mb-8 fade-up">
@@ -253,18 +241,14 @@ export default function TodayHero({ nombre = "equipo", events = [], avisos = nul
         {showIntro && <>{intro} </>}
         {hasNow ? (
           <>
-            {vac}
+            En la agenda:{" "}
             {partes.map((p, i) => (
               <span key={i}>
-                {i === 0 ? "; " : i === partes.length - 1 ? ", y " : ", "}
+                {i === 0 ? "" : i === partes.length - 1 ? " y " : ", "}
                 {p}
               </span>
             ))}
-            {partes.length === 0 && fill.length > 0 ? (
-              <>. Después, lo próximo {seraVerbo([fill[0]])} {nodeFor(fill[0], fill[0].type === "vacaciones")}.</>
-            ) : (
-              "."
-            )}
+            .
           </>
         ) : fill.length > 0 ? (
           (() => {

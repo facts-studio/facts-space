@@ -351,14 +351,16 @@ export async function getSprintEvents() {
   const out = [];
   for (const l of lists) {
     if (!l.is_sprint || !l.visible) continue;
+    // `kind` va aparte del título para poder pintarlo como tag; el título
+    // completo se mantiene para quien solo muestra texto (agenda, saludo…).
     const base = { type: "hito", who: null, sprint: l.list_name, client: l.folder_name ?? null, note: (l.list_content || "").trim() || null };
     if (l.list_start) {
       const d = iso(l.list_start);
-      out.push({ ...base, id: `sprint-${l.list_id}-ini`, title: `${l.list_name} · inicio`, start: d, end: d });
+      out.push({ ...base, id: `sprint-${l.list_id}-ini`, kind: "inicio", title: `${l.list_name} · inicio`, start: d, end: d });
     }
     if (l.list_due) {
       const d = iso(l.list_due);
-      out.push({ ...base, id: `sprint-${l.list_id}-fin`, title: `${l.list_name} · fin`, start: d, end: d });
+      out.push({ ...base, id: `sprint-${l.list_id}-fin`, kind: "fin", title: `${l.list_name} · fin`, start: d, end: d });
     }
   }
   return out;
