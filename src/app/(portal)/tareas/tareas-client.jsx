@@ -78,10 +78,22 @@ function SearchField({ value, onChange }) {
   );
 }
 
+// Mezcla un hex hacia el crema del fondo (t: 0 = color pleno, 1 = casi crema).
+// Sirve para escalonar los sprints de un mismo cliente y que no se empasten.
+function lighten(hex, t) {
+  const n = parseInt((hex || "#000000").slice(1), 16);
+  const ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  const cream = [239, 238, 235];
+  const m = ch.map((c, i) => Math.round(c + (cream[i] - c) * t));
+  return `rgb(${m[0]}, ${m[1]}, ${m[2]})`;
+}
+
 // Avatar de cliente/campaña (visual puro). Muestra el icono si existe; si no,
 // tinte + inicial. El apilado, hover y tooltip los gestiona la fila.
-function ClientAvatar({ name, active, campaign, todos, icon, colorKey }) {
+// shade (0..1): aclara el fondo progresivamente (para escalonar sprints).
+function ClientAvatar({ name, active, campaign, todos, icon, colorKey, shade = 0 }) {
   const c = todos ? null : paletteColor(name, colorKey);
+  const bg = c && shade ? lighten(c.bg, shade) : c?.bg;
   const initial = todos ? null : (name || "?").trim()[0]?.toUpperCase();
   return (
     <span className="relative block">
@@ -91,7 +103,7 @@ function ClientAvatar({ name, active, campaign, todos, icon, colorKey }) {
           active ? "ring-2 ring-ink" : "ring-1 ring-border/60",
           todos && (active ? "bg-ink text-bg" : "bg-surface2/70 text-muted")
         )}
-        style={!todos && c ? { background: c.bg, color: c.fg } : undefined}
+        style={!todos && c ? { background: bg, color: c.fg } : undefined}
       >
         {icon ? (
           // Icono monocromo teñido con el fg del cliente (misma lógica que la letra).
@@ -381,17 +393,17 @@ function Section({ label, count, campaign, children }) {
 
 /* ── Pantalla ───────────────────────────────────────────────────────────── */
 
-export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin = false, visibleCount, campaigns = [], statusesByList = {}, iconsByClient = {}, colorsByClient = {} }) {
+export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin = false, visibleCount, campaigns = [], statusesByList = {}, iconsByClient = {}, colorsByClient = {}, sprintNotes = {} }) {
   const [q, setQ] = useState("");
   const [clientSet, setClientSet] = useState(() => new Set()); // multi-selección de clientes/campañas
   const [hoverCtx, setHoverCtx] = useState(null); // tooltip por portal {name,count,x,y}
   const [area, setArea] = useState(""); // "" = todas las disciplinas
   const [showClosed, setShowClosed] = useState(false); // false = solo abiertas
-  const [scope, setScope] = useState("all"); // all | mine
+  // Deep-links desde Inicio: ?task=id abre una tarea; ?scope=mine arranca en "Mis tareas".
+  const searchParams = useSearchParams();
+  const [scope, setScope] = useState(() => (searchParams.get("scope") === "mine" ? "mine" : "all")); // all | mine
   // "Mía" = asignada a mí, o de Team (que es de todos).
   const isMine = (t) => t.everyone || (myEmail && t.assignees.some((a) => a.email === myEmail));
-  // Tarea abierta en el panel; deep-link desde Inicio con ?task=id.
-  const searchParams = useSearchParams();
   const myPhoto = teamPhoto(myEmail);
   // La columna "Área" repetía la lista en cada fila; ahora esa información la da
   // el subgrupo (o el propio filtro por cliente), así que sobra.
@@ -450,7 +462,19 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
       if (!cnt.has(key)) cnt.set(key, { key, label: `${t.project} › ${t.sprint}`, avatarName: t.sprint, colorSrc: t.project, campaign: true, sprint: true, count: 0 });
       cnt.get(key).count++;
     }
-    return [...cnt.values()].sort((a, b) => (b.count - a.count) || a.label.localeCompare(b.label));
+    const arr = [...cnt.values()].sort((a, b) => (b.count - a.count) || a.label.localeCompare(b.label));
+    // Escalona el aclarado de los sprints de un MISMO cliente (izq. intenso →
+    // der. claro) para que no se empasten. Un solo sprint del cliente → sin shade.
+    const perClient = new Map();
+    for (const sp of arr) perClient.set(sp.colorSrc, (perClient.get(sp.colorSrc) || 0) + 1);
+    const idxByClient = new Map();
+    for (const sp of arr) {
+      const total = perClient.get(sp.colorSrc);
+      const i = idxByClient.get(sp.colorSrc) || 0;
+      idxByClient.set(sp.colorSrc, i + 1);
+      sp.shade = total > 1 ? (i / (total - 1)) * 0.5 : 0;
+    }
+    return arr;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tasks, scope, myEmail]);
 
@@ -703,7 +727,7 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
                   onMouseLeave={() => setHoverCtx(null)}
                   className={cn("relative shrink-0 transition-all duration-200 hover:z-20 active:scale-95", i > 0 && fanClass, dim ? "opacity-30 hover:opacity-90" : "opacity-100")}
                 >
-                  <ClientAvatar name={c.avatarName} active={sel} campaign={c.campaign && !c.sprint} icon={clientIcon(c.colorSrc, iconsByClient[c.colorSrc])} colorKey={colorsByClient[c.colorSrc]} />
+                  <ClientAvatar name={c.avatarName} active={sel} campaign={c.campaign && !c.sprint} icon={clientIcon(c.colorSrc, iconsByClient[c.colorSrc])} colorKey={colorsByClient[c.colorSrc]} shade={c.shade || 0} />
                 </button>
               );
             };
@@ -798,6 +822,17 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
                           <div className="flex items-center gap-2 px-3 pt-2 pb-1">
                             <span className="text-micro text-mutedSoft truncate">{sub.label}</span>
                             {sub.sprint && <span className="text-micro text-brandMid shrink-0" title="Sprint">✦</span>}
+                            {sub.sprint && sprintNotes[sub.key] && (
+                              <button
+                                type="button"
+                                aria-label="Descripción del sprint"
+                                onMouseEnter={(ev) => { const r = ev.currentTarget.getBoundingClientRect(); setHoverCtx({ desc: sprintNotes[sub.key], title: sub.label, x: r.left + r.width / 2, y: r.top }); }}
+                                onMouseLeave={() => setHoverCtx(null)}
+                                className="shrink-0 text-mutedSoft/70 hover:text-ink transition"
+                              >
+                                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9" /><path d="M12 16v-4M12 8h.01" strokeLinecap="round" /></svg>
+                              </button>
+                            )}
                             <span className="text-micro text-mutedSoft/60 tabular-nums shrink-0">
                               {sub.items.filter((t) => !t.milestone).length}
                             </span>
@@ -855,11 +890,19 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
       {/* Tooltip de los avatares — portal para que no lo recorte el scroll */}
       {hoverCtx && typeof document !== "undefined" && createPortal(
         <div className="pointer-events-none fixed z-[90] -translate-x-1/2 -translate-y-full" style={{ left: hoverCtx.x, top: hoverCtx.y - 8 }}>
-          <div className="relative whitespace-nowrap rounded-lg bg-ink text-bg text-[12px] px-2.5 py-1 shadow-float">
-            {hoverCtx.name}
-            {hoverCtx.count > 0 && <span className="ml-1.5 text-bg/55 tabular-nums">{hoverCtx.count}</span>}
-            <span className="absolute left-1/2 -bottom-1 -translate-x-1/2 w-2 h-2 rotate-45 bg-ink" />
-          </div>
+          {hoverCtx.desc ? (
+            // Descripción de sprint: caja muy suave, sin sombra, con aire.
+            <div className="max-w-[340px] rounded-2xl bg-surface border border-border/40 px-5 py-4 text-left">
+              {hoverCtx.title && <p className="text-[10.5px] uppercase tracking-[0.1em] text-mutedSoft/80 mb-2">{hoverCtx.title}</p>}
+              <p className="text-[12.5px] leading-relaxed text-mutedSoft whitespace-normal">{hoverCtx.desc}</p>
+            </div>
+          ) : (
+            <div className="relative whitespace-nowrap rounded-lg bg-ink text-bg text-[12px] px-2.5 py-1 shadow-float">
+              {hoverCtx.name}
+              {hoverCtx.count > 0 && <span className="ml-1.5 text-bg/55 tabular-nums">{hoverCtx.count}</span>}
+              <span className="absolute left-1/2 -bottom-1 -translate-x-1/2 w-2 h-2 rotate-45 bg-ink" />
+            </div>
+          )}
         </div>,
         document.body
       )}

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Surface } from "@/components/ui";
 import TareasHoyList from "./TareasHoyList";
 
@@ -9,7 +10,12 @@ import TareasHoyList from "./TareasHoyList";
 export default function TareasHoy({ tasks = [], isAdmin = false, className = "mb-4" }) {
   return (
     <Surface className={className}>
-      <p className="section-eyebrow mb-4">Tus tareas de la semana</p>
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <p className="section-eyebrow">Tus tareas de la semana</p>
+        <Link href="/tareas?scope=mine" className="text-micro text-mutedSoft hover:text-ink transition shrink-0">
+          Ver todas →
+        </Link>
+      </div>
 
       <TareasHoyList tasks={tasks} isAdmin={isAdmin} />
     </Surface>

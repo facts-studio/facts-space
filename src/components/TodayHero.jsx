@@ -115,7 +115,13 @@ export default function TodayHero({ nombre = "equipo", events = [], avisos = nul
   for (const e of futuros) {
     const lim = NEAR[e.type];
     if (lim == null || e.dias > lim) continue;
-    if (e.type === "vacaciones") { if (vacSeen.has(e.who)) continue; vacSeen.add(e.who); }
+    // Vacaciones/ausencias que ya empezaron hoy no se anuncian: se ven en la
+    // píldora de presencia. En el saludo solo lo que arranca mañana o después.
+    if ((e.type === "vacaciones" || e.type === "ausencia")) {
+      if (e.dias < 1) continue;
+      if (vacSeen.has(e.who)) continue;
+      vacSeen.add(e.who);
+    }
     near.push(e);
     if (near.length >= 3) break;
   }
