@@ -31,7 +31,7 @@ function PresencePill({ p }) {
         <span className="w-7 h-7 rounded-full bg-surface2 grid place-items-center text-[13px]">{(p.name || "?")[0]}</span>
       )}
       <span className="text-[13px] leading-none">{p.icon}</span>
-      <span className="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-1.5 whitespace-nowrap rounded-full bg-surface2 border border-border/70 px-2.5 py-1 text-[12px] text-ink opacity-0 transition-opacity group-hover/pr:opacity-100 z-30">
+      <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 whitespace-nowrap rounded-full bg-surface2 border border-border/70 px-2.5 py-1 text-[12px] text-ink opacity-0 transition-opacity group-hover/pr:opacity-100 z-30">
         {p.hint}
       </span>
     </span>

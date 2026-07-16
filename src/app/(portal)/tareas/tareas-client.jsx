@@ -521,13 +521,23 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
       if (!map.has(key)) map.set(key, { key, label, campaign: !groupByArea && campaignSet.has(t.project), items: [] });
       map.get(key).items.push(t);
     }
-    // Inicio/fin de sprint como hitos dentro del grupo que les corresponde
-    // (agrupando por área, su grupo es la propia lista del sprint). Solo se
-    // añaden a grupos que ya existen: la lista es de tareas, no de hitos.
+    // Inicio/fin de sprint como hitos, en el grupo que les corresponde. Si el
+    // grupo aún no existe (el sprint/cliente no tiene tareas ABIERTAS ahora —p.
+    // ej. ya se completaron), se crea: si no, el hito de inicio (ya pasado)
+    // desaparecía al vaciarse el sprint. Un hito nunca debe quedar huérfano.
+    const startToday = new Date().setHours(0, 0, 0, 0);
     for (const e of filteredMilestones) {
+      // El "inicio" solo importa hasta que llega; una vez pasado, es historia y
+      // se oculta. El "fin" es un deadline: se queda (en rojo si ya venció).
+      const ms = new Date(e.start + "T00:00:00").getTime();
+      if (e.kind === "inicio" && ms < startToday) continue;
       const key = groupByArea ? (e.sprint || "—") : (e.client || "—");
-      const g = map.get(key);
-      if (!g) continue;
+      let g = map.get(key);
+      if (!g) {
+        const label = groupByArea ? (e.sprint || "Sprint") : (e.client || "Sin cliente");
+        g = { key, label, campaign: !groupByArea && campaignSet.has(e.client), items: [] };
+        map.set(key, g);
+      }
       g.items.push({ milestone: true, id: e.id, name: e.sprint || e.title, kind: e.kind || null, client: e.client, area: e.sprint || null, dueDate: new Date(e.start + "T00:00:00").getTime() });
     }
     const arr = [...map.values()];
@@ -775,7 +785,7 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
         <div className="min-w-0">
       {/* LISTA — cada grupo (cliente/área) en su propia caja */}
       {view === "lista" && (
-        filtered.length === 0 ? (
+        sections.length === 0 ? (
           <Surface pad="sm"><EmptyState className="my-2">Nada con esos filtros.</EmptyState></Surface>
         ) : (
           <div className="space-y-3">

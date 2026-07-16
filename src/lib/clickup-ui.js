@@ -11,7 +11,7 @@ export function dueLabel(ms, now = Date.now()) {
   const endOfWeek = new Date(nowD.getFullYear(), nowD.getMonth(), nowD.getDate() + (6 - dow)).getTime() + day - 1;
   if (ms < startToday) {
     const d = Math.round((startToday - ms) / day);
-    return { text: d <= 1 ? "Ayer" : `Vencida (${d} días)`, tone: "text-danger" };
+    return { text: d <= 1 ? "Ayer" : `Hace ${d} días`, tone: "text-danger" };
   }
   if (ms < startToday + day) {
     const t = new Date(ms).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });

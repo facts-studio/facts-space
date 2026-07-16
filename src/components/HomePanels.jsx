@@ -18,14 +18,10 @@ function presenceNow(events) {
   const now = new Date();
   const hoy = startOfDay(now);
   const out = [];
-  const back = (endISO) => {
-    // Vuelve el día laborable siguiente al fin; para el aviso basta "en N días".
-    const dias = Math.round((startOfDay(parseISO(endISO)) - hoy) / DAY) + 1;
-    return dias <= 0 ? "ya de vuelta" : dias === 1 ? "vuelve mañana" : `vuelve en ${dias} días`;
-  };
+  const hasta = (endISO) => parseISO(endISO).toLocaleDateString("es-ES", { day: "numeric", month: "long" });
   for (const e of events) {
     if (e.type === "vacaciones" && e.who && parseISO(e.start) <= now && parseISO(e.end) >= hoy) {
-      out.push({ key: `vac-${e.id}`, name: e.who, photo: PHOTO.get(e.who) || null, icon: "🏖️", hint: `${e.who} · ${back(e.end)}` });
+      out.push({ key: `vac-${e.id}`, name: e.who, photo: PHOTO.get(e.who) || null, icon: "🏖️", hint: `${e.who} · hasta el ${hasta(e.end)}` });
     }
     if (e.type === "cumple" && e.who && e.start === `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-${String(hoy.getDate()).padStart(2, "0")}`) {
       out.push({ key: `cum-${e.id}`, name: e.who, photo: PHOTO.get(e.who) || null, icon: "🎂", hint: `¡Feliz cumple, ${e.who}!` });
