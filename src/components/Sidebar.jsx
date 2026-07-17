@@ -89,12 +89,15 @@ export default function Sidebar({ user, isAdmin = false, serverTheme = null, ini
         // z-30: `sticky` crea contexto de apilamiento, así que el z-50 de las
         // burbujas solo compite dentro del aside. Sin esto, el <main> (posterior
         // en el DOM) las tapa al salirse del sidebar.
-        // overflow-y-auto: si la ventana es más baja que el contenido de la barra,
-        // ésta scrollea por dentro. Sin esto sobresale del `h-screen`, empuja el
-        // alto del documento y deja al sticky sin recorrido (la barra se iba con
-        // la página en vez de quedarse fija).
-        "shrink-0 h-screen sticky top-0 z-30 hidden md:flex flex-col overflow-y-auto border-r border-border py-6 transition-[width] duration-200 ease-out",
-        collapsed ? "w-[76px] px-3" : "w-[248px] px-4",
+        "shrink-0 h-screen sticky top-0 z-30 hidden md:flex flex-col border-r border-border py-6 transition-[width] duration-200 ease-out",
+        // Overflow según estado: `overflow-y-auto` convierte al aside en
+        // contenedor de scroll y fuerza overflow-x a recortar. Recogido: hay
+        // tooltips `left-full` que deben escapar → overflow-visible (el
+        // contenido cabe en cualquier ventana real; si fuese más baja, el
+        // scroll de página —globals.css overflow-x:clip— alcanza el pie).
+        // Expandido: sin tooltips que recortar → overflow-y-auto como red de
+        // seguridad para que la barra scrollee por dentro y siga fija.
+        collapsed ? "w-[76px] px-3 overflow-visible" : "w-[248px] px-4 overflow-y-auto",
       ].join(" ")}
     >
       {/* Cabecera — logo + nombre fusionados con recoger/expandir (estilo ChatGPT) */}
