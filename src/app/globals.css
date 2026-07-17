@@ -104,8 +104,13 @@ html, body {
   /* Evita el rebote (rubber-band) al hacer scroll, que descoloca los elementos
      sticky como el menú lateral y el panel de novedades. */
   overscroll-behavior-y: none;
-  /* Ningún desbordamiento horizontal debe generar scroll lateral en móvil. */
-  overflow-x: hidden;
+  /* Ningún desbordamiento horizontal debe generar scroll lateral en móvil.
+     `clip` y NO `hidden`: `hidden` convierte a <body> en contenedor de scroll,
+     lo que atrapa el desbordamiento vertical dentro de body (la página deja de
+     scrollear si la ventana es más baja que el contenido) y rompe el `sticky`
+     de la barra lateral, que pasa a medirse contra body en vez del viewport.
+     `clip` recorta igual pero no crea contenedor de scroll. */
+  overflow-x: clip;
 }
 
 * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
