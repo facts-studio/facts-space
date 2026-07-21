@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Surface, Tabs, Switch, EmptyState, ScreenHeader, Badge } from "@/components/ui";
+import { Surface, Tabs, Switch, Select, EmptyState, ScreenHeader, Badge } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { dueLabel, PRIORITY } from "@/lib/clickup-ui";
 import { setClickUpTaskStatus, refreshClickUpTasks } from "@/lib/actions/clickup";
@@ -410,6 +410,7 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
   }); // multi-selección de clientes/campañas
   const [hoverCtx, setHoverCtx] = useState(null); // tooltip por portal {name,count,x,y}
   const [area, setArea] = useState(""); // "" = todas las disciplinas
+  const [member, setMember] = useState(""); // "" = todo el equipo (solo admin)
   const [showClosed, setShowClosed] = useState(false); // false = solo abiertas
   const [scope, setScope] = useState(() => (searchParams.get("scope") === "mine" ? "mine" : "all")); // all | mine
   // "Mía" = asignada a mí, o de Team (que es de todos).
@@ -488,6 +489,22 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tasks, scope, myEmail]);
 
+  // Personas con tareas abiertas (para el filtro de admin). Se sacan de las
+  // propias tareas y no del equipo entero, así el desplegable solo ofrece a
+  // quien tiene trabajo. Se excluye "Team" (no es una persona).
+  const members = useMemo(() => {
+    const cnt = new Map();
+    for (const t of tasks) {
+      if (t.statusType === "closed" || t.statusType === "done") continue;
+      for (const a of t.assignees ?? []) {
+        if (a.team || !a.email) continue;
+        if (!cnt.has(a.email)) cnt.set(a.email, { email: a.email, name: a.name, count: 0 });
+        cnt.get(a.email).count++;
+      }
+    }
+    return [...cnt.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "es"));
+  }, [tasks]);
+
   // Si un cliente seleccionado deja de estar arriba (p. ej. al pasar a "Mis
   // tareas" y no tener nada suyo), su filtro deja de aplicarse: si no, la lista
   // se quedaría vacía y sin avatar donde pulsar para deshacerlo. La selección
@@ -516,12 +533,15 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
         if (!hit) return false;
       }
       if (area && t.listName !== area) return false;
+      // Filtro por persona (admin). Las de Team son de todos, así que cuentan
+      // para cualquiera, igual que en "Mis tareas".
+      if (member && !(t.everyone || (t.assignees ?? []).some((a) => a.email === member))) return false;
       if (scope === "mine" && !isMine(t)) return false;
       if (ql && !t.name.toLowerCase().includes(ql)) return false;
       return true;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks, q, selection, area, showClosed, scope, tscope, overrides]);
+  }, [tasks, q, selection, area, member, showClosed, scope, tscope, overrides]);
 
   // Agrupación implícita: 1 cliente → por Área; varios/ninguno → por Cliente.
   // Los hitos siguen la misma selección que las tareas: elegir un cliente deja
@@ -604,7 +624,7 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
   // Busca también dentro de las subtareas anidadas.
   const selected = useMemo(() => findTaskById(tasks, selectedId), [tasks, selectedId]);
 
-  const activeFilters = selection.size + (area ? 1 : 0) + (scope === "mine" ? 1 : 0) + (showClosed ? 1 : 0) + (tscope !== "todo" ? 1 : 0) + (q ? 1 : 0);
+  const activeFilters = selection.size + (area ? 1 : 0) + (member ? 1 : 0) + (scope === "mine" ? 1 : 0) + (showClosed ? 1 : 0) + (tscope !== "todo" ? 1 : 0) + (q ? 1 : 0);
 
   const setOverride = (id, val) => setOverrides((m) => { const n = new Map(m); val ? n.set(id, val) : n.delete(id); return n; });
 
@@ -793,6 +813,18 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
             )}
             Mis tareas
           </button>
+          {/* Filtro por persona: solo admin, y solo si hay a quién filtrar. */}
+          {isAdmin && members.length > 1 && (
+            <Select
+              value={member || "all"}
+              onChange={(v) => setMember(v === "all" ? "" : v)}
+              className="shrink-0 min-w-[150px]"
+              options={[
+                { value: "all", label: "Todo el equipo" },
+                ...members.map((m) => ({ value: m.email, label: `${m.name} (${m.count})` })),
+              ]}
+            />
+          )}
           <Switch checked={showClosed} onChange={setShowClosed} label="Cerradas" />
           {/* Filtro de Área oculto por ahora
           {areas.length > 1 && (
@@ -805,7 +837,7 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
           )} */}
           {activeFilters > 0 && (
             <button
-              onClick={() => { setClientSet(new Set()); setArea(""); setScope("all"); setShowClosed(false); setTscope("todo"); setQ(""); }}
+              onClick={() => { setClientSet(new Set()); setArea(""); setMember(""); setScope("all"); setShowClosed(false); setTscope("todo"); setQ(""); }}
               className="shrink-0 text-micro text-muted hover:text-ink transition whitespace-nowrap"
             >
               Limpiar ({activeFilters})
