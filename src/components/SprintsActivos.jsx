@@ -1,4 +1,4 @@
-import { Surface, SectionHeader, Badge, ProgressBar, EmptyState } from "@/components/ui";
+import { Surface, SectionHeader, ProgressBar, EmptyState } from "@/components/ui";
 
 // "8 sep" — mismo formato corto que usa el modo Status.
 const dm = (ts) => new Date(ts).toLocaleDateString("es-ES", { day: "numeric", month: "short" }).replace(".", "");
@@ -26,16 +26,31 @@ function SprintRow({ s }) {
   const fechas = rango(s);
 
   return (
-    <div className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0">
-      {/* Título + tipo */}
-      <div className="flex items-start justify-between gap-3">
-        <p className="text-[14px] text-ink leading-snug truncate">
+    <div className="flex flex-col gap-2.5 py-4 first:pt-0 last:pb-0">
+      {/* Título + meta a la derecha (donde antes iba el tipo). El plazo solo si
+          aprieta o ya se pasó; si no, es repetir la fecha de fin. */}
+      <div className="flex items-baseline justify-between gap-3 flex-wrap">
+        <p className="text-[14px] text-ink leading-snug truncate min-w-0">
           {s.client && <span className="text-mutedSoft">{s.client} · </span>}
           <span className="font-medium">{s.name}</span>
         </p>
-        <Badge kind={s.kind === "sprint" ? "info" : "neutral"} className="shrink-0">
-          {s.kind === "sprint" ? "✦ Sprint" : "Temporal"}
-        </Badge>
+        <p className="shrink-0 text-micro text-mutedSoft">
+          {[fechas, s.active > 0 ? `${s.active} activa${s.active === 1 ? "" : "s"}` : null]
+            .filter(Boolean)
+            .join(" · ")}
+          {p && p.urge && (
+            <span className={p.kind === "danger" ? "text-danger" : undefined}>
+              {" · "}
+              {p.text}
+            </span>
+          )}
+          {s.overdue > 0 && (
+            <span className="text-danger">
+              {" · "}
+              {s.overdue} vencida{s.overdue === 1 ? "" : "s"}
+            </span>
+          )}
+        </p>
       </div>
 
       {/* Progreso */}
@@ -48,26 +63,6 @@ function SprintRow({ s }) {
         />
         <span className="shrink-0 text-micro text-mutedSoft tabular-nums w-9 text-right">{pct}%</span>
       </div>
-
-      {/* Meta mínima: fechas + tareas activas. El plazo solo si aprieta o ya
-          se pasó (si no, es repetir la fecha de fin), y las vencidas en rojo. */}
-      <p className="text-micro text-mutedSoft">
-        {[fechas, s.active > 0 ? `${s.active} activa${s.active === 1 ? "" : "s"}` : null]
-          .filter(Boolean)
-          .join(" · ")}
-        {p && p.urge && (
-          <span className={p.kind === "danger" ? "text-danger" : undefined}>
-            {" · "}
-            {p.text}
-          </span>
-        )}
-        {s.overdue > 0 && (
-          <span className="text-danger">
-            {" · "}
-            {s.overdue} vencida{s.overdue === 1 ? "" : "s"}
-          </span>
-        )}
-      </p>
     </div>
   );
 }

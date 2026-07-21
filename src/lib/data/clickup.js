@@ -590,9 +590,10 @@ export function workspaceOverview(tasks, now = Date.now()) {
  * terminado: sigue dentro de plazo, o se pasó de fecha pero le quedan tareas
  * abiertas (retrasado). Los que aún no han empezado y los cerrados se caen.
  *
- * `pct` mide trabajo hecho (tareas completadas), no tiempo transcurrido:
- * es lo que interesa para saber cómo va. `elapsedPct` sí es el tiempo, para
- * poder contrastar «vas por el 30% con el 80% del plazo gastado».
+ * `pct` mide trabajo hecho, no tiempo transcurrido: es lo que interesa para
+ * saber cómo va. Las tareas en proceso cuentan medio punto, así que el sprint
+ * avanza en cuanto se empieza a mover, no solo al cerrar. `elapsedPct` sí es
+ * el tiempo, para contrastar «vas por el 30% con el 80% del plazo gastado».
  */
 export function activeSprints(lists = [], tasks = [], now = Date.now()) {
   const today = endOfToday(now);
@@ -609,6 +610,11 @@ export function activeSprints(lists = [], tasks = [], now = Date.now()) {
     const open = items.filter(isOpen);
     const done = total - open.length;
     const overdue = open.filter((t) => t.dueDate && t.dueDate < startToday).length;
+    // Las que ya se están moviendo: en ClickUp los estados intermedios
+    // ("en progreso", "revisión"…) son de tipo `custom`; `open` es el "pendiente"
+    // inicial. Cuentan medio punto en el progreso: no están hechas, pero
+    // tampoco sin empezar.
+    const doing = open.filter((t) => t.statusType === "custom").length;
 
     // Pasado de fecha y sin nada abierto → terminado, fuera.
     const pastDue = Boolean(l.list_due && l.list_due < startToday);
@@ -637,9 +643,11 @@ export function activeSprints(lists = [], tasks = [], now = Date.now()) {
       due: l.list_due ?? null,
       total,
       done,
+      doing,
       active: open.length,
       overdue,
-      pct: total ? (done / total) * 100 : 0,
+      // Hecho = 1 punto, en proceso = medio punto, pendiente = 0.
+      pct: total ? ((done + doing * 0.5) / total) * 100 : 0,
       elapsedPct,
       daysLeft,
       pastDue,
