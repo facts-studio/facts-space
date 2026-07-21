@@ -1,7 +1,9 @@
 // Helpers de presentación de tareas ClickUp (cliente). Sin llamadas ni token.
 
 // Etiqueta de vencimiento relativa a ahora + tono de color.
-export function dueLabel(ms, now = Date.now()) {
+// `hasTime` = la fecha de ClickUp lleva hora (due_date_time). Sin ella, el
+// timestamp cae a una hora fija que no significa nada y no se muestra.
+export function dueLabel(ms, now = Date.now(), hasTime = false) {
   if (!ms) return { text: "Sin fecha", tone: "text-mutedSoft" };
   const day = 86400000;
   const nowD = new Date(now);
@@ -14,6 +16,7 @@ export function dueLabel(ms, now = Date.now()) {
     return { text: d <= 1 ? "Ayer" : `Hace ${d} días`, tone: "text-danger" };
   }
   if (ms < startToday + day) {
+    if (!hasTime) return { text: "Hoy", tone: "text-warn" };
     const t = new Date(ms).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
     return { text: `Hoy · ${t}`, tone: "text-warn" };
   }

@@ -637,7 +637,7 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
   // lenguaje que StatusMenu usa para los hitos de ClickUp).
   const renderMilestone = (m) => {
     const c = paletteColor(m.client || "Sin cliente", colorsByClient[m.client]);
-    const due = dueLabel(m.dueDate);
+    const due = dueLabel(m.dueDate, undefined, m.dueHasTime);
     return (
       <div key={m.id} className={rowCls({ showArea: showAreaCol, showStatus: true })}>
         <div className="flex items-center gap-3 min-w-0">

@@ -47,13 +47,28 @@ function DriveIcon({ className }) {
   );
 }
 
+// Icono de Figma (marca).
+function FigmaIcon({ className }) {
+  return (
+    <svg viewBox="0 0 38 57" className={className} aria-hidden>
+      <path d="M19 28.5a9.5 9.5 0 1 1 19 0 9.5 9.5 0 0 1-19 0z" fill="#1ABCFE" />
+      <path d="M0 47.5A9.5 9.5 0 0 1 9.5 38H19v9.5a9.5 9.5 0 1 1-19 0z" fill="#0ACF83" />
+      <path d="M19 0v19h9.5a9.5 9.5 0 1 0 0-19H19z" fill="#FF7262" />
+      <path d="M0 9.5A9.5 9.5 0 0 0 9.5 19H19V0H9.5A9.5 9.5 0 0 0 0 9.5z" fill="#F24E1E" />
+      <path d="M0 28.5A9.5 9.5 0 0 0 9.5 38H19V19H9.5A9.5 9.5 0 0 0 0 28.5z" fill="#A259FF" />
+    </svg>
+  );
+}
+
 const isDriveUrl = (url) => /(?:^|\/\/|\.)(?:drive|docs)\.google\.com\//.test(url || "");
+const isFigmaUrl = (url) => /(?:^|\/\/|\.)figma\.com\//.test(url || "");
 
 // Fila de recurso (fichero adjunto): Drive → icono Drive; imagen → miniatura;
 // resto → chip de tipo con color suave.
 function ResourceRow({ r }) {
   const isImg = (r.mimetype || "").startsWith("image/") && r.thumb;
   const isDrive = isDriveUrl(r.url);
+  const isFigma = isFigmaUrl(r.url);
   // Enlace pegado en la descripción: no es un fichero, así que ni badge de
   // extensión ni icono de descarga.
   const isLink = r.kind === "link";
@@ -71,6 +86,10 @@ function ResourceRow({ r }) {
       ) : isDrive ? (
         <span className="h-9 w-9 shrink-0 rounded-md bg-surface2/50 grid place-items-center">
           <DriveIcon className="h-4 w-4" />
+        </span>
+      ) : isFigma ? (
+        <span className="h-9 w-9 shrink-0 rounded-md bg-surface2/50 grid place-items-center">
+          <FigmaIcon className="h-4 w-4" />
         </span>
       ) : isLink ? (
         <span className="h-9 w-9 shrink-0 rounded-md bg-surface2/50 grid place-items-center text-mutedSoft">
@@ -120,7 +139,7 @@ function SubtaskRow({ s, active, onOpen }) {
 
 export default function TaskDetail({ t, eff, open, statuses, onPickStatus, onOpen, selectedId, isAdmin = false, onClose }) {
   const [subsOpen, setSubsOpen] = useState(true);
-  const due = dueLabel(t.dueDate);
+  const due = dueLabel(t.dueDate, undefined, t.dueHasTime);
   const prio = t.priority ? PRIORITY[t.priority] : null;
   // Abrir en ClickUp es solo para admins.
   const hasClickUp = isAdmin && t.url && t.url !== "#";

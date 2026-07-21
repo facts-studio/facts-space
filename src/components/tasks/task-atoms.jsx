@@ -167,7 +167,7 @@ export const rowCls = ({ showArea = true, showStatus = false } = {}) =>
 // showCaret: reserva el hueco del caret de subtareas para alinear filas. En
 // listas sin desplegables (p. ej. el Status de Inicio) se puede quitar.
 export function TaskRow({ t, eff, open, statuses, onPickStatus, onOpen, active, depth = 0, hasSubtasks = false, expanded = false, onToggle, showArea = true, showCaret = true, showStatus = false }) {
-  const due = dueLabel(t.dueDate);
+  const due = dueLabel(t.dueDate, undefined, t.dueHasTime);
   // El nombre va envuelto en .marquee: elipsis en reposo y, al pasar por la fila,
   // se desplaza si no cabe (ver globals.css). OJO: .marquee usa container-type,
   // que impone contención de tamaño → el ancho NO puede venir del contenido o el

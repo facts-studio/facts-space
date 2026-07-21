@@ -39,7 +39,7 @@ export default function TareasHoyList({ tasks, isAdmin = false }) {
     <ul className="divide-y divide-border/50">
       {visible.map((t) => {
         const e = eff(t);
-        const due = dueLabel(t.dueDate);
+        const due = dueLabel(t.dueDate, undefined, t.dueHasTime);
         // Siempre abre la tarea en el panel de /tareas (nunca ClickUp).
         const rowCls = "group min-w-0 flex-1 flex items-center gap-3";
         const inner = (

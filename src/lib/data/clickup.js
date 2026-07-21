@@ -137,11 +137,13 @@ export function isClickUpConfigured() {
 // { id, name, url, status, statusColor, listName, dueDate(ms|null), assignees:[{email,name,initials,color}] }
 function mapTask(t) {
   const description = (t.text_content || t.description || "").trim() || null;
-  // Recursos = adjuntos del campo "📁 Recursos" + enlaces pegados en el texto.
-  // Si un enlace ya está entre los adjuntos, no se repite.
+  // Recursos = adjuntos del campo "📁 Recursos" + enlaces de la descripción.
+  // Los enlaces se buscan en markdown_description porque los embeds de ClickUp
+  // (Figma, Drive…) NO aparecen en text_content ni en description.
   const files = resourcesFromField(t) || [];
   const urls = new Set(files.map((f) => f.url));
-  const resources = [...files, ...linksFromText(description).filter((l) => !urls.has(l.url))];
+  const texto = [t.markdown_description, t.description, t.text_content].filter(Boolean).join("\n");
+  const resources = [...files, ...linksFromText(texto).filter((l) => !urls.has(l.url))];
   return {
     id: t.id,
     name: t.name,
@@ -159,6 +161,10 @@ function mapTask(t) {
     description,
     resources: resources.length ? resources : null, // adjuntos + enlaces del texto
     dueDate: t.due_date ? Number(t.due_date) : null,
+    // ClickUp marca con `due_date_time` si la fecha lleva hora. Cuando no la
+    // lleva, el timestamp cae igualmente a una hora fija (p. ej. 04:00) que NO
+    // hay que enseñar: si no, una tarea "para hoy" aparece como "Hoy · 04:00".
+    dueHasTime: Boolean(t.due_date_time),
     startDate: t.start_date ? Number(t.start_date) : null,
     dateDone: t.date_done ? Number(t.date_done) : null, // para "completadas" en Status
     // Jerarquía: para plegar subtareas en su tarea de nivel superior.
@@ -263,7 +269,10 @@ export async function getClickUpTasks() {
       // Recorre páginas con unos parámetros extra dados.
       const fetchAll = async (extra) => {
         for (let page = 0; page < 30; page++) {
-          const params = new URLSearchParams({ page: String(page), subtasks: "true", order_by: "due_date", ...extra });
+          // include_markdown_description: los enlaces pegados en la descripción
+          // llegan como embed y NO aparecen en text_content/description; solo
+          // están en markdown_description. De ahí se sacan los recursos.
+          const params = new URLSearchParams({ page: String(page), subtasks: "true", order_by: "due_date", include_markdown_description: "true", ...extra });
           for (const id of visibleIds) params.append("list_ids[]", id);
           const res = await fetch(`${BASE}/team/${team}/task?${params}`, opts);
           if (!res.ok) break;
@@ -297,7 +306,7 @@ export async function getClickUpTasks() {
     if (process.env.CLICKUP_VIEW_ID) {
       const out = [];
       for (let page = 0; page < 20; page++) {
-        const res = await fetch(`${BASE}/view/${process.env.CLICKUP_VIEW_ID}/task?page=${page}`, opts);
+        const res = await fetch(`${BASE}/view/${process.env.CLICKUP_VIEW_ID}/task?page=${page}&include_markdown_description=true`, opts);
         if (!res.ok) break;
         const json = await res.json();
         out.push(...(json.tasks ?? []).map(mapTask));
@@ -306,7 +315,7 @@ export async function getClickUpTasks() {
       return out;
     }
 
-    const params = new URLSearchParams({ order_by: "due_date", subtasks: "false", include_closed: "false" });
+    const params = new URLSearchParams({ order_by: "due_date", subtasks: "false", include_closed: "false", include_markdown_description: "true" });
     const res = await fetch(`${BASE}/team/${team}/task?${params}`, opts);
     if (!res.ok) return [];
     const json = await res.json();
