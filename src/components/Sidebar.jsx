@@ -158,7 +158,7 @@ export default function Sidebar({ user, isAdmin = false, serverTheme = null, ini
 
       <nav className="mt-auto pt-6 flex flex-col gap-1">
         {isAdmin && (
-          <NavLink href="/admin" label="Administrar" icon="shield" active={isActive("/admin")} collapsed={collapsed} />
+          <NavLink href="/admin" label="Administrar" icon="settings" active={isActive("/admin")} collapsed={collapsed} />
         )}
       </nav>
 
