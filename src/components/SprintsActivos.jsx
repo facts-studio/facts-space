@@ -19,13 +19,13 @@ function plazo(s) {
   return { text: `quedan ${s.daysLeft} días`, kind: s.daysLeft <= 3 ? "pending" : "neutral" };
 }
 
-function SprintCard({ s }) {
+function SprintRow({ s }) {
   const p = plazo(s);
   const pct = Math.round(s.pct);
   const fechas = rango(s);
 
   return (
-    <Surface variant="muted" pad="sm" className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0">
       {/* Título + tipo */}
       <div className="flex items-start justify-between gap-3">
         <p className="text-[14px] text-ink leading-snug truncate">
@@ -63,7 +63,7 @@ function SprintCard({ s }) {
           </Badge>
         )}
       </div>
-    </Surface>
+    </div>
   );
 }
 
@@ -79,11 +79,11 @@ export default function SprintsActivos({ sprints = [], className = "" }) {
       {sprints.length === 0 ? (
         <EmptyState>No hay sprints ni proyectos temporales activos.</EmptyState>
       ) : (
-        <div className="flex flex-col gap-3">
+        <Surface className="divide-y divide-border/50">
           {sprints.map((s) => (
-            <SprintCard key={s.id} s={s} />
+            <SprintRow key={s.id} s={s} />
           ))}
-        </div>
+        </Surface>
       )}
     </section>
   );
