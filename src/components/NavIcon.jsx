@@ -14,6 +14,9 @@ const PATHS = {
   user: <><circle cx="12" cy="8" r="3.6" /><path d="M5 20a7 7 0 0 1 14 0" /></>,
   note: <><rect x="4.5" y="3.5" width="15" height="17" rx="2.2" /><path d="M8.5 9h7M8.5 12.5h7M8.5 16h4.5" /></>,
   eye: <><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" /><circle cx="12" cy="12" r="3" /></>,
+  // Escudo con check: "Administrar" (permisos y aprobaciones). El engranaje
+  // (`settings`) se lee como preferencias, no como administración.
+  shield: <><path d="M12 2.8 4.5 6v6.2c0 4.3 3.1 7.6 7.5 9 4.4-1.4 7.5-4.7 7.5-9V6L12 2.8Z" /><path d="m9 12 2.2 2.2L15.2 10" /></>,
 };
 
 export default function NavIcon({ name, className = "w-[18px] h-[18px]" }) {
