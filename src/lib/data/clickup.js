@@ -638,6 +638,9 @@ export function activeSprints(lists = [], tasks = [], now = Date.now()) {
       name: l.list_name,
       client: l.folder_name ?? null,
       kind: l.is_sprint ? "sprint" : "campaign",
+      // Color elegido en admin para el cliente; si no hay, la UI lo deriva del
+      // nombre (mismo criterio que el avatar de cliente y el calendario).
+      colorKey: l.color ?? null,
       note: (l.list_content || "").trim() || null,
       start: l.list_start ?? null,
       due: l.list_due ?? null,

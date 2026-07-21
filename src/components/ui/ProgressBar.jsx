@@ -22,10 +22,20 @@ export default function ProgressBar({
   max = 100,
   tone = "ink",
   size = "sm",
+  tint,
   label,
   className,
 }) {
   const pct = max > 0 ? Math.min(100, Math.max(0, (value / max) * 100)) : 0;
+  // Con `tint` (color de cliente de client-palette) el relleno va en el tinte
+  // claro + rayas diagonales en el color legible: pesa mucho menos que un
+  // bloque sólido. Mismo patrón que las barras de fichaje.
+  const styled = tint
+    ? {
+        backgroundColor: tint.bg,
+        backgroundImage: `repeating-linear-gradient(45deg, ${tint.fg}66 0 1.5px, transparent 1.5px 7px)`,
+      }
+    : null;
   return (
     <div
       className={cn("rounded-full bg-surface2 overflow-hidden", SIZES[size] ?? SIZES.sm, className)}
@@ -36,8 +46,11 @@ export default function ProgressBar({
       aria-label={label}
     >
       <div
-        className={cn("h-full rounded-full transition-[width] duration-500 ease-out", TONES[tone] ?? TONES.ink)}
-        style={{ width: `${pct}%` }}
+        className={cn(
+          "h-full rounded-full transition-[width] duration-500 ease-out",
+          !styled && (TONES[tone] ?? TONES.ink)
+        )}
+        style={{ width: `${pct}%`, ...styled }}
       />
     </div>
   );

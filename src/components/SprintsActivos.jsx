@@ -1,4 +1,5 @@
-import { Surface, SectionHeader, ProgressBar, EmptyState } from "@/components/ui";
+import { Surface, SectionHeader, Badge, ProgressBar, EmptyState } from "@/components/ui";
+import { paletteColor } from "@/lib/client-palette";
 
 // "8 sep" — mismo formato corto que usa el modo Status.
 const dm = (ts) => new Date(ts).toLocaleDateString("es-ES", { day: "numeric", month: "short" }).replace(".", "");
@@ -24,40 +25,43 @@ function SprintRow({ s }) {
   const p = plazo(s);
   const pct = Math.round(s.pct);
   const fechas = rango(s);
+  // Color del cliente: el elegido en admin o, si no, determinista por el nombre.
+  const tint = paletteColor(s.client || s.name, s.colorKey);
 
   return (
     <div className="flex flex-col gap-2.5 py-4 first:pt-0 last:pb-0">
-      {/* Título + meta a la derecha (donde antes iba el tipo). El plazo solo si
-          aprieta o ya se pasó; si no, es repetir la fecha de fin. */}
+      {/* Título + tareas, y la fecha en un tag al extremo derecho. El plazo solo
+          si aprieta o ya se pasó; si no, es repetir la fecha de fin. */}
       <div className="flex items-baseline justify-between gap-3 flex-wrap">
         <p className="text-[14px] text-ink leading-snug truncate min-w-0">
           {s.client && <span className="text-mutedSoft">{s.client} · </span>}
           <span className="font-medium">{s.name}</span>
         </p>
-        <p className="shrink-0 text-micro text-mutedSoft">
-          {[fechas, s.active > 0 ? `${s.active} activa${s.active === 1 ? "" : "s"}` : null]
-            .filter(Boolean)
-            .join(" · ")}
-          {p && p.urge && (
-            <span className={p.kind === "danger" ? "text-danger" : undefined}>
-              {" · "}
-              {p.text}
-            </span>
-          )}
-          {s.overdue > 0 && (
-            <span className="text-danger">
-              {" · "}
-              {s.overdue} vencida{s.overdue === 1 ? "" : "s"}
-            </span>
-          )}
-        </p>
+        <div className="shrink-0 flex items-center gap-2">
+          <span className="text-micro text-mutedSoft">
+            {s.active > 0 && `${s.active} activa${s.active === 1 ? "" : "s"}`}
+            {p && p.urge && (
+              <span className={p.kind === "danger" ? "text-danger" : undefined}>
+                {s.active > 0 && " · "}
+                {p.text}
+              </span>
+            )}
+            {s.overdue > 0 && (
+              <span className="text-danger">
+                {" · "}
+                {s.overdue} vencida{s.overdue === 1 ? "" : "s"}
+              </span>
+            )}
+          </span>
+          {fechas && <Badge kind="neutral">{fechas}</Badge>}
+        </div>
       </div>
 
-      {/* Progreso */}
+      {/* Progreso: relleno con el color del cliente y rayas diagonales. */}
       <div className="flex items-center gap-3">
         <ProgressBar
           value={pct}
-          tone={s.pastDue ? "danger" : "ink"}
+          tint={tint}
           className="flex-1"
           label={`Progreso de ${s.name}: ${pct}%`}
         />
