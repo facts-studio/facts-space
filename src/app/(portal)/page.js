@@ -4,7 +4,6 @@ import FichajeReminder from "@/components/FichajeReminder";
 import AprobacionesReminder from "@/components/AprobacionesReminder";
 import DecisionReminder from "@/components/DecisionReminder";
 import HomePanels from "@/components/HomePanels";
-import SprintsActivos from "@/components/SprintsActivos";
 import { getCalendarEvents } from "@/lib/data/calendar";
 import { getPendingApprovals } from "@/lib/data/admin";
 import { getMyDecisions } from "@/lib/data/me";
@@ -76,13 +75,11 @@ export default async function HomePage() {
           campaigns={campaigns}
           statusesByList={statusesByList}
           sprintMeta={sprintMeta}
+          sprints={sprints}
           isAdmin={Boolean(me?.is_admin)}
           initialNotes={notes}
           canUseNotes={Boolean(me)}
         />
-
-        {/* Sprints / proyectos temporales en curso, con plazo y progreso. */}
-        <SprintsActivos sprints={sprints} className="mt-10" />
       </div>
     </div>
   );
