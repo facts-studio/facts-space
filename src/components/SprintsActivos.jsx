@@ -1,5 +1,10 @@
 import { Surface, SectionHeader, Badge, ProgressBar, EmptyState } from "@/components/ui";
-import { paletteColor } from "@/lib/client-palette";
+
+// Verde de "hecho" (token success), mismo tratamiento que las barras de fichaje.
+const PROGRESO_VERDE = {
+  bg: "rgb(var(--ct-success) / 0.20)",
+  stripe: "rgb(var(--ct-success) / 0.42)",
+};
 
 // "8 sep" — mismo formato corto que usa el modo Status.
 const dm = (ts) => new Date(ts).toLocaleDateString("es-ES", { day: "numeric", month: "short" }).replace(".", "");
@@ -25,21 +30,17 @@ function SprintCard({ s }) {
   const p = plazo(s);
   const pct = Math.round(s.pct);
   const fechas = rango(s);
-  // Color del cliente: el elegido en admin o, si no, determinista por el nombre.
-  const tint = paletteColor(s.client || s.name, s.colorKey);
 
   return (
     <Surface variant="muted" pad="sm" className="flex flex-col gap-2.5">
-      <p className="text-[14px] text-ink leading-snug truncate">
-        {s.client && <span className="text-mutedSoft">{s.client} · </span>}
-        <span className="font-medium">{s.name}</span>
-      </p>
+      <p className="text-[14px] font-medium text-ink leading-snug truncate">{s.name}</p>
 
-      {/* Progreso: relleno con el color del cliente y rayas diagonales. */}
+      {/* Progreso: verde de "hecho" (token success) con rayas diagonales,
+          el mismo tratamiento que las barras de fichaje. */}
       <div className="flex items-center gap-3">
         <ProgressBar
           value={pct}
-          tint={tint}
+          tint={PROGRESO_VERDE}
           className="flex-1"
           label={`Progreso de ${s.name}: ${pct}%`}
         />
@@ -66,7 +67,10 @@ function SprintCard({ s }) {
             </span>
           )}
         </span>
-        {fechas && <Badge kind="neutral" className="shrink-0">{fechas}</Badge>}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {s.client && <Badge kind="neutral">{s.client}</Badge>}
+          {fechas && <Badge kind="neutral">{fechas}</Badge>}
+        </div>
       </div>
     </Surface>
   );

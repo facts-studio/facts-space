@@ -27,13 +27,14 @@ export default function ProgressBar({
   className,
 }) {
   const pct = max > 0 ? Math.min(100, Math.max(0, (value / max) * 100)) : 0;
-  // Con `tint` (color de cliente de client-palette) el relleno va en el tinte
-  // claro + rayas diagonales en el color legible: pesa mucho menos que un
-  // bloque sólido. Mismo patrón que las barras de fichaje.
+  // Con `tint` ({ bg, stripe }) el relleno va en un tono suave + rayas
+  // diagonales: pesa mucho menos que un bloque sólido. Mismo patrón que las
+  // barras de fichaje. Ambos valores son colores CSS completos, así que sirven
+  // tanto tokens `rgb(var(--ct-…) / α)` como los hex de client-palette.
   const styled = tint
     ? {
         backgroundColor: tint.bg,
-        backgroundImage: `repeating-linear-gradient(45deg, ${tint.fg}66 0 3px, transparent 3px 8px)`,
+        backgroundImage: `repeating-linear-gradient(45deg, ${tint.stripe} 0 3px, transparent 3px 8px)`,
       }
     : null;
   return (
