@@ -582,6 +582,79 @@ export function workspaceOverview(tasks, now = Date.now()) {
   };
 }
 
+/**
+ * Sprints y proyectos temporales (campañas) EN CURSO, con su progreso.
+ * Un bloque por lista marcada `is_sprint` o `is_campaign` en el admin.
+ *
+ * Se considera EN CURSO si ya empezó (o no tiene inicio) y además no está
+ * terminado: sigue dentro de plazo, o se pasó de fecha pero le quedan tareas
+ * abiertas (retrasado). Los que aún no han empezado y los cerrados se caen.
+ *
+ * `pct` mide trabajo hecho (tareas completadas), no tiempo transcurrido:
+ * es lo que interesa para saber cómo va. `elapsedPct` sí es el tiempo, para
+ * poder contrastar «vas por el 30% con el 80% del plazo gastado».
+ */
+export function activeSprints(lists = [], tasks = [], now = Date.now()) {
+  const today = endOfToday(now);
+  const startToday = new Date(now).setHours(0, 0, 0, 0);
+  const out = [];
+
+  for (const l of lists) {
+    if (!l.visible || (!l.is_sprint && !l.is_campaign)) continue;
+    // Aún no ha arrancado → no es "activo".
+    if (l.list_start && l.list_start > today) continue;
+
+    const items = tasks.filter((t) => t.listId === l.list_id);
+    const total = items.length;
+    const open = items.filter(isOpen);
+    const done = total - open.length;
+    const overdue = open.filter((t) => t.dueDate && t.dueDate < startToday).length;
+
+    // Pasado de fecha y sin nada abierto → terminado, fuera.
+    const pastDue = Boolean(l.list_due && l.list_due < startToday);
+    if (pastDue && open.length === 0) continue;
+    // Sin fechas y sin tareas no aporta nada.
+    if (!l.list_start && !l.list_due && total === 0) continue;
+
+    // Días restantes contando DÍAS DE CALENDARIO (no horas sueltas): si vence
+    // mañana debe decir 1, no 2. Se compara el día del vencimiento con hoy.
+    const daysLeft = l.list_due
+      ? Math.round((new Date(l.list_due).setHours(0, 0, 0, 0) - startToday) / DAY)
+      : null;
+    // % de plazo consumido (solo si hay rango completo y con sentido).
+    let elapsedPct = null;
+    if (l.list_start && l.list_due && l.list_due > l.list_start) {
+      elapsedPct = Math.min(100, Math.max(0, ((now - l.list_start) / (l.list_due - l.list_start)) * 100));
+    }
+
+    out.push({
+      id: l.list_id,
+      name: l.list_name,
+      client: l.folder_name ?? null,
+      kind: l.is_sprint ? "sprint" : "campaign",
+      note: (l.list_content || "").trim() || null,
+      start: l.list_start ?? null,
+      due: l.list_due ?? null,
+      total,
+      done,
+      active: open.length,
+      overdue,
+      pct: total ? (done / total) * 100 : 0,
+      elapsedPct,
+      daysLeft,
+      pastDue,
+    });
+  }
+
+  // Los que acaban antes primero; los retrasados arriba del todo; sin fecha al final.
+  return out.sort(
+    (a, b) =>
+      (b.pastDue ? 1 : 0) - (a.pastDue ? 1 : 0) ||
+      (a.due ?? Infinity) - (b.due ?? Infinity) ||
+      a.name.localeCompare(b.name, "es")
+  );
+}
+
 // ── Mock (sin token) — fechas relativas a hoy para que la UI tenga vida ─────
 const now = Date.now();
 const MOCK_TASKS = [

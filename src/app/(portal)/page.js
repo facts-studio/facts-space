@@ -4,6 +4,7 @@ import FichajeReminder from "@/components/FichajeReminder";
 import AprobacionesReminder from "@/components/AprobacionesReminder";
 import DecisionReminder from "@/components/DecisionReminder";
 import HomePanels from "@/components/HomePanels";
+import SprintsActivos from "@/components/SprintsActivos";
 import { getCalendarEvents } from "@/lib/data/calendar";
 import { getPendingApprovals } from "@/lib/data/admin";
 import { getMyDecisions } from "@/lib/data/me";
@@ -11,7 +12,7 @@ import { getCurrentEmployee } from "@/lib/data/helpers";
 import { getMyNotes } from "@/lib/data/notes";
 import { getLastWorkedDate } from "@/lib/data/time";
 import { madridDateISO } from "@/lib/dates";
-import { getClickUpTasks, getConfiguredLists, weekTasks, teamWeekTasks } from "@/lib/data/clickup";
+import { getClickUpTasks, getConfiguredLists, weekTasks, teamWeekTasks, activeSprints } from "@/lib/data/clickup";
 
 export default async function HomePage() {
   const [events, me, tasks, notes, lists, approvals, decisions] = await Promise.all([
@@ -36,6 +37,8 @@ export default async function HomePage() {
   const sprintMeta = Object.fromEntries(
     lists.filter((l) => l.is_sprint).map((l) => [l.list_id, { note: (l.list_content || "").trim(), start: l.list_start, due: l.list_due }])
   );
+  // Sprints y proyectos temporales en curso (fechas + progreso) para Inicio.
+  const sprints = activeSprints(lists, tasks);
   // Estados por lista: alimentan el menú del punto de estado en las filas.
   const statusesByList = Object.fromEntries(lists.filter((l) => (l.statuses || []).length).map((l) => [l.list_id, l.statuses]));
 
@@ -65,6 +68,9 @@ export default async function HomePage() {
             </div>
           }
         />
+
+        {/* Sprints / proyectos temporales en curso, con plazo y progreso. */}
+        <SprintsActivos sprints={sprints} className="mt-10" />
 
         <HomePanels
           events={events}
