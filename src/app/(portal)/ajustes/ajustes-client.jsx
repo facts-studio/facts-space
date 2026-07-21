@@ -48,7 +48,7 @@ export default function AjustesClient({ me }) {
   const nombre = [me.name, me.last_name].filter(Boolean).join(" ");
 
   return (
-    <div className="grid gap-8 max-w-3xl">
+    <div className="grid gap-8">
       {/* ── Cuenta (solo lectura: lo gestiona administración) ── */}
       <section>
         <SectionHeader label="Cuenta" />
