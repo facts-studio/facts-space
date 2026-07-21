@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Surface, SectionHeader, Badge, ProgressBar, EmptyState } from "@/components/ui";
+import { Surface, Badge, ProgressBar, EmptyState } from "@/components/ui";
+import { cn } from "@/lib/cn";
 
 // Verde de "hecho" (token success), mismo tratamiento que las barras de fichaje.
 const PROGRESO_VERDE = {
@@ -41,7 +42,7 @@ function SprintCard({ s }) {
       variant="muted"
       pad="sm"
       hover
-      className="flex flex-col gap-2.5"
+      className="flex flex-col gap-2.5 !rounded-xl"
     >
       <p className="text-[14px] font-medium text-ink leading-snug truncate">{s.name}</p>
 
@@ -93,22 +94,21 @@ function SprintCard({ s }) {
  */
 export default function SprintsActivos({ sprints = [], className = "" }) {
   return (
-    <section className={className}>
-      <SectionHeader label="Sprints activos" />
+    // Radios concéntricos: el exterior = radio interior + separación. Las
+    // pastillas van a rounded-xl (16px) y el aire es 16px (p-4 / gap-4), así
+    // que el contenedor es rounded-4xl (32px). 16 + 16 = 32. Los `!` hacen
+    // falta porque `cn` no resuelve conflictos de Tailwind.
+    <Surface pad="none" className={cn("p-4 !rounded-4xl", className)}>
+      <p className="section-eyebrow mb-4">Sprints activos</p>
       {sprints.length === 0 ? (
         <EmptyState>No hay sprints ni proyectos temporales activos.</EmptyState>
       ) : (
-        // Radios concéntricos: el exterior = radio interior + separación.
-        // Las pastillas son rounded-2xl (20px) y el aire es 12px (p-3 / gap-3),
-        // así que el contenedor va a rounded-4xl (32px). 20 + 12 = 32.
-        <Surface pad="none" className="p-3 rounded-4xl">
-          <div className="grid gap-3 sm:grid-cols-2">
-            {sprints.map((s) => (
-              <SprintCard key={s.id} s={s} />
-            ))}
-          </div>
-        </Surface>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {sprints.map((s) => (
+            <SprintCard key={s.id} s={s} />
+          ))}
+        </div>
       )}
-    </section>
+    </Surface>
   );
 }
