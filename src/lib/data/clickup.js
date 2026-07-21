@@ -75,6 +75,35 @@ function resourcesFromField(t) {
   return files.length ? files : null;
 }
 
+// Enlaces escritos DENTRO de la descripción. En ClickUp mucha gente pega el
+// Figma/Drive en el texto en vez de en el campo "📁 Recursos", así que también
+// cuentan como recurso. Devuelve el mismo shape que `resourcesFromField`.
+function linksFromText(text) {
+  if (!text) return [];
+  const out = [];
+  const seen = new Set();
+  // Corta en el primer espacio o carácter de cierre; luego se limpia la
+  // puntuación final típica de escribir "…(mira esto: https://x.com/a)."
+  for (const m of text.matchAll(/https?:\/\/[^\s<>"'`]+/gi)) {
+    const url = m[0].replace(/[.,;:!?)\]}>]+$/, "");
+    if (seen.has(url)) continue;
+    seen.add(url);
+    let title = url;
+    try {
+      const u = new URL(url);
+      const host = u.hostname.replace(/^www\./, "");
+      // "figma.com/file/abc" es más útil que solo el dominio, pero sin la
+      // ristra de parámetros.
+      const path = u.pathname.replace(/\/$/, "");
+      title = path && path !== "/" ? `${host}${path.length > 28 ? `${path.slice(0, 28)}…` : path}` : host;
+    } catch {
+      // URL no parseable: se deja el texto tal cual.
+    }
+    out.push({ id: `link-${url}`, title, url, kind: "link", ext: "", mimetype: null, size: null, thumb: null });
+  }
+  return out;
+}
+
 // Cliente/campaña desde el TAG. Mapa tag → nombre bonito (coincide con las
 // claves de iconos/colores del admin). Devuelve null si no hay tag de cliente.
 const CLIENT_TAGS = {
@@ -107,6 +136,12 @@ export function isClickUpConfigured() {
 // Shape normalizado que consume el portal:
 // { id, name, url, status, statusColor, listName, dueDate(ms|null), assignees:[{email,name,initials,color}] }
 function mapTask(t) {
+  const description = (t.text_content || t.description || "").trim() || null;
+  // Recursos = adjuntos del campo "📁 Recursos" + enlaces pegados en el texto.
+  // Si un enlace ya está entre los adjuntos, no se repite.
+  const files = resourcesFromField(t) || [];
+  const urls = new Set(files.map((f) => f.url));
+  const resources = [...files, ...linksFromText(description).filter((l) => !urls.has(l.url))];
   return {
     id: t.id,
     name: t.name,
@@ -121,8 +156,8 @@ function mapTask(t) {
     priority: t.priority?.priority ?? null,
     // ClickUp marca los hitos (milestones) con custom_item_id === 1.
     isMilestone: t.custom_item_id === 1,
-    description: (t.text_content || t.description || "").trim() || null,
-    resources: resourcesFromField(t), // ficheros del campo "📁 Recursos"
+    description,
+    resources: resources.length ? resources : null, // adjuntos + enlaces del texto
     dueDate: t.due_date ? Number(t.due_date) : null,
     startDate: t.start_date ? Number(t.start_date) : null,
     dateDone: t.date_done ? Number(t.date_done) : null, // para "completadas" en Status
