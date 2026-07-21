@@ -67,15 +67,11 @@ export default function HomePanels({
         ) : (
           <>
             <LoMasCercano events={events} />
-            {/* Status va al grano: el estado del equipo. Los sprints son del
-                modo Inicio (vista personal). */}
+            <SprintsActivos sprints={sprints} className="mt-8" />
             {mode === "status" ? (
               <TareasEquipoSemana tasks={teamTasks} campaigns={campaigns} statusesByList={statusesByList} sprintMeta={sprintMeta} className="mt-8" />
             ) : (
-              <>
-                <SprintsActivos sprints={sprints} className="mt-8" />
-                <TareasHoy tasks={tasks} isAdmin={isAdmin} className="mt-8" />
-              </>
+              <TareasHoy tasks={tasks} isAdmin={isAdmin} className="mt-8" />
             )}
           </>
         )}
