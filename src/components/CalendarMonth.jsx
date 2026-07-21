@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { EVENT_TYPES, TEAM } from "@/lib/mock";
 import { workingDaysBetween } from "@/lib/dates";
 import { requestVacation } from "@/lib/actions/vacations";
@@ -158,6 +159,13 @@ export default function CalendarMonth({ events = [], tasks = [], canRequest = fa
     return new Date(base.getFullYear(), base.getMonth(), 1);
   });
   const [selected, setSelected] = useState(null);
+  // Tooltip de la vista anual: qué pasa ese día sin tener que abrir el mes.
+  const [dayTip, setDayTip] = useState(null); // {k, items, x, y}
+  const showDayTip = (ev, k, items) => {
+    if (!items?.length) return setDayTip(null);
+    const r = ev.currentTarget.getBoundingClientRect();
+    setDayTip({ k, items, x: r.left + r.width / 2, y: r.top });
+  };
   const [view, setView] = useState("mes"); // "mes" | "año"
   // Filtro por tipo de evento. Todos activos por defecto.
   const [active, setActive] = useState(() => new Set(Object.keys(EVENT_TYPES)));
@@ -528,6 +536,10 @@ export default function CalendarMonth({ events = [], tasks = [], canRequest = fa
                       <button
                         key={i}
                         onClick={() => { if (!inM) return; setCursor(new Date(year, mi, 1)); setSelected(k); setView("mes"); }}
+                        onMouseEnter={(ev) => showDayTip(ev, k, its)}
+                        onMouseLeave={() => setDayTip(null)}
+                        onFocus={(ev) => showDayTip(ev, k, its)}
+                        onBlur={() => setDayTip(null)}
                         className={`aspect-square rounded-md flex items-center justify-center text-[9.5px] leading-none transition ${
                           !inM ? "opacity-0 pointer-events-none"
                             : isT ? "bg-ink text-bg font-semibold"
@@ -545,6 +557,35 @@ export default function CalendarMonth({ events = [], tasks = [], canRequest = fa
           </div>
         )}
       </div>
+
+      {/* Qué pasa ese día, al pasar el ratón por la vista anual. */}
+      {dayTip && typeof document !== "undefined" && createPortal(
+        <div
+          className="pointer-events-none fixed z-[90] -translate-x-1/2 -translate-y-full"
+          style={{ left: dayTip.x, top: dayTip.y - 8 }}
+        >
+          <div className="min-w-[150px] max-w-[260px] rounded-xl bg-ink text-bg px-3 py-2 shadow-float">
+            <p className="text-[10.5px] uppercase tracking-[0.1em] opacity-60 mb-1 capitalize">{fmtSel(dayTip.k)}</p>
+            <ul className="flex flex-col gap-1">
+              {dayTip.items.slice(0, 5).map((e, i) => (
+                <li key={i} className="flex items-start gap-1.5 text-[12px] leading-snug">
+                  <span className="shrink-0">{ICON[e.type] || "•"}</span>
+                  <span className="min-w-0">
+                    {e.title}
+                    {/* La persona solo si no va ya en el título ("Vacaciones
+                        Mariola · Mariola" sobra). */}
+                    {e.who && !e.title?.includes(e.who) && <span className="opacity-60"> · {e.who}</span>}
+                  </span>
+                </li>
+              ))}
+              {dayTip.items.length > 5 && (
+                <li className="text-[11px] opacity-60">+{dayTip.items.length - 5} más</li>
+              )}
+            </ul>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* Panel del día seleccionado */}
       {selected && (
