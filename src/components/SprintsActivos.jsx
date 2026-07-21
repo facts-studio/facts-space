@@ -48,21 +48,24 @@ function SprintRow({ s }) {
         <span className="shrink-0 text-micro text-mutedSoft tabular-nums w-9 text-right">{pct}%</span>
       </div>
 
-      {/* Datos en tags: plazo primero, que es lo que se mira. */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        {p && <Badge kind={p.kind}>{p.text}</Badge>}
-        {fechas && <Badge kind="neutral">{fechas}</Badge>}
-        {s.total > 0 && (
-          <Badge kind="neutral">
-            {s.active} activa{s.active === 1 ? "" : "s"} de {s.total}
-          </Badge>
+      {/* Meta en una línea de texto: sin píldoras, solo el rojo como acento. */}
+      <p className="text-micro text-mutedSoft">
+        {[fechas, s.total > 0 ? `${s.active} activa${s.active === 1 ? "" : "s"} de ${s.total}` : null]
+          .filter(Boolean)
+          .join(" · ")}
+        {p && (
+          <>
+            {" · "}
+            <span className={p.kind === "danger" ? "text-danger" : undefined}>{p.text}</span>
+          </>
         )}
         {s.overdue > 0 && (
-          <Badge kind="danger">
+          <span className="text-danger">
+            {" · "}
             {s.overdue} vencida{s.overdue === 1 ? "" : "s"}
-          </Badge>
+          </span>
         )}
-      </div>
+      </p>
     </div>
   );
 }
