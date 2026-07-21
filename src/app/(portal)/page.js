@@ -69,9 +69,6 @@ export default async function HomePage() {
           }
         />
 
-        {/* Sprints / proyectos temporales en curso, con plazo y progreso. */}
-        <SprintsActivos sprints={sprints} className="mt-10" />
-
         <HomePanels
           events={events}
           tasks={mine}
@@ -83,6 +80,9 @@ export default async function HomePage() {
           initialNotes={notes}
           canUseNotes={Boolean(me)}
         />
+
+        {/* Sprints / proyectos temporales en curso, con plazo y progreso. */}
+        <SprintsActivos sprints={sprints} className="mt-10" />
       </div>
     </div>
   );
