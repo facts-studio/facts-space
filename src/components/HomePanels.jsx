@@ -66,8 +66,10 @@ export default function HomePanels({
           )
         ) : (
           <>
-            <LoMasCercano events={events} />
-            <SprintsActivos sprints={sprints} className="mt-8" />
+            {/* "Lo más cercano" es la agenda personal: en Status estorba, que
+                va del estado del equipo. */}
+            {mode !== "status" && <LoMasCercano events={events} />}
+            <SprintsActivos sprints={sprints} className={mode === "status" ? "" : "mt-8"} />
             {mode === "status" ? (
               <TareasEquipoSemana tasks={teamTasks} campaigns={campaigns} statusesByList={statusesByList} sprintMeta={sprintMeta} className="mt-8" />
             ) : (
