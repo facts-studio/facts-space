@@ -2,6 +2,7 @@
 
 // "Lo más cercano": agenda de próximos eventos agrupados por día. Reutilizable
 // en Inicio (TodayHero) y en la vista de Tareas (modo Status para admins).
+import { useState } from "react";
 import { EVENT_TYPES, TEAM } from "@/lib/mock";
 import { Surface } from "@/components/ui";
 
@@ -34,12 +35,34 @@ function spanText(e) {
 }
 const HAS_SPAN = new Set(["vacaciones", "ausencia"]);
 
+// Flecha de navegación por días.
+function Arrow({ dir, onClick, disabled }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={dir === "prev" ? "Días anteriores" : "Días siguientes"}
+      className="h-7 w-7 grid place-items-center rounded-lg text-mutedSoft hover:text-ink hover:bg-surface2/60 transition disabled:opacity-25 disabled:pointer-events-none"
+    >
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d={dir === "prev" ? "m15 18-6-6 6-6" : "m9 18 6-6-6-6"} />
+      </svg>
+    </button>
+  );
+}
+
+const VISIBLE_DAYS = 4;
+
 export default function LoMasCercano({ events = [], className = "" }) {
+  // Desplazamiento dentro de la agenda: 0 = hoy arriba del todo.
+  const [offset, setOffset] = useState(0);
   const hoy = startOfDay(new Date());
   const futuros = events
     .map((e) => ({ ...e, dias: diasHasta(e.start, hoy) }))
     .filter((e) => e.dias >= 0)
     .sort((a, b) => a.dias - b.dias);
+  // Sin nada próximo, el bloque no se pinta (igual que antes de la navegación).
   if (!futuros.length) return null;
 
   const todayISO = isoOf(hoy);
@@ -49,7 +72,11 @@ export default function LoMasCercano({ events = [], className = "" }) {
     byDate.get(e.start).push(e);
   }
   const nextDates = [...byDate.keys()].filter((d) => d > todayISO).sort();
-  const agenda = [todayISO, ...nextDates].slice(0, 4).map((iso) => {
+  const dates = [todayISO, ...nextDates];
+  // Si el desplazamiento se sale (p. ej. al llegar datos nuevos), se recorta.
+  const maxOffset = Math.max(0, dates.length - VISIBLE_DAYS);
+  const off = Math.min(offset, maxOffset);
+  const agenda = dates.slice(off, off + VISIBLE_DAYS).map((iso) => {
     const d = parse(iso);
     return {
       iso,
@@ -62,7 +89,23 @@ export default function LoMasCercano({ events = [], className = "" }) {
 
   return (
     <Surface variant="raised" pad="none" className={`rounded-[28px] p-6 md:p-8 ${className}`}>
-      <p className="section-eyebrow mb-1">Lo más cercano</p>
+      <div className="flex items-center justify-between gap-3 mb-1">
+        <p className="section-eyebrow">Lo más cercano</p>
+        <div className="flex items-center gap-1 shrink-0">
+          {/* "Hoy" solo cuando te has movido: devuelve al principio. */}
+          {off > 0 && (
+            <button
+              type="button"
+              onClick={() => setOffset(0)}
+              className="h-7 px-2.5 rounded-lg text-micro text-muted hover:text-ink hover:bg-surface2/60 transition"
+            >
+              Hoy
+            </button>
+          )}
+          <Arrow dir="prev" onClick={() => setOffset((o) => Math.max(0, Math.min(o, maxOffset) - 1))} disabled={off === 0} />
+          <Arrow dir="next" onClick={() => setOffset((o) => Math.min(maxOffset, Math.min(o, maxOffset) + 1))} disabled={off >= maxOffset} />
+        </div>
+      </div>
       <div className="divide-y divide-border/50">
         {agenda.map((day) => (
           <div key={day.iso} className="flex gap-4 py-4 first:pt-3 last:pb-1">
