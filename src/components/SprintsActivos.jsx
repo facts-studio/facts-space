@@ -10,13 +10,14 @@ function rango(s) {
   return null;
 }
 
-// Cuánto queda, en lenguaje natural. Es lo que de verdad se mira de un sprint.
+// Cuánto queda. `urge` marca lo que merece decirse aparte: si faltan semanas,
+// la fecha de fin ya lo dice y repetirlo solo añade ruido.
 function plazo(s) {
   if (s.daysLeft == null) return null;
-  if (s.daysLeft < 0) return { text: `${Math.abs(s.daysLeft)} d de retraso`, kind: "danger" };
-  if (s.daysLeft === 0) return { text: "acaba hoy", kind: "pending" };
-  if (s.daysLeft === 1) return { text: "queda 1 día", kind: "pending" };
-  return { text: `quedan ${s.daysLeft} días`, kind: s.daysLeft <= 3 ? "pending" : "neutral" };
+  if (s.daysLeft < 0) return { text: `${Math.abs(s.daysLeft)} d de retraso`, kind: "danger", urge: true };
+  if (s.daysLeft === 0) return { text: "acaba hoy", kind: "pending", urge: true };
+  if (s.daysLeft === 1) return { text: "queda 1 día", kind: "pending", urge: true };
+  return { text: `quedan ${s.daysLeft} días`, kind: "neutral", urge: s.daysLeft <= 3 };
 }
 
 function SprintRow({ s }) {
@@ -48,16 +49,17 @@ function SprintRow({ s }) {
         <span className="shrink-0 text-micro text-mutedSoft tabular-nums w-9 text-right">{pct}%</span>
       </div>
 
-      {/* Meta en una línea de texto: sin píldoras, solo el rojo como acento. */}
+      {/* Meta mínima: fechas + tareas activas. El plazo solo si aprieta o ya
+          se pasó (si no, es repetir la fecha de fin), y las vencidas en rojo. */}
       <p className="text-micro text-mutedSoft">
-        {[fechas, s.total > 0 ? `${s.active} activa${s.active === 1 ? "" : "s"} de ${s.total}` : null]
+        {[fechas, s.active > 0 ? `${s.active} activa${s.active === 1 ? "" : "s"}` : null]
           .filter(Boolean)
           .join(" · ")}
-        {p && (
-          <>
+        {p && p.urge && (
+          <span className={p.kind === "danger" ? "text-danger" : undefined}>
             {" · "}
-            <span className={p.kind === "danger" ? "text-danger" : undefined}>{p.text}</span>
-          </>
+            {p.text}
+          </span>
         )}
         {s.overdue > 0 && (
           <span className="text-danger">
