@@ -166,28 +166,44 @@ export default function Sidebar({ user, isAdmin = false, serverTheme = null, ini
       <div className="pt-6">
         {collapsed ? (
           <div className="flex flex-col items-center gap-3">
-            {avatar ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={avatar} alt="" title={name} className="w-8 h-8 rounded-full object-cover" />
-            ) : (
-              <div title={name} className="w-8 h-8 rounded-full bg-brandSoft text-brand grid place-items-center text-[13px]">
-                {name[0]?.toUpperCase()}
-              </div>
-            )}
+            {/* El avatar es el acceso a Ajustes (cuenta, contacto, tema). */}
+            <Link
+              href="/ajustes"
+              title={`${name} · Ajustes`}
+              aria-label="Ajustes"
+              className="rounded-full ring-offset-2 ring-offset-bg transition hover:ring-2 hover:ring-borderStrong"
+            >
+              {avatar ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatar} alt="" className="w-8 h-8 rounded-full object-cover" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-brandSoft text-brand grid place-items-center text-[13px]">
+                  {name[0]?.toUpperCase()}
+                </div>
+              )}
+            </Link>
             <ThemeToggle serverTheme={serverTheme} />
           </div>
         ) : (
           <div className="flex items-center gap-3 px-2">
-            {avatar ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={avatar} alt="" className="w-8 h-8 rounded-full object-cover" />
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-brandSoft text-brand grid place-items-center text-[13px]">
-                {name[0]?.toUpperCase()}
-              </div>
-            )}
+            <Link
+              href="/ajustes"
+              aria-label="Ajustes"
+              className="shrink-0 rounded-full ring-offset-2 ring-offset-bg transition hover:ring-2 hover:ring-borderStrong"
+            >
+              {avatar ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatar} alt="" className="w-8 h-8 rounded-full object-cover" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-brandSoft text-brand grid place-items-center text-[13px]">
+                  {name[0]?.toUpperCase()}
+                </div>
+              )}
+            </Link>
             <div className="min-w-0 flex-1">
-              <p className="text-small text-ink truncate">{name}</p>
+              <Link href="/ajustes" className="block text-small text-ink truncate hover:text-brand transition">
+                {name}
+              </Link>
               {process.env.NEXT_PUBLIC_AUTH_DISABLED === "true" ? (
                 <span className="text-micro text-mutedSoft">Modo preview</span>
               ) : (
