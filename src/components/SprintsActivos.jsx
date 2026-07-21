@@ -21,7 +21,7 @@ function plazo(s) {
   return { text: `quedan ${s.daysLeft} días`, kind: "neutral", urge: s.daysLeft <= 3 };
 }
 
-function SprintRow({ s }) {
+function SprintCard({ s }) {
   const p = plazo(s);
   const pct = Math.round(s.pct);
   const fechas = rango(s);
@@ -29,33 +29,11 @@ function SprintRow({ s }) {
   const tint = paletteColor(s.client || s.name, s.colorKey);
 
   return (
-    <div className="flex flex-col gap-2.5 py-4 first:pt-0 last:pb-0">
-      {/* Título + tareas, y la fecha en un tag al extremo derecho. El plazo solo
-          si aprieta o ya se pasó; si no, es repetir la fecha de fin. */}
-      <div className="flex items-baseline justify-between gap-3 flex-wrap">
-        <p className="text-[14px] text-ink leading-snug truncate min-w-0">
-          {s.client && <span className="text-mutedSoft">{s.client} · </span>}
-          <span className="font-medium">{s.name}</span>
-        </p>
-        <div className="shrink-0 flex items-center gap-2">
-          <span className="text-micro text-mutedSoft">
-            {s.active > 0 && `${s.active} activa${s.active === 1 ? "" : "s"}`}
-            {p && p.urge && (
-              <span className={p.kind === "danger" ? "text-danger" : undefined}>
-                {s.active > 0 && " · "}
-                {p.text}
-              </span>
-            )}
-            {s.overdue > 0 && (
-              <span className="text-danger">
-                {" · "}
-                {s.overdue} vencida{s.overdue === 1 ? "" : "s"}
-              </span>
-            )}
-          </span>
-          {fechas && <Badge kind="neutral">{fechas}</Badge>}
-        </div>
-      </div>
+    <Surface variant="muted" pad="sm" className="flex flex-col gap-2.5">
+      <p className="text-[14px] text-ink leading-snug truncate">
+        {s.client && <span className="text-mutedSoft">{s.client} · </span>}
+        <span className="font-medium">{s.name}</span>
+      </p>
 
       {/* Progreso: relleno con el color del cliente y rayas diagonales. */}
       <div className="flex items-center gap-3">
@@ -67,7 +45,30 @@ function SprintRow({ s }) {
         />
         <span className="shrink-0 text-micro text-mutedSoft tabular-nums w-9 text-right">{pct}%</span>
       </div>
-    </div>
+
+      {/* Tareas a la izquierda y la fecha en un tag a la derecha. El plazo solo
+          si aprieta o ya se pasó; si no, es repetir la fecha de fin. */}
+      {/* flex-wrap y sin truncate: en columna estrecha la meta baja de línea
+          antes que cortarse (se comía el "N vencidas"). */}
+      <div className="flex items-center justify-between gap-x-2 gap-y-1 flex-wrap">
+        <span className="text-micro text-mutedSoft">
+          {s.active > 0 && `${s.active} activa${s.active === 1 ? "" : "s"}`}
+          {p && p.urge && (
+            <span className={p.kind === "danger" ? "text-danger" : undefined}>
+              {s.active > 0 && " · "}
+              {p.text}
+            </span>
+          )}
+          {s.overdue > 0 && (
+            <span className="text-danger">
+              {" · "}
+              {s.overdue} vencida{s.overdue === 1 ? "" : "s"}
+            </span>
+          )}
+        </span>
+        {fechas && <Badge kind="neutral" className="shrink-0">{fechas}</Badge>}
+      </div>
+    </Surface>
   );
 }
 
@@ -79,14 +80,19 @@ function SprintRow({ s }) {
 export default function SprintsActivos({ sprints = [], className = "" }) {
   return (
     <section className={className}>
-      <SectionHeader label="En curso" />
+      <SectionHeader label="Sprints activos" />
       {sprints.length === 0 ? (
         <EmptyState>No hay sprints ni proyectos temporales activos.</EmptyState>
       ) : (
-        <Surface className="divide-y divide-border/50">
-          {sprints.map((s) => (
-            <SprintRow key={s.id} s={s} />
-          ))}
+        // Radios concéntricos: el exterior = radio interior + separación.
+        // Las pastillas son rounded-2xl (20px) y el aire es 12px (p-3 / gap-3),
+        // así que el contenedor va a rounded-4xl (32px). 20 + 12 = 32.
+        <Surface pad="none" className="p-3 rounded-4xl">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {sprints.map((s) => (
+              <SprintCard key={s.id} s={s} />
+            ))}
+          </div>
         </Surface>
       )}
     </section>

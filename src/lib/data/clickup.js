@@ -600,6 +600,13 @@ export function activeSprints(lists = [], tasks = [], now = Date.now()) {
   const startToday = new Date(now).setHours(0, 0, 0, 0);
   const out = [];
 
+  // El color se elige por CLIENTE (carpeta), y puede estar guardado en
+  // cualquiera de sus listas: hay que buscarlo en todas, no solo en la del
+  // sprint. Mismo criterio que el calendario y el área de tareas.
+  const colorsByClient = Object.fromEntries(
+    lists.filter((l) => l.color && l.folder_name).map((l) => [l.folder_name, l.color])
+  );
+
   for (const l of lists) {
     if (!l.visible || (!l.is_sprint && !l.is_campaign)) continue;
     // Aún no ha arrancado → no es "activo".
@@ -638,9 +645,9 @@ export function activeSprints(lists = [], tasks = [], now = Date.now()) {
       name: l.list_name,
       client: l.folder_name ?? null,
       kind: l.is_sprint ? "sprint" : "campaign",
-      // Color elegido en admin para el cliente; si no hay, la UI lo deriva del
-      // nombre (mismo criterio que el avatar de cliente y el calendario).
-      colorKey: l.color ?? null,
+      // Color elegido en admin para el cliente (buscado en todas sus listas, no
+      // solo en ésta); si no hay, la UI lo deriva del nombre.
+      colorKey: (l.folder_name && colorsByClient[l.folder_name]) || l.color || null,
       note: (l.list_content || "").trim() || null,
       start: l.list_start ?? null,
       due: l.list_due ?? null,
