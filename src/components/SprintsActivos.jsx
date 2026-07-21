@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Surface, SectionHeader, Badge, ProgressBar, EmptyState } from "@/components/ui";
 
 // Verde de "hecho" (token success), mismo tratamiento que las barras de fichaje.
@@ -32,7 +33,16 @@ function SprintCard({ s }) {
   const fechas = rango(s);
 
   return (
-    <Surface variant="muted" pad="sm" className="flex flex-col gap-2.5">
+    // Lleva a Tareas ya filtrado por este sprint (?sprint=… lo resuelve
+    // tareas-client contra las tareas para componer su clave interna).
+    <Surface
+      as={Link}
+      href={`/tareas?sprint=${encodeURIComponent(s.name)}`}
+      variant="muted"
+      pad="sm"
+      hover
+      className="flex flex-col gap-2.5"
+    >
       <p className="text-[14px] font-medium text-ink leading-snug truncate">{s.name}</p>
 
       {/* Progreso: verde de "hecho" (token success) con rayas diagonales,

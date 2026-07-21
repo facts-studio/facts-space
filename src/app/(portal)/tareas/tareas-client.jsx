@@ -395,12 +395,22 @@ function Section({ label, count, campaign, children }) {
 
 export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin = false, visibleCount, campaigns = [], statusesByList = {}, iconsByClient = {}, colorsByClient = {}, sprintNotes = {} }) {
   const [q, setQ] = useState("");
-  const [clientSet, setClientSet] = useState(() => new Set()); // multi-selección de clientes/campañas
+  // Deep-links: ?task=id abre una tarea; ?scope=mine arranca en "Mis tareas";
+  // ?sprint=nombre llega desde el bloque "Sprints activos" de Inicio.
+  const searchParams = useSearchParams();
+  // El sprint del deep-link se resuelve contra las tareas: se busca su cliente
+  // para componer la clave interna «✦cliente::sprint». Si el mismo nombre de
+  // sprint existe en varios clientes, se seleccionan todos.
+  const [clientSet, setClientSet] = useState(() => {
+    const sp = searchParams.get("sprint");
+    if (!sp) return new Set();
+    const keys = new Set();
+    for (const t of tasks) if (t.sprint === sp && t.project) keys.add(sprintKey(t.project, t.sprint));
+    return keys;
+  }); // multi-selección de clientes/campañas
   const [hoverCtx, setHoverCtx] = useState(null); // tooltip por portal {name,count,x,y}
   const [area, setArea] = useState(""); // "" = todas las disciplinas
   const [showClosed, setShowClosed] = useState(false); // false = solo abiertas
-  // Deep-links desde Inicio: ?task=id abre una tarea; ?scope=mine arranca en "Mis tareas".
-  const searchParams = useSearchParams();
   const [scope, setScope] = useState(() => (searchParams.get("scope") === "mine" ? "mine" : "all")); // all | mine
   // "Mía" = asignada a mí, o de Team (que es de todos).
   const isMine = (t) => t.everyone || (myEmail && t.assignees.some((a) => a.email === myEmail));

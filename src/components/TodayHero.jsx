@@ -217,10 +217,13 @@ export default function TodayHero({ nombre = "equipo", events = [], avisos = nul
   // más urge. Si TODO lo pendiente está vencido, no tiene sentido decir "esta
   // semana": se habla solo de las vencidas.
   const vencidas = (n) => <><Warn>{n}</Warn> {n === 1 ? "vencida" : "vencidas"}</>;
+  // Si la frase va SOLA hace falta el sustantivo ("Tienes 1 tarea vencida"),
+  // mientras que detrás de "N tareas activas" ya se sobreentiende.
+  const vencidasSolas = (n) => <><Warn>{n}</Warn> {n === 1 ? "tarea vencida" : "tareas vencidas"}</>;
   const tareasFrase = taskCount === 0
     ? null
     : overdueCount === taskCount
-      ? <>Tienes {vencidas(overdueCount)}.</>
+      ? <>Tienes {vencidasSolas(overdueCount)}.</>
       : (
         <>
           Tienes <Hi>{taskCount}</Hi> {taskCount === 1 ? "tarea activa" : "tareas activas"} esta semana
