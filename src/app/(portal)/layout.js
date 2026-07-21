@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentEmployee } from "@/lib/data/helpers";
 import Sidebar from "@/components/Sidebar";
 import MobileNav from "@/components/MobileNav";
+import ContentWidth from "@/components/ContentWidth";
 
 const PREVIEW = process.env.NEXT_PUBLIC_AUTH_DISABLED === "true";
 const PREVIEW_USER = {
@@ -34,7 +35,7 @@ export default async function PortalLayout({ children }) {
       {/* Aire para la barra inferior en móvil (56px + safe-area); en desktop, el
           padding normal. La cabecera respeta el notch con pt-safe. */}
       <main className="flex-1 min-w-0 px-5 md:px-10 pt-safe md:pt-10 pb-[calc(58px+env(safe-area-inset-bottom)+1.75rem)] md:pb-10">
-        <div className="fade-up mx-auto w-full max-w-[1440px] pt-8 md:pt-0">{children}</div>
+        <ContentWidth>{children}</ContentWidth>
       </main>
 
       <MobileNav isAdmin={Boolean(emp?.is_admin)} serverTheme={emp?.theme ?? null} />

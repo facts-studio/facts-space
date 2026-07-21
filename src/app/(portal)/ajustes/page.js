@@ -7,7 +7,7 @@ export default async function AjustesPage() {
 
   if (!me) {
     return (
-      <div className="mx-auto w-full max-w-4xl">
+      <div>
         <PageHeader eyebrow="Cuenta" title="Ajustes" helper="Tus datos de contacto y preferencias." />
         <div className="rounded-2xl bg-surface/55 p-6 text-small text-muted">
           Tu cuenta no está dada de alta como empleado. Pide a administración que te añada.
@@ -38,7 +38,7 @@ export default async function AjustesPage() {
 
   return (
     // Mismo ancho y centrado que Inicio.
-    <div className="mx-auto w-full max-w-4xl">
+    <div>
       <PageHeader eyebrow="Cuenta" title="Ajustes" helper="Tus datos de contacto y preferencias." />
       <AjustesClient me={perfil} />
     </div>

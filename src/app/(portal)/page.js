@@ -49,7 +49,7 @@ export default async function HomePage() {
   return (
     // pb-[40vh]: aire al final para que el contenido no quede pegado abajo (y
     // haya algo de scroll aunque la columna sea corta).
-    <div className="grid gap-8 lg:gap-12 items-start max-w-4xl mx-auto pb-[40vh]">
+    <div className="grid gap-8 lg:gap-12 items-start pb-[40vh]">
       <BirthdayConfetti />
       {/* Columna principal */}
       <div className="min-w-0">
