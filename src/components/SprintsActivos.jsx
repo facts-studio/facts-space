@@ -1,4 +1,4 @@
-import { SectionHeader, ProgressBar, EmptyState } from "@/components/ui";
+import { Surface, SectionHeader, Badge, ProgressBar, EmptyState } from "@/components/ui";
 
 // "8 sep" — mismo formato corto que usa el modo Status.
 const dm = (ts) => new Date(ts).toLocaleDateString("es-ES", { day: "numeric", month: "short" }).replace(".", "");
@@ -13,47 +13,57 @@ function rango(s) {
 // Cuánto queda, en lenguaje natural. Es lo que de verdad se mira de un sprint.
 function plazo(s) {
   if (s.daysLeft == null) return null;
-  if (s.daysLeft < 0) return { text: `${Math.abs(s.daysLeft)} d de retraso`, late: true };
-  if (s.daysLeft === 0) return { text: "acaba hoy", late: false };
-  if (s.daysLeft === 1) return { text: "queda 1 día", late: false };
-  return { text: `quedan ${s.daysLeft} días`, late: false };
+  if (s.daysLeft < 0) return { text: `${Math.abs(s.daysLeft)} d de retraso`, kind: "danger" };
+  if (s.daysLeft === 0) return { text: "acaba hoy", kind: "pending" };
+  if (s.daysLeft === 1) return { text: "queda 1 día", kind: "pending" };
+  return { text: `quedan ${s.daysLeft} días`, kind: s.daysLeft <= 3 ? "pending" : "neutral" };
 }
 
-function SprintRow({ s }) {
+function SprintCard({ s }) {
   const p = plazo(s);
   const pct = Math.round(s.pct);
-  // Meta en una sola línea de texto menor: fechas · tareas · plazo.
-  const meta = [rango(s), s.total > 0 ? `${s.active} activa${s.active === 1 ? "" : "s"} de ${s.total}` : null]
-    .filter(Boolean)
-    .join(" · ");
+  const fechas = rango(s);
 
   return (
-    <div className="py-3.5 first:pt-0 last:pb-0">
-      <div className="flex items-baseline justify-between gap-3">
+    <Surface variant="muted" pad="sm" className="flex flex-col gap-3">
+      {/* Título + tipo */}
+      <div className="flex items-start justify-between gap-3">
         <p className="text-[14px] text-ink leading-snug truncate">
           {s.client && <span className="text-mutedSoft">{s.client} · </span>}
           <span className="font-medium">{s.name}</span>
         </p>
-        <span className="shrink-0 text-micro text-mutedSoft tabular-nums">{pct}%</span>
+        <Badge kind={s.kind === "sprint" ? "info" : "neutral"} className="shrink-0">
+          {s.kind === "sprint" ? "✦ Sprint" : "Temporal"}
+        </Badge>
       </div>
 
-      <ProgressBar
-        value={pct}
-        tone={s.pastDue ? "danger" : "ink"}
-        className="mt-2"
-        label={`Progreso de ${s.name}: ${pct}%`}
-      />
+      {/* Progreso */}
+      <div className="flex items-center gap-3">
+        <ProgressBar
+          value={pct}
+          tone={s.pastDue ? "danger" : "ink"}
+          className="flex-1"
+          label={`Progreso de ${s.name}: ${pct}%`}
+        />
+        <span className="shrink-0 text-micro text-mutedSoft tabular-nums w-9 text-right">{pct}%</span>
+      </div>
 
-      <p className="mt-1.5 text-micro text-mutedSoft">
-        {meta}
-        {p && (
-          <>
-            {meta && " · "}
-            <span className={p.late ? "text-danger" : undefined}>{p.text}</span>
-          </>
+      {/* Datos en tags: plazo primero, que es lo que se mira. */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        {p && <Badge kind={p.kind}>{p.text}</Badge>}
+        {fechas && <Badge kind="neutral">{fechas}</Badge>}
+        {s.total > 0 && (
+          <Badge kind="neutral">
+            {s.active} activa{s.active === 1 ? "" : "s"} de {s.total}
+          </Badge>
         )}
-      </p>
-    </div>
+        {s.overdue > 0 && (
+          <Badge kind="danger">
+            {s.overdue} vencida{s.overdue === 1 ? "" : "s"}
+          </Badge>
+        )}
+      </div>
+    </Surface>
   );
 }
 
@@ -69,9 +79,9 @@ export default function SprintsActivos({ sprints = [], className = "" }) {
       {sprints.length === 0 ? (
         <EmptyState>No hay sprints ni proyectos temporales activos.</EmptyState>
       ) : (
-        <div className="divide-y divide-border/50">
+        <div className="flex flex-col gap-3">
           {sprints.map((s) => (
-            <SprintRow key={s.id} s={s} />
+            <SprintCard key={s.id} s={s} />
           ))}
         </div>
       )}
