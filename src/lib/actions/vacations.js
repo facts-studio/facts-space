@@ -67,6 +67,11 @@ export async function requestVacation({ startDate, endDate, note = "", type = "v
   // Sin responsable (manager) → se aprueba automáticamente, no hay quien decida.
   const autoApprove = !me.manager_id;
 
+  // El alta va SIEMPRE como "pending": la política RLS `vacation_insert` solo
+  // admite ese estado. Si no hay responsable, se aprueba justo después con un
+  // update (que sí permite al dueño cambiar su solicitud). Insertar
+  // directamente como "approved" reventaba con "violates row-level security"
+  // a quien no tiene manager (los admins).
   const { data: inserted, error } = await supabase.from("vacation_requests").insert({
     employee_id: me.id,
     start_date: startDate,
@@ -74,10 +79,17 @@ export async function requestVacation({ startDate, endDate, note = "", type = "v
     working_days: wd,
     note: note.trim(),
     type,
-    status: autoApprove ? "approved" : "pending",
-    ...(autoApprove ? { decided_by: me.id, decided_at: new Date().toISOString() } : {}),
+    status: "pending",
   }).select("id").single();
   if (error) return { ok: false, error: error.message };
+
+  if (autoApprove) {
+    const { error: appErr } = await supabase
+      .from("vacation_requests")
+      .update({ status: "approved", decided_by: me.id, decided_at: new Date().toISOString() })
+      .eq("id", inserted.id);
+    if (appErr) return { ok: false, error: appErr.message };
+  }
 
   // Espejo en ClickUp (Agenda › Vacaciones). Best-effort.
   const title = `${ABS_TITLE[type] ?? "Ausencia"} ${me.name}`.trim();
