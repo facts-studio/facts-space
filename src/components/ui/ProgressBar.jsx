@@ -33,7 +33,7 @@ export default function ProgressBar({
   const styled = tint
     ? {
         backgroundColor: tint.bg,
-        backgroundImage: `repeating-linear-gradient(45deg, ${tint.fg}66 0 1.5px, transparent 1.5px 7px)`,
+        backgroundImage: `repeating-linear-gradient(45deg, ${tint.fg}66 0 3px, transparent 3px 8px)`,
       }
     : null;
   return (
