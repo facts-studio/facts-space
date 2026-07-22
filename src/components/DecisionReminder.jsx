@@ -5,6 +5,7 @@ import { Surface } from "@/components/ui";
 import NavIcon from "@/components/NavIcon";
 import { absenceLabel } from "@/lib/absences";
 import { markDecisionsSeen } from "@/lib/actions/vacations";
+import Confetti from "@/components/Confetti";
 
 // "2 jul" / "2–6 jul" / "28 jun – 3 jul"
 const d = (iso) => new Date(iso + "T00:00:00");
@@ -28,12 +29,17 @@ export default function DecisionReminder({ decisions = [] }) {
   const visible = decisions.filter((x) => !hidden.has(x.id));
   if (!visible.length) return null;
 
+  // Al abrir la app con una ausencia recién aprobada, se celebra. Solo con las
+  // aprobadas (una rechazada con confeti sería de mal gusto) y solo mientras el
+  // aviso siga ahí: al descartarlo ya no vuelve.
+  const celebrar = visible.some((x) => x.status === "approved");
+
   const dismiss = (id) => {
     setHidden((s) => new Set(s).add(id)); // optimista
     start(async () => { await markDecisionsSeen([id]); });
   };
 
-  return visible.map((x) => {
+  const avisos = visible.map((x) => {
     const ok = x.status === "approved";
     const nota = x.decision_note?.trim();
     return (
@@ -60,4 +66,11 @@ export default function DecisionReminder({ decisions = [] }) {
       </Surface>
     );
   });
+
+  return (
+    <>
+      {celebrar && <Confetti />}
+      {avisos}
+    </>
+  );
 }
