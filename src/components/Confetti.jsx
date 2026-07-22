@@ -43,19 +43,33 @@ export default function Confetti() {
       if (cancelled || !ref.current) return;
 
       fire = confetti.create(ref.current, { resize: true });
-      const base = { colors: COLORS, disableForReducedMotion: true, scalar: 0.95, ticks: 260, zIndex: 60 };
+      const base = {
+        colors: COLORS,
+        disableForReducedMotion: true,
+        scalar: 0.95,
+        zIndex: 60,
+        // angle 270 = hacia abajo. Velocidad baja y gravedad suave para que
+        // planee en vez de caer a plomo.
+        angle: 270,
+        startVelocity: 22,
+        decay: 0.945,
+        gravity: 0.85,
+        ticks: 340,
+      };
       const shoot = (opts) => { if (!cancelled && fire) fire({ ...base, ...opts }); };
 
-      // Cañones laterales a la vez…
-      shoot({ particleCount: 55, angle: 60, spread: 55, startVelocity: 58, origin: { x: 0, y: 1 } });
-      shoot({ particleCount: 55, angle: 120, spread: 55, startVelocity: 58, origin: { x: 1, y: 1 } });
-      // …y un golpe central algo después, para que no sea un único "pop".
-      timers.push(setTimeout(() => shoot({ particleCount: 45, spread: 100, startVelocity: 45, decay: 0.92, origin: { x: 0.5, y: 1 } }), 280));
-      // Remate corto y bajo: da sensación de rebote final.
-      timers.push(setTimeout(() => {
-        shoot({ particleCount: 22, angle: 75, spread: 70, startVelocity: 40, origin: { x: 0.15, y: 1 } });
-        shoot({ particleCount: 22, angle: 105, spread: 70, startVelocity: 40, origin: { x: 0.85, y: 1 } });
-      }, 700));
+      // Lluvia desde arriba: ráfagas escalonadas a lo ancho, con deriva lateral
+      // distinta en cada una, para que parezca que sigue cayendo y no un único
+      // vaciado de golpe. y: -0.1 → nacen fuera de la ventana.
+      const rafaga = (x, delay, particleCount, drift) =>
+        timers.push(setTimeout(() => shoot({ particleCount, spread: 75, drift, origin: { x, y: -0.1 } }), delay));
+
+      rafaga(0.2, 0, 26, -0.5);
+      rafaga(0.8, 60, 26, 0.5);
+      rafaga(0.5, 220, 30, 0);
+      rafaga(0.35, 480, 22, 0.6);
+      rafaga(0.68, 620, 22, -0.6);
+      rafaga(0.5, 950, 26, 0.2);
     })();
 
     return () => {
