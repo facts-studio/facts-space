@@ -16,6 +16,9 @@ const PATHS = {
   user: <><circle cx="12" cy="8" r="3.6" /><path d="M5 20a7 7 0 0 1 14 0" /></>,
   note: <><rect x="4.5" y="3.5" width="15" height="17" rx="2.2" /><path d="M8.5 9h7M8.5 12.5h7M8.5 16h4.5" /></>,
   eye: <><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" /><circle cx="12" cy="12" r="3" /></>,
+  // Resolución de una solicitud (avisos de Inicio).
+  checkCircle: <><circle cx="12" cy="12" r="9" /><path d="m8.5 12.2 2.4 2.4 4.6-4.9" /></>,
+  xCircle: <><circle cx="12" cy="12" r="9" /><path d="m9.2 9.2 5.6 5.6M14.8 9.2l-5.6 5.6" /></>,
 };
 
 export default function NavIcon({ name, className = "w-[18px] h-[18px]" }) {

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Surface } from "@/components/ui";
+import NavIcon from "@/components/NavIcon";
 import { absenceLabel } from "@/lib/absences";
 
 // Aviso para el responsable (o admin) cuando alguien de su equipo tiene una
@@ -18,7 +19,7 @@ export default function AprobacionesReminder({ requests = [] }) {
   return (
     <Surface variant="raised" pad="none" className="rounded-2xl px-4 py-3">
       <div className="flex items-center gap-3">
-        <span className="text-[14px] leading-none opacity-70">🌴</span>
+        <span className="shrink-0 text-mutedSoft"><NavIcon name="users" className="h-[18px] w-[18px]" /></span>
         <span className="text-small text-ink">{texto}</span>
         <Link
           href="/admin"

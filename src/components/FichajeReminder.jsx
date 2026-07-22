@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Surface } from "@/components/ui";
+import NavIcon from "@/components/NavIcon";
 
 // Aviso cuando el empleado lleva más de 7 días sin fichar. `days` es el número
 // de días desde el último fichaje (o null si nunca ha fichado).
@@ -14,7 +15,7 @@ export default function FichajeReminder({ days }) {
   return (
     <Surface variant="raised" pad="none" className="rounded-2xl px-4 py-3">
       <div className="flex items-center gap-3">
-        <span className="text-[14px] leading-none opacity-70">⏱️</span>
+        <span className="shrink-0 text-mutedSoft"><NavIcon name="clock" className="h-[18px] w-[18px]" /></span>
         <span className="text-small text-ink">{texto}</span>
         <Link
           href="/fichaje"

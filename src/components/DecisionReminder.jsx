@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Surface } from "@/components/ui";
+import NavIcon from "@/components/NavIcon";
 import { absenceLabel } from "@/lib/absences";
 import { markDecisionsSeen } from "@/lib/actions/vacations";
 
@@ -38,7 +39,9 @@ export default function DecisionReminder({ decisions = [] }) {
     return (
       <Surface key={x.id} variant="raised" pad="none" className="rounded-2xl px-4 py-3">
         <div className="flex items-center gap-3">
-          <span className="text-[14px] leading-none opacity-70">{ok ? "✅" : "❌"}</span>
+          <span className={`shrink-0 ${ok ? "text-success" : "text-danger"}`}>
+            <NavIcon name={ok ? "checkCircle" : "xCircle"} className="h-[18px] w-[18px]" />
+          </span>
           <div className="min-w-0 flex-1">
             <p className="text-small text-ink">
               Tu solicitud de {absenceLabel(x.type).toLowerCase()} ({range(x.start_date, x.end_date)}){" "}
