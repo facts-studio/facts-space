@@ -11,10 +11,11 @@ const ASTERISCO =
 // dejar que shapeFromPath la calcule cuesta rendimiento en cada arranque.
 const ASTERISCO_MATRIX = [0.10932926306928527, 0, 0, 0.10932926306928527, -16.594438747895005, -5.173175362208653];
 
-// Gama de la marca: negros, taupes y cremas. Al mezclar los dos extremos se lee
-// igual en claro y en oscuro (los oscuros destacan sobre el crema y al revés).
-// El mostaza es el único acento, para que no sea del todo monocromo.
-const COLORS = ["#1F1F1E", "#3F3F3C", "#5A5852", "#8A8578", "#C9C3B6", "#E9E7E1", "#B07A1F"];
+// Versión viva de los acentos que ya usa el portal (terracota, mostaza, azul,
+// verde, morado) subidos de saturación, más un rosa para animar. Son tonos
+// medios: se leen igual sobre el crema y sobre el fondo oscuro. Se cuela un
+// negro de marca para anclar la mezcla y que no parezca un chicle.
+const COLORS = ["#E0533F", "#F0A92B", "#3E86C7", "#4E9C48", "#9B5FC0", "#E4487E", "#1F1F1E"];
 
 /**
  * Celebración a pantalla completa (canvas-confetti, MIT): asteriscos de la
