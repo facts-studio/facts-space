@@ -270,44 +270,6 @@ html, body {
 }
 
 /* Confeti de cumpleaños */
-/* Confeti. Dos capas: el contenedor cae y se balancea (--drift), y el papel de
-   dentro gira en 3D a su propio ritmo. Separarlo es lo que da la sensación de
-   papel de verdad en vez de un bloque que baja recto. */
-@keyframes confettiFall {
-  0%   { transform: translate3d(0, -12vh, 0); opacity: 0; }
-  6%   { opacity: 1; }
-  25%  { transform: translate3d(calc(var(--drift, 0px) * 0.4), 16vh, 0); }
-  50%  { transform: translate3d(calc(var(--drift, 0px) * -0.25), 44vh, 0); }
-  75%  { transform: translate3d(calc(var(--drift, 0px) * 0.8), 72vh, 0); }
-  88%  { opacity: 1; }
-  100% { transform: translate3d(var(--drift, 0px), 106vh, 0); opacity: 0; }
-}
-/* Vuelta completa en los tres ejes: al ponerse de canto casi desaparece, que es
-   justo lo que hace un papelito al caer. */
-@keyframes confettiSpin {
-  0%   { transform: rotate3d(1, 1, 0.3, 0deg); }
-  100% { transform: rotate3d(1, 1, 0.3, 1080deg); }
-}
-.confetti-piece {
-  position: absolute;
-  top: -5%;
-  will-change: transform, opacity;
-  animation-name: confettiFall;
-  /* Sin rebote al final: cae y se va. */
-  animation-timing-function: cubic-bezier(0.35, 0.15, 0.55, 1);
-  animation-fill-mode: forwards;
-}
-.confetti-piece > i {
-  display: block;
-  width: 100%;
-  height: 100%;
-  border-radius: 1px;
-  animation-name: confettiSpin;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
-}
-.confetti-piece.is-round > i { border-radius: 999px; }
-@media (prefers-reduced-motion: reduce) { .confetti-piece { display: none; } }
 
 /* Scrollbar custom (ink de marca, crema en oscuro) */
 * { scrollbar-width: thin; scrollbar-color: rgb(var(--ct-ink)) transparent; }
