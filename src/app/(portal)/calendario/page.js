@@ -18,6 +18,10 @@ function toEvent(t, colorsByClient) {
     start,
     end,
     who: t.assignees?.[0]?.name || null,
+    // Todos los asignados nominales (para detectar conflictos con ausencias).
+    // Las tareas de "Team" (everyone) se excluyen: son de toda la plantilla y
+    // marcarían conflicto en cuanto alguien se fuese de vacaciones.
+    whoAll: t.everyone ? [] : (t.assignees || []).map((a) => a.name).filter(Boolean),
     client: t.project || null,
     tint: paletteColor(t.project || "Sin cliente", colorsByClient[t.project]),
   };

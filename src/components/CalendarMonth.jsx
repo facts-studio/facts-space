@@ -211,6 +211,42 @@ export default function CalendarMonth({ events = [], tasks = [], canRequest = fa
     return m;
   }, [allEvents]);
 
+  // Conflictos (solo con el switch de tareas): día en el que alguien que tiene
+  // una tarea activa está de vacaciones o ausente. Devuelve iso → Set(nombres).
+  // Se calcula sobre los datos crudos (no los filtros de tipo/persona): el
+  // conflicto es un hecho del día, no depende de lo que estés mirando.
+  const conflicts = useMemo(() => {
+    if (!showTasks) return new Map();
+    const eachDay = (e, fn) => {
+      const d = new Date(e.start + "T00:00:00");
+      const end = new Date(e.end + "T00:00:00");
+      let guard = 0;
+      while (d <= end && guard < 370) { fn(iso(d)); d.setDate(d.getDate() + 1); guard++; }
+    };
+    // Quién está fuera cada día (vacaciones/ausencia aprobadas, no las pendientes).
+    const off = new Map(); // iso → Set(nombre)
+    for (const e of events) {
+      if ((e.type !== "vacaciones" && e.type !== "ausencia") || e.pending || !e.who) continue;
+      eachDay(e, (k) => { if (!off.has(k)) off.set(k, new Set()); off.get(k).add(e.who); });
+    }
+    if (!off.size) return new Map();
+    // Cruce con las tareas: cada asignado que además está fuera ese día.
+    const out = new Map(); // iso → Set(nombre)
+    for (const t of tasks) {
+      const quien = t.whoAll?.length ? t.whoAll : (t.who ? [t.who] : []);
+      if (!quien.length) continue;
+      eachDay(t, (k) => {
+        const fuera = off.get(k);
+        if (!fuera) return;
+        for (const name of quien) if (fuera.has(name)) {
+          if (!out.has(k)) out.set(k, new Set());
+          out.get(k).add(name);
+        }
+      });
+    }
+    return out;
+  }, [showTasks, events, tasks]);
+
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
   const startOffset = (new Date(year, month, 1).getDay() + 6) % 7;
@@ -417,6 +453,7 @@ export default function CalendarMonth({ events = [], tasks = [], canRequest = fa
                   const isSel = selected === k;
                   const items = (byDay.get(k) || EMPTY).filter(pass);
                   const hasFestivo = items.some((e) => e.type === "festivo");
+                  const conflict = conflicts.get(k); // Set(nombres) o undefined
                   const inReq = reqMode && reqStart && k >= reqStart && k <= reqEndEff;
                   const isReqEdge = reqMode && (k === reqStart || k === reqEndEff);
                   const overflow = items.filter((e) => e.type !== "festivo").length - cover[di];
@@ -424,6 +461,7 @@ export default function CalendarMonth({ events = [], tasks = [], canRequest = fa
                     <div
                       key={di}
                       onClick={() => onDayClick(k)}
+                      title={conflict ? `Conflicto: ${[...conflict].join(", ")} con tarea y fuera este día` : undefined}
                       className={`rounded-xl border p-1.5 flex flex-col cursor-pointer transition ${
                         isReqEdge
                           ? "border-ink bg-ink/[0.10] ring-2 ring-ink/30"
@@ -431,16 +469,22 @@ export default function CalendarMonth({ events = [], tasks = [], canRequest = fa
                             ? "border-ink/30 bg-ink/[0.05]"
                             : isSel
                               ? "border-ink/45 bg-surface2/40"
-                              : hasFestivo
-                                ? "border-success/20 bg-successSoft/45 hover:border-success/35"
-                                : "border-borderStrong/45 hover:border-borderStrong/70"
+                              // Conflicto (solo con tareas activas): rojo, por encima del festivo.
+                              : conflict
+                                ? "border-danger/40 bg-dangerSoft/50 hover:border-danger/60"
+                                : hasFestivo
+                                  ? "border-success/20 bg-successSoft/45 hover:border-success/35"
+                                  : "border-borderStrong/45 hover:border-borderStrong/70"
                       } ${!inMonth ? "opacity-45" : ""}`}
                     >
                       <div className="flex items-center justify-between px-0.5">
                         <span className={`text-[12px] tabular-nums leading-none inline-flex items-center justify-center ${
                           isToday ? "h-5 w-5 rounded-full bg-ink text-bg font-bold" : inMonth ? "text-ink" : "text-mutedSoft"
                         }`}>{d.getDate()}</span>
-                        {items.length > 0 && <span className="text-[9.5px] text-mutedSoft tabular-nums">{items.length}</span>}
+                        <span className="inline-flex items-center gap-1">
+                          {conflict && <span className="h-1.5 w-1.5 rounded-full bg-danger" aria-label="Conflicto" />}
+                          {items.length > 0 && <span className="text-[9.5px] text-mutedSoft tabular-nums">{items.length}</span>}
+                        </span>
                       </div>
                       {overflow > 0 && (
                         <button
