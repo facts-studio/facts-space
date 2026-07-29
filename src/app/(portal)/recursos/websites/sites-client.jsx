@@ -122,13 +122,157 @@ function InfoChip({ label, value }) {
 
 const scoreTone = (pct) => (pct >= 80 ? "success" : pct >= 45 ? "warn" : "danger");
 
-// Contenedor de grupo: cabecera (título + fracción + mini-barra) y su contenido.
-function MetaGroup({ title, passed, total, children }) {
+// ── Prompts de arreglo por grupo ─────────────────────────────────────────────
+// Uno común por problema (igual para todas las webs): pega el prompt en el
+// proyecto de la web y Claude audita, completa lo que falta (pidiendo lo que no
+// pueda inferir) y explica cómo testearlo. Escritos como brief de especialista.
+function promptFor(key) {
+  const head = `Actúa como especialista senior. Trabajas dentro del código del proyecto de esta web. No inventes datos de marca ni de negocio: si te falta algo (nombre exacto, claims, handles sociales, imágenes, idioma objetivo, keyword principal…), pídemelo antes de escribirlo. Primero AUDITA el estado actual leyendo el código real, luego lístame lo que falta o está mal, y por último IMPLEMENTA los cambios en los archivos que toquen. Al final, dime cómo verificarlo.`;
+
+  const bodies = {
+    icons: `${head}
+
+Rol: especialista en identidad web y PWA icons.
+
+Revisa y completa el set de iconos de la web:
+- favicon.ico multi-tamaño (16/32/48) en la raíz.
+- favicon.svg (vectorial, con soporte de dark mode si aplica).
+- apple-touch-icon 180×180 (fondo sólido, sin transparencia, esquinas cuadradas: iOS las redondea).
+- Iconos PWA 192×192 y 512×512, más una versión "maskable" con safe-area.
+- <meta name="theme-color"> (y variante para dark si hay).
+- manifest.webmanifest completo: name, short_name, icons[], start_url, scope, display, background_color, theme_color.
+- <link> correctos en el <head> apuntando a cada recurso.
+
+Procede: genera el set a partir del logo de origen (pídemelo si no está en el repo, idealmente SVG). Enlaza todo en el head y valida rutas absolutas.
+Testea: pásalo por realfavicongenerator (checker), instala la web como PWA y comprueba el icono en iOS y Android, y que no queden 404 de iconos.`,
+
+    og: `${head}
+
+Rol: especialista en Open Graph y social sharing.
+
+Deja perfecta la tarjeta que se ve al compartir en redes/WhatsApp/Slack:
+- og:title (≤ 60 car., sin relleno), og:description (110–160 car., con gancho), og:type, og:url (canónica y absoluta), og:site_name, og:locale.
+- og:image: 1200×630 px, < 5 MB, JPG/PNG, URL ABSOLUTA y accesible (200 + content-type image/*). Añade og:image:width/height y og:image:alt.
+- Twitter: twitter:card = summary_large_image, twitter:title, twitter:description, twitter:image y twitter:image:alt.
+- Overrides por página (cada plantilla/landing con su título, descripción e imagen propios; nada de una sola meta global).
+
+Procede: audita el <head> de cada plantilla, corrige lo que falte, y si no hay og:image genera una plantilla 1200×630 con marca (pídeme el logo/tono si hace falta). Evita imágenes que devuelvan error o rutas relativas.
+Testea: Facebook Sharing Debugger, Twitter/X Card Validator y opengraph.xyz; vuelve a "scrapear" para limpiar caché y confirma que la preview se ve bien.`,
+
+    seo: `${head}
+
+Rol: SEO técnico senior (on-page e indexación).
+
+Audita y completa el SEO on-page de cada página:
+- <title> único por página, 50–60 car., con la keyword principal delante y sufijo de marca.
+- meta description única, 140–160 car., con propuesta de valor y CTA (no keyword stuffing).
+- Un único <h1> por página + jerarquía coherente de H2/H3.
+- <link rel="canonical"> absoluto y correcto (ojo con duplicados y parámetros).
+- meta robots coherente con la intención (index,follow salvo páginas que no deban indexarse).
+- <html lang> correcto; hreflang si hay más de un idioma.
+- sitemap.xml actualizado y referenciado en robots.txt; URLs limpias y semánticas.
+- alt descriptivos en imágenes, enlazado interno con anchors útiles, datos de contacto/NAP si es local.
+
+Procede: pregúntame la keyword/intención objetivo de cada página clave si no está clara. Corrige en código sin canibalizar keywords entre páginas.
+Testea: inspección de URL en Google Search Console, test de resultados enriquecidos, Lighthouse (SEO) y un crawl (p. ej. Screaming Frog) para detectar títulos/descripciones duplicados o faltantes.`,
+
+    geo: `${head}
+
+Rol: especialista en GEO (Generative Engine Optimization) — que las IAs (ChatGPT, Perplexity, Gemini, Claude, Google AI Overviews) te entiendan y te citen.
+
+Audita y completa las señales para motores generativos:
+- llms.txt en la raíz (Markdown): resumen de qué es el sitio + enlaces clave con una línea de contexto cada uno. Opcional llms-full.txt con el contenido en texto plano.
+- robots.txt: decide conmigo si permitir o bloquear los bots de IA (GPTBot, ClaudeBot, PerplexityBot, Google-Extended, CCBot) y déjalo explícito. Incluye la línea Sitemap.
+- JSON-LD (Schema.org) según el tipo real: Organization + WebSite siempre; y Product/Course/Event/Article/LocalBusiness según corresponda. Incluye sameAs con los perfiles sociales.
+- FAQPage con las dudas frecuentes reales (oro para que la IA extraiga pregunta→respuesta).
+- Contenido extraíble: respuestas directas, definiciones, encabezados claros, sin enterrar la info en JS.
+
+Procede: pregúntame el tipo de entidad, los perfiles sociales y las FAQ reales antes de generarlas. No te inventes datos.
+Testea: valida el JSON-LD (Schema Markup Validator y Rich Results Test), comprueba que llms.txt y robots.txt responden 200 y son coherentes, y revisa que los bots de IA no estén bloqueados sin querer.`,
+
+    tech: `${head}
+
+Rol: technical SEO y performance web.
+
+Audita y corrige la base técnica:
+- <!doctype html>, <meta charset="utf-8"> y <meta name="viewport"> correctos.
+- HTTPS en todo, sin contenido mixto; redirecciones limpias (301, sin cadenas).
+- Core Web Vitals: LCP < 2,5 s, CLS < 0,1, INP < 200 ms. Prioriza por impacto.
+- Imágenes en WebP/AVIF, con width/height para evitar CLS, lazy-load salvo la del hero; precarga de la fuente y de la imagen LCP.
+- Caché, compresión (gzip/brotli), minificado; nada de JS bloqueante innecesario.
+- Sin errores en consola; página 404 útil; accesibilidad básica (contraste, foco visible, alt, landmarks/aria).
+
+Procede: mide primero, luego corrige lo de mayor impacto. Explícame el porqué de cada cambio.
+Testea: Lighthouse/PageSpeed Insights (móvil y escritorio), WebPageTest, axe DevTools para accesibilidad y el validador de HTML del W3C.`,
+  };
+
+  return { title: PROMPT_TITLES[key] || "Prompt", body: bodies[key] || head };
+}
+
+const PROMPT_TITLES = {
+  icons: "Iconos e identidad",
+  og: "Open Graph y Twitter",
+  seo: "SEO e indexación",
+  geo: "GEO · optimización para IA",
+  tech: "Técnico y performance",
+};
+
+// Popup con el prompt listo para copiar y pegar en el proyecto de la web.
+function PromptModal({ groupKey, onClose }) {
+  const { title, body } = promptFor(groupKey);
+  const [copied, setCopied] = useState(false);
+  const copiar = async () => {
+    try { await navigator.clipboard.writeText(body); setCopied(true); setTimeout(() => setCopied(false), 2000); }
+    catch { /* sin permiso de portapapeles: el usuario puede seleccionar a mano */ }
+  };
+  if (typeof document === "undefined") return null;
+  return createPortal(
+    <div className="fixed inset-0 z-[70] grid place-items-center p-4 bg-ink/30 backdrop-blur-sm overflow-y-auto" onClick={onClose}>
+      <Surface className="w-full max-w-2xl my-auto max-h-[90vh] flex flex-col !bg-paper shadow-float" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between gap-3 mb-1">
+          <div>
+            <p className="section-eyebrow !mb-1">Prompt para Claude</p>
+            <h2 className="text-title text-ink leading-tight">{title}</h2>
+          </div>
+          <button onClick={onClose} aria-label="Cerrar" className="h-7 w-7 shrink-0 inline-flex items-center justify-center rounded-md text-mutedSoft hover:text-ink hover:bg-surface2/60 transition">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </button>
+        </div>
+        <p className="text-micro text-mutedSoft mb-3">Pégalo en el proyecto de la web y Claude auditará, completará lo que falte (pidiéndote lo que no pueda inferir) y te dirá cómo verificarlo.</p>
+        <pre className="flex-1 min-h-0 overflow-y-auto rounded-xl bg-surface2/50 p-4 text-[12px] leading-relaxed text-inkSoft whitespace-pre-wrap font-mono">{body}</pre>
+        <div className="mt-4">
+          <Button onClick={copiar}>{copied ? "Copiado ✓" : "Copiar prompt"}</Button>
+        </div>
+      </Surface>
+    </div>,
+    document.body
+  );
+}
+
+// Icono "prompt de IA" (chispas) para la cabecera de grupo.
+const SparkIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18" /></svg>
+);
+
+// Contenedor de grupo: cabecera (título + prompt + fracción + mini-barra) y contenido.
+function MetaGroup({ title, passed, total, promptKey, children }) {
   const pct = total ? Math.round((passed / total) * 100) : null;
+  const [showPrompt, setShowPrompt] = useState(false);
   return (
     <Surface className="!bg-surface/45 !p-4">
       <div className="flex items-center gap-3 mb-3">
-        <h3 className="section-eyebrow !mb-0 flex-1">{title}</h3>
+        <h3 className="section-eyebrow !mb-0">{title}</h3>
+        {promptKey && (
+          <button
+            onClick={() => setShowPrompt(true)}
+            title="Prompt para arreglarlo con Claude"
+            aria-label="Ver prompt para arreglarlo"
+            className="h-6 w-6 grid place-items-center rounded-md text-mutedSoft hover:text-ink hover:bg-surface2/70 transition"
+          >
+            <SparkIcon />
+          </button>
+        )}
+        <span className="flex-1" />
         {pct != null && (
           <>
             <span className="text-micro text-mutedSoft tabular-nums shrink-0">{passed}/{total}</span>
@@ -137,6 +281,7 @@ function MetaGroup({ title, passed, total, children }) {
         )}
       </div>
       {children}
+      {showPrompt && <PromptModal groupKey={promptKey} onClose={() => setShowPrompt(false)} />}
     </Surface>
   );
 }
@@ -229,7 +374,7 @@ function MetaPanel({ meta, state, site }) {
       </MetaGroup>
 
       {/* Iconos */}
-      <MetaGroup title="Iconos" passed={count(gIcons)} total={gIcons.length}>
+      <MetaGroup title="Iconos" passed={count(gIcons)} total={gIcons.length} promptKey="icons">
         <div className="flex items-center gap-8 flex-wrap">
           <div className="flex items-center gap-2.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -266,7 +411,7 @@ function MetaPanel({ meta, state, site }) {
       </MetaGroup>
 
       {/* Open Graph y Twitter (con miniaturas) */}
-      <MetaGroup title="Open Graph y Twitter" passed={count(gShare)} total={gShare.length}>
+      <MetaGroup title="Open Graph y Twitter" passed={count(gShare)} total={gShare.length} promptKey="og">
         <MetaRow label="og:title" ok={b(meta.og.title)} value={meta.og.title} />
         <MetaRow label="og:description" ok={b(meta.og.description)} value={meta.og.description} />
         <MetaRow label="og:image" ok={b(imgOk)} value={meta.og.image} warn={meta.og.image ? "Declarada pero no carga" : "No declarada"} thumb={imgOk ? meta.og.image : null} />
@@ -275,7 +420,7 @@ function MetaPanel({ meta, state, site }) {
       </MetaGroup>
 
       {/* SEO e indexación */}
-      <MetaGroup title="SEO e indexación" passed={count(gSeo)} total={gSeo.length}>
+      <MetaGroup title="SEO e indexación" passed={count(gSeo)} total={gSeo.length} promptKey="seo">
         <MetaRow label="Título" ok={b(meta.title)} value={meta.title} warn="Falta <title>" note={titleNote} />
         <MetaRow label="Descripción" ok={b(meta.description)} value={meta.description} warn="Falta meta description" note={descNote} />
         <MetaRow label="Canonical" ok={b(meta.canonical)} value={meta.canonical} />
@@ -284,7 +429,7 @@ function MetaPanel({ meta, state, site }) {
       </MetaGroup>
 
       {/* GEO / IA */}
-      <MetaGroup title="GEO · optimización para IA" passed={count(gGeo)} total={gGeo.length}>
+      <MetaGroup title="GEO · optimización para IA" passed={count(gGeo)} total={gGeo.length} promptKey="geo">
         <MetaRow label="llms.txt" ok={b(g.llms)} value="Presente (guía para modelos)" warn="No encontrado" />
         <MetaRow
           label="Bots de IA (robots.txt)"
@@ -302,7 +447,7 @@ function MetaPanel({ meta, state, site }) {
       </MetaGroup>
 
       {/* Técnico */}
-      <MetaGroup title="Técnico" passed={count(gTech)} total={gTech.length}>
+      <MetaGroup title="Técnico" passed={count(gTech)} total={gTech.length} promptKey="tech">
         <MetaRow label="Viewport" ok={b(meta.viewport)} value={meta.viewport} />
         <MetaRow label="Codificación" ok={b(meta.charset)} value={meta.charset} warn="Sin charset" />
         <MetaRow label="Encabezado H1" ok={meta.h1Count >= 1} value={`${meta.h1Count} en la página`} warn="Sin H1" note={meta.h1Count > 1 ? "varios" : null} />
