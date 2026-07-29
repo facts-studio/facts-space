@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV_GROUPS } from "@/lib/nav";
-import { createClient } from "@/lib/supabase/client";
 import { setNavCollapsed } from "@/lib/actions/prefs";
 import FctsMark from "@/components/FctsMark";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -72,12 +71,6 @@ export default function Sidebar({ user, isAdmin = false, serverTheme = null, ini
   // Los sub-items con ancla (#) no se marcan activos; los de ruta real, sí.
   const childActive = (href) =>
     !href.includes("#") && pathname.startsWith(href.split("#")[0]);
-
-  async function signOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    window.location.href = "/login";
-  }
 
   const name = user?.user_metadata?.full_name || user?.email || "Equipo";
   const avatar = user?.user_metadata?.avatar_url;
@@ -207,12 +200,7 @@ export default function Sidebar({ user, isAdmin = false, serverTheme = null, ini
               {process.env.NEXT_PUBLIC_AUTH_DISABLED === "true" ? (
                 <span className="text-micro text-mutedSoft">Modo preview</span>
               ) : (
-                <button
-                  onClick={signOut}
-                  className="text-micro text-mutedSoft hover:text-ink transition"
-                >
-                  Cerrar sesión
-                </button>
+                <Link href="/ajustes" className="text-micro text-mutedSoft hover:text-ink transition">Ajustes</Link>
               )}
             </div>
             <ThemeToggle serverTheme={serverTheme} />

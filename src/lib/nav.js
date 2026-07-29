@@ -19,14 +19,11 @@ export const NAV_GROUPS = [
       label: "Recursos",
       icon: "grid",
       children: [
-        { href: "/recursos#programas", label: "Programas" },
-        { href: "/recursos#enlaces", label: "Enlaces de interés" },
+        { href: "/recursos/programas", label: "Programas" },
+        { href: "/recursos/websites", label: "Websites" },
         { href: "/tools", label: "F*cts Tools" },
       ],
     },
     { href: "/clientes", label: "Clientes", icon: "briefcase" },
-  ],
-  [
-    { href: "/onboarding", label: "Onboarding", icon: "sparkles", hint: "Para nuevas incorporaciones" },
   ],
 ];

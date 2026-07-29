@@ -1,16 +1,12 @@
 import Link from "next/link";
-import PageHeader from "@/components/PageHeader";
+import { ScreenHeader } from "@/components/ui";
 import { POLICY_ICONS } from "@/components/PolicyIcons";
 import { POLICIES } from "@/lib/content";
 
 export default function PoliticasPage() {
   return (
     <div>
-      <PageHeader
-        eyebrow="Cómo trabajamos"
-        title="Políticas"
-        helper="Horarios, vacaciones, comunicación, organización y seguridad del estudio."
-      />
+      <ScreenHeader kicker="Cómo trabajamos" title="Políticas" />
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
         {POLICIES.map((p) => (

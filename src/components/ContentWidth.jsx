@@ -11,7 +11,7 @@ import { cn } from "@/lib/cn";
  * se ahogan en una columna estrecha (el tablero de Tareas y el mes del
  * Calendario). Se comparan por prefijo, así que sus subrutas heredan.
  */
-const ANCHO_COMPLETO = ["/tareas", "/calendario"];
+const ANCHO_COMPLETO = ["/tareas", "/calendario", "/recursos/websites"];
 
 export default function ContentWidth({ children, className }) {
   const pathname = usePathname() || "/";

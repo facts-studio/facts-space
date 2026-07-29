@@ -1,4 +1,4 @@
-import PageHeader from "@/components/PageHeader";
+import { ScreenHeader, Badge } from "@/components/ui";
 
 // Mini-herramientas internas que diseñaremos para el equipo. De momento, demo.
 const TOOLS = [
@@ -13,12 +13,7 @@ const TOOLS = [
 export default function ToolsPage() {
   return (
     <div>
-      <PageHeader
-        eyebrow="Hecho por nosotros"
-        title="F*cts Tools"
-        helper="Mini-herramientas internas que diseñamos para el equipo. En desarrollo: pronto irán activándose."
-        action={<span className="pill bg-surface2 text-muted whitespace-nowrap">Próximamente</span>}
-      />
+      <ScreenHeader kicker="Recursos" title="F*cts Tools" actions={<Badge kind="neutral">Próximamente</Badge>} />
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
         {TOOLS.map((t) => (

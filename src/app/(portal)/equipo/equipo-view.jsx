@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import PageHeader from "@/components/PageHeader";
+import { ScreenHeader } from "@/components/ui";
 import { EventPill } from "@/components/EventBadge";
 import { EVENT_TYPES, fmtRange, fmtDate } from "@/lib/mock";
 import { cn } from "@/lib/cn";
@@ -32,10 +32,10 @@ export default function EquipoView({ team, events, vacUsed = {} }) {
 
   return (
     <div>
-      <PageHeader
-        eyebrow="Personas"
+      <ScreenHeader
+        kicker="Personas"
         title="Equipo"
-        helper={`${team.length} personas en F*cts Studio.`}
+        actions={<span className="text-micro text-mutedSoft tabular-nums">{team.length} personas</span>}
       />
 
       <div className={m ? "lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-6 lg:items-start" : ""}>

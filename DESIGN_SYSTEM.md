@@ -6,7 +6,13 @@ no existe como primitiva, se crea aquí antes de usarlo — así el sistema se e
 vez de divergir.
 
 ## Estética (marca)
-- **Negros y cremas, nunca verde.** Acción primaria = negro (`bg-ink text-bg`).
+- **Negros y cremas, nunca verde.**
+- **Botones sin peso: nada de negro macizo ni outlines.** La acción primaria es un
+  relleno TONAL suave (`bg-ink/[0.07] text-ink`, ver `.btn-primary`); el secundario,
+  relleno crema (`.btn-ghost`), sin borde. La jerarquía sale del tono del relleno.
+  Evita outlines/bordes salvo donde son necesarios (campos de formulario).
+- **Cabecera de pantalla = `ScreenHeader`** (breadcrumb `KICKER / Título` + acciones a
+  la derecha), no el título serif grande. Excepción: Inicio mantiene su cabecera propia.
 - Superficies suaves, `rounded-2xl`, sin bordes duros ni cajas blancas (`card` paper prohibido para layout).
 - Tipografía display = Bricolage (`font-display`), regular 400, tracking negativo.
 

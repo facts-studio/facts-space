@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import PageHeader from "@/components/PageHeader";
+import { ScreenHeader } from "@/components/ui";
 import { CLIENTS } from "@/lib/content";
 
 function favicon(url) {
@@ -75,11 +75,7 @@ export default function ClientesPage() {
 
   return (
     <div>
-      <PageHeader
-        eyebrow="Para quién trabajamos"
-        title="Clientes"
-        helper="F*cts es una sociedad independiente que da servicio a sus clientes. Cada uno con su web, su responsable y sus recursos."
-      />
+      <ScreenHeader kicker="Para quién trabajamos" title="Clientes" />
 
       <div className={openBrand ? "lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-6 lg:items-start" : ""}>
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">

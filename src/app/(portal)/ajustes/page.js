@@ -1,4 +1,4 @@
-import PageHeader from "@/components/PageHeader";
+import { ScreenHeader } from "@/components/ui";
 import AjustesClient from "./ajustes-client";
 import { getCurrentEmployee } from "@/lib/data/helpers";
 
@@ -8,7 +8,7 @@ export default async function AjustesPage() {
   if (!me) {
     return (
       <div>
-        <PageHeader eyebrow="Cuenta" title="Ajustes" helper="Tus datos de contacto y preferencias." />
+        <ScreenHeader kicker="Cuenta" title="Ajustes" />
         <div className="rounded-2xl bg-surface/55 p-6 text-small text-muted">
           Tu cuenta no está dada de alta como empleado. Pide a administración que te añada.
         </div>
@@ -39,7 +39,7 @@ export default async function AjustesPage() {
   return (
     // Mismo ancho y centrado que Inicio.
     <div>
-      <PageHeader eyebrow="Cuenta" title="Ajustes" helper="Tus datos de contacto y preferencias." />
+      <ScreenHeader kicker="Cuenta" title="Ajustes" />
       <AjustesClient me={perfil} />
     </div>
   );

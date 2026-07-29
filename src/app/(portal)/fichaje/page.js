@@ -1,4 +1,4 @@
-import PageHeader from "@/components/PageHeader";
+import { ScreenHeader } from "@/components/ui";
 import FichajeClient from "./fichaje-client";
 import { getCurrentEmployee } from "@/lib/data/helpers";
 import { getTimeEntries, getDayMarks, getMissingWorkdays } from "@/lib/data/time";
@@ -10,7 +10,7 @@ export default async function FichajePage({ searchParams }) {
   if (!me) {
     return (
       <div>
-        <PageHeader eyebrow="Jornada" title="Fichaje" helper="Registro horario del equipo." />
+        <ScreenHeader kicker="Jornada" title="Fichaje" />
         <div className="card p-6 text-small text-muted">
           Tu cuenta no está dada de alta como empleado. Pide a administración que te añada para poder fichar.
         </div>
@@ -32,7 +32,7 @@ export default async function FichajePage({ searchParams }) {
 
   return (
     <div>
-      <PageHeader eyebrow="Jornada" title="Fichaje" helper="Registro horario oficial del equipo." />
+      <ScreenHeader kicker="Jornada" title="Fichaje" />
 
       <FichajeClient
         entries={entries}

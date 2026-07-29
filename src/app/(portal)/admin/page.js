@@ -1,4 +1,4 @@
-import PageHeader from "@/components/PageHeader";
+import { ScreenHeader } from "@/components/ui";
 import AdminClient from "./admin-client";
 import { getCurrentEmployee } from "@/lib/data/helpers";
 import {
@@ -20,7 +20,7 @@ export default async function AdminPage() {
   if (!me?.is_admin) {
     return (
       <div>
-        <PageHeader eyebrow="Gestión" title="Administrar" helper="Panel de administración." />
+        <ScreenHeader kicker="Gestión" title="Administrar" />
         <div className="rounded-2xl bg-surface/55 p-6 text-small text-muted">
           No tienes permisos de administración. Pide a un administrador que te dé acceso.
         </div>
@@ -45,7 +45,7 @@ export default async function AdminPage() {
 
   return (
     <div>
-      <PageHeader eyebrow="Gestión" title="Administrar" helper="Vacaciones, equipo y registro horario del estudio." />
+      <ScreenHeader kicker="Gestión" title="Administrar" />
       <AdminClient
         employees={employees}
         pending={pending}
