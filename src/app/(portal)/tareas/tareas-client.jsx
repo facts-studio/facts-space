@@ -376,14 +376,16 @@ function CalendarView({ tasks, milestones = [], colorsByClient = {}, onOpen }) {
   );
 }
 
-function Section({ label, count, campaign, children }) {
+function Section({ label, count, campaign, sprint, info, children }) {
   const [open, setOpen] = useState(true);
   return (
     <div>
       <button onClick={() => setOpen((o) => !o)} className="w-full flex items-center gap-2 px-3 py-2 group">
         <svg className={cn("h-3 w-3 text-mutedSoft transition-transform", open ? "rotate-90" : "")} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>
         {campaign && <span className="text-brandMid text-[11px]" title="Campaña">✦</span>}
+        {sprint && <span className="text-brandMid text-[11px]" title="Sprint">✦</span>}
         <span className="section-eyebrow group-hover:text-ink transition-colors">{label}</span>
+        {info}
         <span className="text-micro text-mutedSoft tabular-nums">{count}</span>
       </button>
       {open && <div className="mt-0.5">{children}</div>}
@@ -752,8 +754,10 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
             const camps = [...clients.filter((c) => c.campaign), ...sprints];
             // Tres bloques separados: clientes de UNFILTRADE · SPRINTS · clientes
             // de F*CTS (los de rama desconocida caen con F*cts, nuestra área).
-            const uf = fixed.filter((c) => c.space === "Unfiltrade");
-            const fc = fixed.filter((c) => c.space !== "Unfiltrade");
+            // "General" (bucket interno de la rama) va SIEMPRE al inicio de su grupo.
+            const genFirst = (arr) => [...arr].sort((a, b) => (b.label === "General") - (a.label === "General"));
+            const uf = genFirst(fixed.filter((c) => c.space === "Unfiltrade"));
+            const fc = genFirst(fixed.filter((c) => c.space !== "Unfiltrade"));
             const groups = [
               { key: "uf", title: "Clientes · Unfiltrade", items: uf },
               { key: "sprints", title: "Sprints / campañas", items: camps },
@@ -868,9 +872,25 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
           <Surface pad="sm"><EmptyState className="my-2">Nada con esos filtros.</EmptyState></Surface>
         ) : (
           <div className="space-y-3">
-            {sections.map((sec) => (
+            {sections.map((sec) => {
+              // Al filtrar por un sprint (groupByArea) no hay sub-grupos, así que
+              // la descripción del sprint se muestra en la cabecera de la sección.
+              const secIsSprint = groupByArea && sprints.some((sp) => sp.avatarName === sec.key);
+              const secNote = secIsSprint ? sprintNotes[sec.key] : null;
+              const secInfo = secNote ? (
+                <span
+                  role="img"
+                  aria-label="Descripción del sprint"
+                  onMouseEnter={(ev) => { const r = ev.currentTarget.getBoundingClientRect(); setHoverCtx({ desc: secNote, title: sec.label, x: r.left + r.width / 2, y: r.top, yb: r.bottom }); }}
+                  onMouseLeave={() => setHoverCtx(null)}
+                  className="shrink-0 inline-flex text-mutedSoft/70 hover:text-ink transition"
+                >
+                  <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9" /><path d="M12 16v-4M12 8h.01" strokeLinecap="round" /></svg>
+                </span>
+              ) : null;
+              return (
               <Surface key={sec.key} pad="sm">
-                <Section label={sec.label} count={sec.items.filter((t) => !t.milestone).length} campaign={sec.campaign}>
+                <Section label={sec.label} count={sec.items.filter((t) => !t.milestone).length} campaign={sec.campaign} sprint={secIsSprint} info={secInfo}>
                   {sec.subs
                     ? sec.subs.map((sub) => (
                         <div key={sub.key} className="mt-1 first:mt-0">
@@ -881,7 +901,7 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
                               <button
                                 type="button"
                                 aria-label="Descripción del sprint"
-                                onMouseEnter={(ev) => { const r = ev.currentTarget.getBoundingClientRect(); setHoverCtx({ desc: sprintNotes[sub.key], title: sub.label, x: r.left + r.width / 2, y: r.top }); }}
+                                onMouseEnter={(ev) => { const r = ev.currentTarget.getBoundingClientRect(); setHoverCtx({ desc: sprintNotes[sub.key], title: sub.label, x: r.left + r.width / 2, y: r.top, yb: r.bottom }); }}
                                 onMouseLeave={() => setHoverCtx(null)}
                                 className="shrink-0 text-mutedSoft/70 hover:text-ink transition"
                               >
@@ -899,7 +919,8 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
                     : sec.items.map((t) => (t.milestone ? renderMilestone(t) : renderRow(t)))}
                 </Section>
               </Surface>
-            ))}
+              );
+            })}
           </div>
         )
       )}
@@ -942,9 +963,16 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
         document.body
       )}
 
-      {/* Tooltip de los avatares — portal para que no lo recorte el scroll */}
+      {/* Tooltip de los avatares — portal para que no lo recorte el scroll.
+          La descripción de sprint puede ser alta: si no cabe arriba, cae debajo. */}
       {hoverCtx && typeof document !== "undefined" && createPortal(
-        <div className="pointer-events-none fixed z-[90] -translate-x-1/2 -translate-y-full" style={{ left: hoverCtx.x, top: hoverCtx.y - 8 }}>
+        (() => {
+          const below = hoverCtx.desc && hoverCtx.y < 340; // poco hueco arriba → debajo
+          return (
+        <div
+          className={cn("pointer-events-none fixed z-[90] -translate-x-1/2", below ? "translate-y-0" : "-translate-y-full")}
+          style={{ left: hoverCtx.x, top: below ? (hoverCtx.yb ?? hoverCtx.y) + 8 : hoverCtx.y - 8 }}
+        >
           {hoverCtx.desc ? (
             // Descripción de sprint: caja muy suave, sin sombra, con aire.
             <div className="max-w-[340px] rounded-2xl bg-surface border border-border/40 px-5 py-4 text-left">
@@ -958,7 +986,9 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
               <span className="absolute left-1/2 -bottom-1 -translate-x-1/2 w-2 h-2 rotate-45 bg-ink" />
             </div>
           )}
-        </div>,
+        </div>
+          );
+        })(),
         document.body
       )}
     </>
