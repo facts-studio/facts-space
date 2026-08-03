@@ -92,9 +92,12 @@ function joinNodes(nodes) {
   ));
 }
 
-export default function TodayHero({ nombre = "equipo", events = [], avisos = null, taskCount = 0, overdueCount = 0 }) {
+export default function TodayHero({ nombre = "equipo", meName = "", events = [], avisos = null, taskCount = 0, overdueCount = 0 }) {
   const now = new Date();
   const hoy = startOfDay(now);
+  // ¿El protagonista del evento es el propio usuario? → segunda persona
+  // ("tus vacaciones", "tu cumple") en vez de nombrarse a sí mismo.
+  const esYo = (who) => Boolean(who) && Boolean(meName) && who === meName;
 
   // Solo lo que ESTÁ POR VENIR (start hoy o futuro). Quien ya está de vacaciones
   // no entra aquí (su start es pasado): eso se ve en la píldora de presencia, no
@@ -145,17 +148,17 @@ export default function TodayHero({ nombre = "equipo", events = [], avisos = nul
   };
   const nodeFor = (e, skipIcon = false) => {
     const ico = skipIcon ? null : <><Ico>{ICON[e.type]}</Ico> </>;
-    if (e.type === "cumple") return <>{ico}el cumple de <Hi>{e.who}</Hi> el <Hi>{corto(e.start)}</Hi></>;
+    if (e.type === "cumple") return <>{ico}{esYo(e.who) ? <>tu cumple</> : <>el cumple de <Hi>{e.who}</Hi></>} el <Hi>{corto(e.start)}</Hi></>;
     if (e.type === "festivo") return <>{ico}el festivo <Hi>«{e.title}»</Hi> el <Hi>{corto(e.start)}</Hi></>;
     if (e.type === "hito") return <>{ico}el hito <Hi>«{e.title}»</Hi> el <Hi>{corto(e.start)}</Hi></>;
-    return <>{ico}las vacaciones de <Hi>{e.who}</Hi> {rango(e)}</>;
+    return <>{ico}{esYo(e.who) ? <>tus vacaciones</> : <>las vacaciones de <Hi>{e.who}</Hi></>} {rango(e)}</>;
   };
 
   // Parte del saludo por evento. El cumple de HOY se dice como tal ("hoy es el
-  // cumple de X"); el resto, con su fecha.
+  // cumple de X" / "hoy es tu cumple"); el resto, con su fecha.
   const parteFor = (e) =>
     e.type === "cumple" && e.dias === 0
-      ? <><Ico>🎂</Ico> hoy es el cumple de <Hi>{e.who}</Hi></>
+      ? <><Ico>🎂</Ico> {esYo(e.who) ? <>hoy es tu cumple</> : <>hoy es el cumple de <Hi>{e.who}</Hi></>}</>
       : nodeFor(e);
   const partes = near.map(parteFor);
 
@@ -183,12 +186,13 @@ export default function TodayHero({ nombre = "equipo", events = [], avisos = nul
   };
   const nodeForGroup = (g, skipIcon = false) => {
     const ico = skipIcon ? null : <><Ico>{ICON[g.type]}</Ico> </>;
-    if (g.type === "cumple") return <>{ico}el cumple de <Hi>{g.who}</Hi> {fechasNode(g.events)}</>;
+    const quienVac = esYo(g.who) ? <>tus vacaciones</> : <>las vacaciones de <Hi>{g.who}</Hi></>;
+    if (g.type === "cumple") return <>{ico}{esYo(g.who) ? <>tu cumple</> : <>el cumple de <Hi>{g.who}</Hi></>} {fechasNode(g.events)}</>;
     if (g.type === "festivo") return <>{ico}el festivo <Hi>«{g.title}»</Hi> {fechasNode(g.events)}</>;
     if (g.type === "hito") return <>{ico}el hito <Hi>«{g.title}»</Hi> {fechasNode(g.events)}</>;
     // Vacaciones: un solo tramo → rango con duración; varios → fechas de inicio.
-    if (g.events.length === 1) return <>{ico}las vacaciones de <Hi>{g.who}</Hi> {rango(g.events[0])}</>;
-    return <>{ico}las vacaciones de <Hi>{g.who}</Hi> {fechasNode(g.events)}</>;
+    if (g.events.length === 1) return <>{ico}{quienVac} {rango(g.events[0])}</>;
+    return <>{ico}{quienVac} {fechasNode(g.events)}</>;
   };
 
   // Concordancia de "será/serán": plural si hay más de un evento o si el único

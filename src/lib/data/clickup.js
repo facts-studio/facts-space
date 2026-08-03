@@ -361,8 +361,9 @@ export async function getAgendaEvents() {
     const start = t.start_date ? toMadridISO(t.start_date) : due;
     return { start: start || due, end: due || start };
   };
+  const groupOf = (t) => (t.group_assignees || [])[0] || null;
   const whoFromGroups = (t) => {
-    const g = (t.group_assignees || [])[0];
+    const g = groupOf(t);
     if (!g) return null;
     const m = TEAM_BY_FIRST.get(stripAccents(g.name).split(" ")[0]);
     return m?.name ?? g.name;
@@ -375,7 +376,9 @@ export async function getAgendaEvents() {
     ]);
     const events = [];
     for (const t of fest) if (t.due_date || t.start_date) events.push({ id: `fest-${t.id}`, type: "festivo", title: t.name, ...range(t), who: null });
-    for (const t of cum) if (t.due_date || t.start_date) events.push({ id: `cum-${t.id}`, type: "cumple", title: t.name, ...range(t), who: whoFromGroups(t) });
+    // `whoGroupId` es el id del grupo de ClickUp de la persona: lo usa el
+    // calendario para relacionar el cumple con un empleado vinculado (activo).
+    for (const t of cum) if (t.due_date || t.start_date) events.push({ id: `cum-${t.id}`, type: "cumple", title: t.name, ...range(t), who: whoFromGroups(t), whoGroupId: groupOf(t)?.id ? String(groupOf(t).id) : null });
     for (const t of hit) if (t.due_date || t.start_date) events.push({ id: `hito-${t.id}`, type: "hito", title: t.name, ...range(t), who: null });
     return events;
   } catch {
@@ -503,6 +506,22 @@ export async function getClickUpMembers() {
       username: m.user?.username ?? m.user?.email ?? "—",
       color: m.user?.color ?? null,
     }));
+  } catch {
+    return [];
+  }
+}
+
+// Grupos de usuario del workspace (perfiles de asignación por persona). Son los
+// que se vinculan a cada empleado para relacionar los eventos de ClickUp.
+export async function getClickUpGroups() {
+  if (!isClickUpConfigured()) return [];
+  try {
+    const res = await fetch(`${BASE}/group?team_id=${process.env.CLICKUP_TEAM_ID}`, authOpts());
+    if (!res.ok) return [];
+    const json = await res.json();
+    return (json.groups ?? [])
+      .map((g) => ({ id: String(g.id), name: g.name ?? "—", members: (g.members ?? []).length }))
+      .sort((a, b) => a.name.localeCompare(b.name, "es"));
   } catch {
     return [];
   }

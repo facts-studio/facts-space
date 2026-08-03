@@ -55,6 +55,7 @@ export default async function HomePage() {
       <div className="min-w-0">
         <TodayHero
           nombre={nombre}
+          meName={me?.name || ""}
           events={events}
           taskCount={mine.length}
           overdueCount={overdueCount}

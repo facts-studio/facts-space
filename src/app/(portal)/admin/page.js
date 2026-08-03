@@ -12,7 +12,7 @@ import {
 } from "@/lib/data/admin";
 import { getAllDocuments } from "@/lib/data/documents";
 import { getCalendarEvents } from "@/lib/data/calendar";
-import { getConfiguredLists } from "@/lib/data/clickup";
+import { getConfiguredLists, getClickUpGroups } from "@/lib/data/clickup";
 import { madridDateISO } from "@/lib/dates";
 
 export default async function AdminPage() {
@@ -42,6 +42,7 @@ export default async function AdminPage() {
   ]);
   const documents = await getAllDocuments();
   const clickupLists = await getConfiguredLists();
+  const clickupGroups = await getClickUpGroups();
 
   return (
     <div>
@@ -58,6 +59,7 @@ export default async function AdminPage() {
         timeHours={timeHours}
         documents={documents}
         clickupLists={clickupLists}
+        clickupGroups={clickupGroups}
         month={month}
         year={year}
       />

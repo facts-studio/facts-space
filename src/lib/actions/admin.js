@@ -22,6 +22,7 @@ export async function updateEmployee({ id, patch }) {
   if ("vacation_adjustment" in patch) allowed.vacation_adjustment = Number(patch.vacation_adjustment) || 0;
   if ("is_admin" in patch) allowed.is_admin = Boolean(patch.is_admin);
   if ("active" in patch) allowed.active = Boolean(patch.active);
+  if ("clickup_group_id" in patch) allowed.clickup_group_id = patch.clickup_group_id || null;
   if ("role" in patch) allowed.role = String(patch.role);
   // Datos base
   if ("name" in patch) allowed.name = String(patch.name ?? "").trim();
@@ -62,6 +63,24 @@ export async function setEmployeeActive({ id, active }) {
   revalidatePath("/admin");
   revalidatePath("/equipo");
   revalidatePath("/calendario");
+  return { ok: true };
+}
+
+// Vincula (o desvincula, con groupId vacío) un empleado a un grupo/perfil de
+// ClickUp. El id de grupo relaciona los eventos de ClickUp (cumpleaños…) con la
+// ficha. Sin vínculo, el empleado no aparece en esas funciones del calendario.
+export async function setEmployeeClickupGroup({ id, groupId }) {
+  const me = await requireAdmin();
+  if (!me) return { ok: false, error: "Solo administración." };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("employees")
+    .update({ clickup_group_id: groupId || null })
+    .eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin");
+  revalidatePath("/calendario");
+  revalidatePath("/");
   return { ok: true };
 }
 

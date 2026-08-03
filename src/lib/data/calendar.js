@@ -80,10 +80,13 @@ export async function getPendingAbsenceEvents() {
       .from("vacation_requests")
       .select("id, start_date, end_date, employee_id, type, status")
       .eq("status", "pending"),
-    supabase.from("employees").select("id, name"),
+    supabase.from("employees").select("id, name, active"),
   ]);
+  const activos = new Set((emps.data ?? []).filter((m) => m.active).map((m) => m.id));
   const nameById = new Map((emps.data ?? []).map((m) => [m.id, m.name]));
-  return mergeAbsences(vac.data ?? []).map((v) => absenceToEvent(v, nameById));
+  // Los empleados desactivados (bajas/despidos) no pintan ausencias.
+  const rows = (vac.data ?? []).filter((v) => activos.has(v.employee_id));
+  return mergeAbsences(rows).map((v) => absenceToEvent(v, nameById));
 }
 
 // Eventos unificados para el calendario, en el MISMO shape que consume
@@ -103,7 +106,7 @@ export async function getCalendarEvents() {
       .from("vacation_requests")
       .select("id, start_date, end_date, employee_id, type, status")
       .eq("status", "approved"),
-    supabase.from("employees").select("id, name"),
+    supabase.from("employees").select("id, name, active, clickup_group_id"),
     getAgendaEvents(),        // festivos + cumpleaños + hitos de empresa (ClickUp)
     getClickUpMilestones(),   // hitos a nivel de tarea (milestones, cualquier lista)
     getSprintEvents(),        // inicio y fin de las listas marcadas como sprint
@@ -111,14 +114,33 @@ export async function getCalendarEvents() {
 
   // Nombre por id (vacation_requests tiene 2 FKs a employees → no usamos embed).
   const nameById = new Map((emps.data ?? []).map((m) => [m.id, m.name]));
+  const activos = new Set((emps.data ?? []).filter((m) => m.active).map((m) => m.id));
+  // Empleado ACTIVO por id de grupo de ClickUp: es el vínculo explícito que
+  // decide si un evento de persona de ClickUp (cumpleaños…) se muestra.
+  const empPorGrupo = new Map(
+    (emps.data ?? [])
+      .filter((m) => m.active && m.clickup_group_id)
+      .map((m) => [String(m.clickup_group_id), m])
+  );
 
   const events = [];
 
-  for (const v of mergeAbsences(vac.data ?? [])) events.push(absenceToEvent(v, nameById));
+  // Los empleados desactivados (bajas/despidos) no pintan ausencias.
+  const vacActivas = (vac.data ?? []).filter((v) => activos.has(v.employee_id));
+  for (const v of mergeAbsences(vacActivas)) events.push(absenceToEvent(v, nameById));
 
   // Agenda de empresa (festivos, cumpleaños, hitos) + hitos a nivel de tarea +
-  // inicio/fin de los sprints.
-  for (const e of agenda ?? []) events.push(e);
+  // inicio/fin de los sprints. El cumpleaños solo se pinta si su grupo de
+  // ClickUp está VINCULADO a un empleado activo; usamos su nombre de la ficha.
+  for (const e of agenda ?? []) {
+    if (e.type === "cumple") {
+      const emp = e.whoGroupId ? empPorGrupo.get(String(e.whoGroupId)) : null;
+      if (!emp) continue;                       // sin vínculo activo → no aparece
+      events.push({ ...e, who: emp.name });
+    } else {
+      events.push(e);
+    }
+  }
   for (const m of milestones ?? []) events.push(m);
   for (const s of sprints ?? []) events.push(s);
 
