@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { decideVacation, setVacationStatus, deleteVacation } from "@/lib/actions/vacations";
-import { updateEmployee, validateMonth, createEmployee } from "@/lib/actions/admin";
+import { updateEmployee, validateMonth, createEmployee, setEmployeeActive, deleteEmployee } from "@/lib/actions/admin";
 import { recordDocument, deleteDocument, getDocumentUrl } from "@/lib/actions/documents";
 import { extractInvoice } from "@/lib/actions/extract";
 import { createClient } from "@/lib/supabase/client";
@@ -24,7 +24,7 @@ const TABS = [
   ["informes", "Informes"],
 ];
 
-export default function AdminClient({ employees, pending, recent, timeStats, vacUsed, timeHours = {}, documents = [], clickupLists = [], events = [], month, year }) {
+export default function AdminClient({ meId, employees, pending, recent, timeStats, vacUsed, timeHours = {}, documents = [], clickupLists = [], events = [], month, year }) {
   const router = useRouter();
   const refresh = () => router.refresh();
   const [tab, setTab] = useState("aprobaciones");
@@ -53,7 +53,7 @@ export default function AdminClient({ employees, pending, recent, timeStats, vac
           <Fichaje employees={employees} timeStats={timeStats} month={month} onDone={refresh} />
         </div>
       )}
-      {tab === "equipo" && <Equipo employees={employees} vacUsed={vacUsed} year={year} onDone={refresh} />}
+      {tab === "equipo" && <Equipo meId={meId} employees={employees} vacUsed={vacUsed} year={year} onDone={refresh} />}
       {tab === "documentos" && <Documentos employees={employees} documents={documents} nameById={nameById} month={month} onDone={refresh} />}
       {tab === "clickup" && <ClickUpSources lists={clickupLists} />}
       {tab === "informes" && <Informes employees={employees} vacUsed={vacUsed} timeHours={timeHours} month={month} year={year} />}
@@ -370,25 +370,42 @@ function StatusPill({ status, className = "" }) {
 }
 
 // ── Empleados ────────────────────────────────────────────────────────────────
-function Equipo({ employees, vacUsed, year, onDone }) {
+const EMP_FILTERS = [["activos", "Activos"], ["inactivos", "Inactivos"], ["todos", "Todos"]];
+
+function Equipo({ meId, employees, vacUsed, year, onDone }) {
   const [adding, setAdding] = useState(false);
+  const [filter, setFilter] = useState("activos");
+  const activos = employees.filter((e) => e.active).length;
+  const inactivos = employees.length - activos;
+  const list = employees.filter((e) =>
+    filter === "todos" ? true : filter === "activos" ? e.active : !e.active
+  );
+
   return (
     <div className="rounded-2xl bg-surface/55 p-6">
       <div className="flex items-center justify-between gap-3 mb-4">
-        <p className="section-eyebrow">Empleados · {employees.length}</p>
+        <p className="section-eyebrow">Empleados · {activos} activos{inactivos ? ` · ${inactivos} inactivos` : ""}</p>
         <button onClick={() => setAdding((o) => !o)} className="btn-primary h-8 text-[12.5px]">{adding ? "Cancelar" : "+ Añadir empleado"}</button>
       </div>
       {adding && <AddEmployee onDone={() => { setAdding(false); onDone?.(); }} />}
+
+      <div className="flex items-center bg-surface2/60 rounded-lg p-0.5 w-fit mb-3">
+        {EMP_FILTERS.map(([v, l]) => (
+          <button key={v} onClick={() => setFilter(v)} className={`px-3 py-1 rounded-md text-[12.5px] transition ${filter === v ? "bg-bg text-ink shadow-sm font-medium" : "text-muted hover:text-ink"}`}>{l}</button>
+        ))}
+      </div>
+
       <div className="flex flex-col divide-y divide-border/50">
         <div className="flex items-center gap-3 px-3 pb-2 text-micro uppercase tracking-wide text-mutedSoft">
           <span className="flex-1">Persona</span>
           <span className="w-[200px] hidden md:block">Email</span>
           <span className="w-[80px] text-right">Vac. {year}</span>
-          <span className="w-[46px]" />
-          <span className="w-[10px]" />
+          <span className="w-[220px]" />
         </div>
-        {employees.map((e) => (
-          <EmployeeRow key={e.id} e={e} used={vacUsed[e.id] || 0} />
+        {list.length === 0 ? (
+          <p className="text-small text-mutedSoft px-3 py-4">No hay empleados {filter === "activos" ? "activos" : filter === "inactivos" ? "inactivos" : ""}.</p>
+        ) : list.map((e) => (
+          <EmployeeRow key={e.id} e={e} used={vacUsed[e.id] || 0} isSelf={e.id === meId} onDone={onDone} />
         ))}
       </div>
     </div>
@@ -423,27 +440,55 @@ function AddEmployee({ onDone }) {
   );
 }
 
-function EmployeeRow({ e, used }) {
+function EmployeeRow({ e, used, isSelf, onDone }) {
+  const [pending, run] = useTransition();
+  const [confirmDel, setConfirmDel] = useState(false);
   const allowance = Number(e.vacation_allowance) + Number(e.vacation_adjustment || 0);
   const remaining = allowance - used;
+
+  const toggle = () => run(async () => {
+    const r = await setEmployeeActive({ id: e.id, active: !e.active });
+    if (r.ok) onDone?.(); else alert(r.error);
+  });
+  const remove = () => run(async () => {
+    const r = await deleteEmployee({ id: e.id });
+    if (r.ok) onDone?.(); else { alert(r.error); setConfirmDel(false); }
+  });
+
   return (
-    <Link
-      href={`/admin/${e.id}`}
-      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-surface2/40 transition ${e.active ? "" : "opacity-50"}`}
-    >
-      <div className="flex items-center gap-2.5 flex-1 min-w-0">
+    <div className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-surface2/40 transition ${e.active ? "" : "opacity-60"}`}>
+      <Link href={`/admin/${e.id}`} className="flex items-center gap-2.5 flex-1 min-w-0">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {e.photo ? <img src={e.photo} alt="" className="w-8 h-8 rounded-full object-cover" /> : <span className="w-8 h-8 rounded-full bg-surface2" />}
         <div className="min-w-0">
-          <p className="text-small text-ink truncate">{e.name}{e.last_name ? ` ${e.last_name}` : ""}</p>
+          <p className="text-small text-ink truncate flex items-center gap-1.5">
+            {e.name}{e.last_name ? ` ${e.last_name}` : ""}
+            {!e.active && <span className="text-[10px] uppercase tracking-wide text-muted bg-surface2 rounded px-1.5 py-0.5">Inactivo</span>}
+          </p>
           <p className="text-micro text-mutedSoft truncate">{e.role || "—"}</p>
         </div>
-      </div>
+      </Link>
       <span className="w-[200px] hidden md:block text-micro text-mutedSoft truncate">{e.email}</span>
       <span className="w-[80px] text-right text-small tabular-nums text-ink">{remaining} <span className="text-mutedSoft">/ {allowance}</span></span>
       <span className="w-[46px] text-center">{e.is_admin && <span className="text-[10px] uppercase tracking-wide text-mutedSoft bg-surface2 rounded px-1.5 py-0.5">Admin</span>}</span>
-      <span className="text-mutedSoft">›</span>
-    </Link>
+
+      <div className="w-[168px] flex items-center justify-end gap-1.5">
+        {confirmDel ? (
+          <>
+            <span className="text-micro text-danger mr-0.5">¿Eliminar?</span>
+            <button onClick={remove} disabled={pending} className="btn-danger h-7 text-[12px]">{pending ? "…" : "Sí, borrar"}</button>
+            <button onClick={() => setConfirmDel(false)} disabled={pending} className="btn-ghost h-7 text-[12px]">No</button>
+          </>
+        ) : (
+          <span className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition">
+            <button onClick={toggle} disabled={pending} className="btn-ghost h-7 text-[12px]">{e.active ? "Desactivar" : "Activar"}</button>
+            {!isSelf && (
+              <button onClick={() => setConfirmDel(true)} disabled={pending} aria-label="Eliminar empleado" className="h-7 w-7 grid place-items-center rounded-lg text-mutedSoft hover:text-danger hover:bg-dangerSoft/50 transition">✕</button>
+            )}
+          </span>
+        )}
+      </div>
+    </div>
   );
 }
 

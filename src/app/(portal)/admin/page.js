@@ -47,6 +47,7 @@ export default async function AdminPage() {
     <div>
       <ScreenHeader kicker="Gestión" title="Administrar" />
       <AdminClient
+        meId={me.id}
         employees={employees}
         pending={pending}
         recent={recent}

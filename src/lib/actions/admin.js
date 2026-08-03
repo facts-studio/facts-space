@@ -50,6 +50,59 @@ export async function updateEmployee({ id, patch }) {
   return { ok: true };
 }
 
+// Activa o desactiva un empleado (baja blanda: se conserva su ficha e historial,
+// deja de contar en fichaje/informes/calendario). Para bajas, despidos, etc.
+export async function setEmployeeActive({ id, active }) {
+  const me = await requireAdmin();
+  if (!me) return { ok: false, error: "Solo administración." };
+  if (id === me.id && !active) return { ok: false, error: "No puedes desactivarte a ti mismo." };
+  const supabase = await createClient();
+  const { error } = await supabase.from("employees").update({ active: Boolean(active) }).eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin");
+  revalidatePath("/equipo");
+  revalidatePath("/calendario");
+  return { ok: true };
+}
+
+// Borra un archivo/carpeta y su contenido de forma recursiva (best-effort). En
+// Supabase Storage las "carpetas" son entradas con id === null.
+async function removeStorageFolder(supabase, bucket, prefix) {
+  const { data: entries, error } = await supabase.storage.from(bucket).list(prefix, { limit: 1000 });
+  if (error || !entries?.length) return;
+  const files = [];
+  for (const entry of entries) {
+    const path = `${prefix}/${entry.name}`;
+    if (entry.id === null) await removeStorageFolder(supabase, bucket, path); // subcarpeta
+    else files.push(path);
+  }
+  if (files.length) await supabase.storage.from(bucket).remove(files);
+}
+
+// Elimina un empleado por completo. Las tablas hijas (ausencias, fichajes,
+// documentos, notas) caen por ON DELETE CASCADE; manager_id de otros pasa a null.
+// Además borramos sus archivos de Storage (nóminas/contratos/foto) por RGPD.
+// Es destructivo e irreversible: la UI confirma antes de llamar.
+export async function deleteEmployee({ id }) {
+  const me = await requireAdmin();
+  if (!me) return { ok: false, error: "Solo administración." };
+  if (id === me.id) return { ok: false, error: "No puedes eliminar tu propia cuenta." };
+
+  const supabase = await createClient();
+  // Limpieza de Storage antes del borrado (best-effort: no bloquea el DELETE).
+  try {
+    await removeStorageFolder(supabase, "hr-docs", id);
+    await removeStorageFolder(supabase, "avatars", id);
+  } catch { /* orphaned blobs are harmless; el borrado de la ficha es lo importante */ }
+
+  const { error } = await supabase.from("employees").delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin");
+  revalidatePath("/equipo");
+  revalidatePath("/calendario");
+  return { ok: true };
+}
+
 // Alta de un empleado nuevo. Se vincula al usuario cuando entra con su email.
 export async function createEmployee({ name, email, role = "" }) {
   const me = await requireAdmin();
