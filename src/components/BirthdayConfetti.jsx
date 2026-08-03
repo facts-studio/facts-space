@@ -1,28 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { TEAM } from "@/lib/mock";
 import Confetti from "@/components/Confetti";
 
-export default function BirthdayConfetti() {
-  const [people, setPeople] = useState([]);
+// `people` son los nombres de quien cumple HOY, calculado en el servidor a
+// partir de los eventos reales del calendario (cumpleaños de ClickUp vinculados
+// a un empleado ACTIVO). Así el confeti respeta bajas y vínculos, y nunca
+// felicita a gente que ya no está.
+export default function BirthdayConfetti({ people = [] }) {
   const [show, setShow] = useState(false);
 
-  // Genera el confeti en cliente (evita mismatch de hidratación con Math.random).
   useEffect(() => {
-    const now = new Date();
-    const md = `${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-    const matches = TEAM.filter((m) => (m.birthday || "").slice(5) === md);
-    if (!matches.length) return;
-
+    if (!people.length) return;
     // En rAF, no en el cuerpo del efecto: evita el render en cascada (y la
     // regla react-hooks/set-state-in-effect).
-    const raf = requestAnimationFrame(() => { setPeople(matches.map((m) => m.name)); setShow(true); });
+    const raf = requestAnimationFrame(() => setShow(true));
     const t = setTimeout(() => setShow(false), 8000);
     return () => { cancelAnimationFrame(raf); clearTimeout(t); };
-  }, []);
+  }, [people.length]);
 
-  if (!show) return null;
+  if (!show || !people.length) return null;
 
   return (
     <>

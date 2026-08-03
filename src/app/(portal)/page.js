@@ -24,6 +24,12 @@ export default async function HomePage() {
     getMyDecisions(),      // mis solicitudes ya resueltas que aún no he visto
   ]);
   const nombre = me?.name?.split(" ")[0] || "equipo";
+  // Cumpleaños de HOY (Madrid) desde el calendario ya filtrado: solo perfiles de
+  // ClickUp vinculados a un empleado activo → alimenta el confeti de Inicio.
+  const todayISO = madridDateISO();
+  const birthdayPeople = events
+    .filter((e) => e.type === "cumple" && e.start === todayISO && e.who)
+    .map((e) => e.who);
   const mine = weekTasks(tasks, me?.email);
   const teamWeek = teamWeekTasks(tasks); // modo Status: todo el equipo, por cliente
   // Vencidas: ya vienen dentro de `mine` (weekTasks no tiene límite inferior),
@@ -50,7 +56,7 @@ export default async function HomePage() {
     // pb-[40vh]: aire al final para que el contenido no quede pegado abajo (y
     // haya algo de scroll aunque la columna sea corta).
     <div className="grid gap-8 lg:gap-12 items-start pb-[40vh]">
-      <BirthdayConfetti />
+      <BirthdayConfetti people={birthdayPeople} />
       {/* Columna principal */}
       <div className="min-w-0">
         <TodayHero
