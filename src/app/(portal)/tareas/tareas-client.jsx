@@ -451,10 +451,14 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
     for (const t of tasks) {
       if (t.statusType === "closed" || t.statusType === "done") continue;
       if (scope === "mine" && !isMine(t)) continue;
-      if (t.project) cnt.set(t.project, (cnt.get(t.project) || 0) + 1);
+      if (!t.project) continue;
+      const e = cnt.get(t.project) || { count: 0, space: t.space || null };
+      e.count++;
+      if (!e.space && t.space) e.space = t.space; // rama (Space) del cliente
+      cnt.set(t.project, e);
     }
-    return [...cnt.keys()]
-      .map((name) => ({ key: name, label: name, avatarName: name, colorSrc: name, count: cnt.get(name), campaign: campaignSet.has(name) }))
+    return [...cnt.entries()]
+      .map(([name, e]) => ({ key: name, label: name, avatarName: name, colorSrc: name, count: e.count, space: e.space, campaign: campaignSet.has(name) }))
       // Clientes fijos primero (por nº de tareas), campañas/lanzamientos al final.
       .sort((a, b) => (a.campaign - b.campaign) || (b.count - a.count) || a.label.localeCompare(b.label));
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -746,6 +750,15 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
             const fixed = clients.filter((c) => !c.campaign);
             // Temporales: campañas (carpeta entera) + sprints (lista de un cliente).
             const camps = [...clients.filter((c) => c.campaign), ...sprints];
+            // Tres bloques separados: clientes de UNFILTRADE · SPRINTS · clientes
+            // de F*CTS (los de rama desconocida caen con F*cts, nuestra área).
+            const uf = fixed.filter((c) => c.space === "Unfiltrade");
+            const fc = fixed.filter((c) => c.space !== "Unfiltrade");
+            const groups = [
+              { key: "uf", title: "Clientes · Unfiltrade", items: uf },
+              { key: "sprints", title: "Sprints / campañas", items: camps },
+              { key: "fcts", title: "Clientes · F*cts Studio", items: fc },
+            ].filter((g) => g.items.length);
             const Avatar = (c, i, fanClass) => {
               const sel = selection.has(c.key);
               const dim = selection.size > 0 && !sel;
@@ -764,15 +777,14 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
             };
             return (
               <>
-                <div className="group/gfix flex items-center shrink-0">
-                  {fixed.map((c, i) => Avatar(c, i, "-ml-2.5 group-hover/gfix:ml-1"))}
-                </div>
-                {camps.length > 0 && <span className="w-px h-6 bg-border shrink-0 mx-2.5" title="Campañas / lanzamientos" />}
-                {camps.length > 0 && (
-                  <div className="group/gcamp flex items-center shrink-0">
-                    {camps.map((c, i) => Avatar(c, i, "-ml-2.5 group-hover/gcamp:ml-1"))}
-                  </div>
-                )}
+                {groups.map((g, gi) => (
+                  <span key={g.key} className="flex items-center shrink-0">
+                    {gi > 0 && <span className="w-px h-6 bg-border shrink-0 mx-2.5" title={g.title} />}
+                    <span className="group/gfix flex items-center shrink-0">
+                      {g.items.map((c, i) => Avatar(c, i, "-ml-2.5 group-hover/gfix:ml-1"))}
+                    </span>
+                  </span>
+                ))}
               </>
             );
           })()}

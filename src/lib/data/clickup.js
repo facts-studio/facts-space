@@ -106,8 +106,10 @@ function linksFromText(text) {
 
 // Cliente/campaña desde el TAG. Mapa tag → nombre bonito (coincide con las
 // claves de iconos/colores del admin). Devuelve null si no hay tag de cliente.
+// Nota: "unfiltrade" ya NO es un cliente — ahora es una RAMA (Space). Las tareas
+// que arrastran ese tag legado caen a su carpeta real (p. ej. "General").
 const CLIENT_TAGS = {
-  "unfiltrade": "Unfiltrade", "tradinglab": "TradingLab", "flickflow": "Flickflow",
+  "tradinglab": "TradingLab", "flickflow": "Flickflow",
   "bmk": "The BenchMark", "alexruiz": "Alex Ruiz", "f*cts": "F*cts Studio",
   "evento 2026": "Evento 2026", "tradingmind": "TradingMind", "black friday": "Black Friday",
 };
@@ -155,6 +157,9 @@ function mapTask(t) {
     listId: t.list?.id ?? null,
     // Cliente = tag (opción B); si no hay tag de cliente, cae a la carpeta/space.
     project: clientFromTags(t) ?? (t.folder?.name && !t.folder?.hidden ? t.folder.name : (t.space?.name ?? null)),
+    // Rama (Space) a la que pertenece: F*cts Studio (nosotros) o Unfiltrade
+    // (cliente-holding). Sirve para agrupar los clientes por rama en Tareas.
+    space: t.space?.name ?? null,
     priority: t.priority?.priority ?? null,
     // ClickUp marca los hitos (milestones) con custom_item_id === 1.
     isMilestone: t.custom_item_id === 1,
@@ -263,6 +268,9 @@ export async function getClickUpTasks() {
     // La tarea conserva su cliente (project) y añade `sprint` con el nombre de
     // la lista; no es un cliente aparte.
     const sprintByList = new Map(configured.filter((l) => l.is_sprint).map((l) => [l.list_id, l.list_name]));
+    // El endpoint de tareas NO trae el nombre del Space (solo el id): lo
+    // resolvemos desde clickup_lists para poder agrupar los clientes por rama.
+    const spaceNameById = new Map(configured.filter((l) => l.space_id).map((l) => [String(l.space_id), l.space_name]));
 
     if (visibleIds.length) {
       const raw = [];
@@ -297,6 +305,7 @@ export async function getClickUpTasks() {
         seen.add(t.id);
         const m = mapTask(t);
         m.sprint = sprintByList.get(m.listId) ?? null;
+        m.space = spaceNameById.get(String(t.space?.id)) ?? m.space; // rama resuelta
         out.push(m);
       }
       // Subtareas → pliega sus asignados en la tarea padre y devuelve top-level.
