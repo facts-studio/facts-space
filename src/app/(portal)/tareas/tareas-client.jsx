@@ -131,6 +131,38 @@ function ClientAvatar({ name, active, campaign, todos, icon, colorKey, shade = 0
   );
 }
 
+// Icono "maestro" de un grupo (rama/sprints). Es el ancla del que se despliegan
+// los clientes a la derecha; al pulsarlo se selecciona/limpia el grupo entero.
+// El aro indica el estado: todo · parcial · nada.
+function GroupMaster({ short, icon, state }) {
+  return (
+    <span
+      className={cn(
+        "grid place-items-center rounded-[13px] w-10 h-10 bg-surface2/70 text-inkSoft transition",
+        state === "all" ? "ring-2 ring-ink" : state === "some" ? "ring-2 ring-ink/35" : "ring-1 ring-border/60"
+      )}
+    >
+      {icon ? (
+        <span
+          aria-hidden
+          className="block h-[46%] w-[46%]"
+          style={{
+            backgroundColor: "rgb(var(--ct-ink))",
+            WebkitMaskImage: `url("${icon}")`, maskImage: `url("${icon}")`,
+            WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat",
+            WebkitMaskPosition: "center", maskPosition: "center",
+            WebkitMaskSize: "contain", maskSize: "contain",
+          }}
+        />
+      ) : short === "Sprints" ? (
+        <span className="text-brandMid text-[15px] leading-none">✦</span>
+      ) : (
+        <span className="text-[15px] font-display text-inkSoft">{short[0]}</span>
+      )}
+    </span>
+  );
+}
+
 // ── Vista Calendario (mes) ──────────────────────────────────────────────────
 const ISO = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const thisMonth = () => { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() }; };
@@ -443,6 +475,14 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
   const eff = (t) => overrides.get(t.id) || { status: t.status, statusType: t.statusType, statusColor: t.statusColor };
   const isOpen = (t) => { const s = eff(t).statusType; return s !== "closed" && s !== "done"; };
   const toggleClient = (name) => setClientSet((prev) => { const n = new Set(prev); n.has(name) ? n.delete(name) : n.add(name); return n; });
+  // Selección por grupo: si ya está todo el grupo, lo quita; si no, lo añade entero.
+  const selectGroup = (keys) => setClientSet((prev) => {
+    const n = new Set(prev);
+    const all = keys.every((k) => n.has(k));
+    keys.forEach((k) => (all ? n.delete(k) : n.add(k)));
+    return n;
+  });
+  const clearClients = () => setClientSet(new Set());
 
   // Clientes/campañas con tareas abiertas, ordenados por nº (más activos primero).
   // Arriba solo salen los clientes con tareas ABIERTAS; y en modo "Mis tareas",
@@ -476,7 +516,7 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
       if (scope === "mine" && !isMine(t)) continue;
       if (!t.sprint || !t.project) continue;
       const key = sprintKey(t.project, t.sprint);
-      if (!cnt.has(key)) cnt.set(key, { key, label: `${t.project} › ${t.sprint}`, avatarName: t.sprint, colorSrc: t.project, campaign: true, sprint: true, count: 0 });
+      if (!cnt.has(key)) cnt.set(key, { key, label: `${t.project} › ${t.sprint}`, avatarName: t.sprint, colorSrc: t.project, space: t.space || null, campaign: true, sprint: true, count: 0 });
       cnt.get(key).count++;
     }
     const arr = [...cnt.values()].sort((a, b) => (b.count - a.count) || a.label.localeCompare(b.label));
@@ -756,16 +796,19 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
             // de F*CTS (los de rama desconocida caen con F*cts, nuestra área).
             // "General" (bucket interno de la rama) va SIEMPRE al inicio de su grupo.
             const genFirst = (arr) => [...arr].sort((a, b) => (b.label === "General") - (a.label === "General"));
-            const uf = genFirst(fixed.filter((c) => c.space === "Unfiltrade"));
-            const fc = genFirst(fixed.filter((c) => c.space !== "Unfiltrade"));
+            const isUf = (c) => c.space === "Unfiltrade";
+            // Los sprints/campañas de F*cts van CON F*cts, no en el bloque común;
+            // el bloque del medio queda solo para los temporales de Unfiltrade.
             const groups = [
-              { key: "uf", title: "Clientes · Unfiltrade", items: uf },
-              { key: "sprints", title: "Sprints / campañas", items: camps },
-              { key: "fcts", title: "Clientes · F*cts Studio", items: fc },
+              { key: "uf", short: "Unfiltrade", icon: clientIcon("Unfiltrade"), items: genFirst(fixed.filter(isUf)) },
+              { key: "sprints", short: "Sprints", icon: null, items: camps.filter(isUf) },
+              { key: "fcts", short: "F*cts", icon: clientIcon("F*cts Studio"), items: [...genFirst(fixed.filter((c) => !isUf(c))), ...camps.filter((c) => !isUf(c))] },
             ].filter((g) => g.items.length);
-            const Avatar = (c, i, fanClass) => {
+            const Avatar = (c, i) => {
               const sel = selection.has(c.key);
-              const dim = selection.size > 0 && !sel;
+              // Recogidos bajo el maestro por defecto; un cliente SELECCIONADO se
+              // queda desplegado para que el filtro activo sea visible sin hover.
+              const collapsed = !sel;
               return (
                 <button
                   key={c.key}
@@ -773,23 +816,57 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
                   onClick={() => toggleClient(c.key)}
                   onMouseEnter={(e) => { const r = e.currentTarget.getBoundingClientRect(); setHoverCtx({ name: c.label, count: c.count, x: r.left + r.width / 2, y: r.top }); }}
                   onMouseLeave={() => setHoverCtx(null)}
-                  className={cn("relative shrink-0 transition-all duration-200 hover:z-20 active:scale-95", i > 0 && fanClass, dim ? "opacity-30 hover:opacity-90" : "opacity-100")}
+                  style={{ transitionDelay: `${Math.min(i, 6) * 28}ms`, zIndex: 30 - i }}
+                  className={cn(
+                    "relative shrink-0 transition-[margin,opacity,transform] duration-[240ms] ease-out active:scale-95 hover:z-40",
+                    collapsed
+                      ? "-ml-10 opacity-0 scale-90 pointer-events-none group-hover/gfix:ml-1 group-hover/gfix:opacity-100 group-hover/gfix:scale-100 group-hover/gfix:pointer-events-auto"
+                      : "ml-1 opacity-100"
+                  )}
                 >
                   <ClientAvatar name={c.avatarName} active={sel} campaign={c.campaign && !c.sprint} icon={clientIcon(c.colorSrc, iconsByClient[c.colorSrc])} colorKey={colorsByClient[c.colorSrc]} shade={c.shade || 0} />
                 </button>
               );
             };
             return (
-              <>
-                {groups.map((g, gi) => (
-                  <span key={g.key} className="flex items-center shrink-0">
-                    {gi > 0 && <span className="w-px h-6 bg-border shrink-0 mx-2.5" title={g.title} />}
-                    <span className="group/gfix flex items-center shrink-0">
-                      {g.items.map((c, i) => Avatar(c, i, "-ml-2.5 group-hover/gfix:ml-1"))}
-                    </span>
-                  </span>
-                ))}
-              </>
+              <div className="flex items-center">
+                {groups.map((g, gi) => {
+                  const keys = g.items.map((c) => c.key);
+                  const sel = keys.filter((k) => selection.has(k)).length;
+                  const state = sel === 0 ? "none" : sel === keys.length ? "all" : "some";
+                  return (
+                    <div key={g.key} className="flex items-center shrink-0">
+                      {gi > 0 && <span className="w-px h-7 bg-border/70 mx-2.5 shrink-0" aria-hidden />}
+                      {/* group/gfix: al pasar el ratón, los clientes se despliegan a
+                          la derecha del icono maestro. */}
+                      <div className="group/gfix flex items-center shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => selectGroup(keys)}
+                          onMouseEnter={(e) => { const r = e.currentTarget.getBoundingClientRect(); setHoverCtx({ name: g.short, count: keys.length, x: r.left + r.width / 2, y: r.top }); }}
+                          onMouseLeave={() => setHoverCtx(null)}
+                          title={`${g.short} · seleccionar todo`}
+                          className="relative z-40 shrink-0 transition active:scale-95"
+                        >
+                          <GroupMaster short={g.short} icon={g.icon} state={state} />
+                        </button>
+                        {g.items.map((c, i) => Avatar(c, i))}
+                      </div>
+                    </div>
+                  );
+                })}
+                {selection.size > 0 && (
+                  <button
+                    type="button"
+                    onClick={clearClients}
+                    title="Quitar filtro de clientes"
+                    className="ml-3 inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-micro text-mutedSoft hover:text-ink hover:bg-surface2/70 transition active:scale-[0.97] shrink-0"
+                  >
+                    <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+                    Limpiar
+                  </button>
+                )}
+              </div>
             );
           })()}
         </div>

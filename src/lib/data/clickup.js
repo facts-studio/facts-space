@@ -106,11 +106,11 @@ function linksFromText(text) {
 
 // Cliente/campaña desde el TAG. Mapa tag → nombre bonito (coincide con las
 // claves de iconos/colores del admin). Devuelve null si no hay tag de cliente.
-// Nota: "unfiltrade" ya NO es un cliente — ahora es una RAMA (Space). Las tareas
-// que arrastran ese tag legado caen a su carpeta real (p. ej. "General").
+// Nota: "unfiltrade" y "f*cts" ya NO son clientes — son RAMAS (Spaces). Las
+// tareas que arrastran esos tags legados caen a su carpeta real (p. ej. "General").
 const CLIENT_TAGS = {
   "tradinglab": "TradingLab", "flickflow": "Flickflow",
-  "bmk": "The BenchMark", "alexruiz": "Alex Ruiz", "f*cts": "F*cts Studio",
+  "bmk": "The BenchMark", "alexruiz": "Alex Ruiz",
   "evento 2026": "Evento 2026", "tradingmind": "TradingMind", "black friday": "Black Friday",
 };
 function clientFromTags(t) {
