@@ -2,6 +2,7 @@ import CalendarMonth from "@/components/CalendarMonth";
 import { getCalendarEvents, getPendingAbsenceEvents } from "@/lib/data/calendar";
 import { getCurrentEmployee } from "@/lib/data/helpers";
 import { getClickUpTasks, getConfiguredLists } from "@/lib/data/clickup";
+import { getEmployees } from "@/lib/data/employees";
 import { paletteColor } from "@/lib/client-palette";
 
 // Tarea de ClickUp → evento del calendario (tipo "tarea", en su fecha límite).
@@ -28,12 +29,13 @@ function toEvent(t, colorsByClient) {
 }
 
 export default async function CalendarioPage() {
-  const [events, pending, me, tasks, lists] = await Promise.all([
+  const [events, pending, me, tasks, lists, team] = await Promise.all([
     getCalendarEvents(),
     getPendingAbsenceEvents(), // solicitadas sin aprobar → pastilla discontinua
     getCurrentEmployee(),
     getClickUpTasks(),
     getConfiguredLists(),
+    getEmployees(), // plantilla activa real (no el mock) para la fila de personas
   ]);
   const colorsByClient = Object.fromEntries(lists.filter((l) => l.color && l.folder_name).map((l) => [l.folder_name, l.color]));
   const taskEvents = tasks.filter((t) => t.dueDate).map((t) => toEvent(t, colorsByClient));
@@ -45,6 +47,7 @@ export default async function CalendarioPage() {
     <CalendarMonth
       events={events.concat(pending).map(withTint)}
       tasks={taskEvents}
+      team={(team || []).map((e) => ({ id: e.id, name: e.name, photo: e.photo }))}
       canRequest={Boolean(me)}
     />
   );

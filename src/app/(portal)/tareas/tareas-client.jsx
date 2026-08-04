@@ -35,6 +35,13 @@ const SCOPES = [
 const SPRINT_PREFIX = "\u2726";
 const sprintKey = (project, sprint) => `${SPRINT_PREFIX}${project}::${sprint}`;
 
+// Identidad de un cliente. Casi siempre es su nombre de carpeta, PERO "General"
+// se repite en cada rama (es el bucket interno de cada Space): se desambigua por
+// Space para que cada rama tenga su propia General y no se fusionen en un chip.
+const CLIENT_SEP = " · ";
+const clientId = (project, space) =>
+  project === "General" && space ? `${space}${CLIENT_SEP}General` : (project || "");
+
 function matchScope(t, scope) {
   if (scope === "todo") return true;
   if (!t.dueDate) return false;
@@ -494,13 +501,15 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
       if (t.statusType === "closed" || t.statusType === "done") continue;
       if (scope === "mine" && !isMine(t)) continue;
       if (!t.project) continue;
-      const e = cnt.get(t.project) || { count: 0, space: t.space || null };
+      // La clave desambigua "General" por rama; el nombre visible es el proyecto.
+      const id = clientId(t.project, t.space);
+      const e = cnt.get(id) || { count: 0, space: t.space || null, name: t.project };
       e.count++;
       if (!e.space && t.space) e.space = t.space; // rama (Space) del cliente
-      cnt.set(t.project, e);
+      cnt.set(id, e);
     }
     return [...cnt.entries()]
-      .map(([name, e]) => ({ key: name, label: name, avatarName: name, colorSrc: name, count: e.count, space: e.space, campaign: campaignSet.has(name) }))
+      .map(([id, e]) => ({ key: id, label: e.name, avatarName: e.name, colorSrc: e.name, count: e.count, space: e.space, campaign: campaignSet.has(e.name) }))
       // Clientes fijos primero (por nº de tareas), campañas/lanzamientos al final.
       .sort((a, b) => (a.campaign - b.campaign) || (b.count - a.count) || a.label.localeCompare(b.label));
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -572,7 +581,7 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
       // sprints (son suyos); elegir un sprint acota solo a esa lista.
       if (selection.size) {
         const hit = [...selection].some((k) => {
-          if (!k.startsWith(SPRINT_PREFIX)) return t.project === k;
+          if (!k.startsWith(SPRINT_PREFIX)) return clientId(t.project, t.space) === k;
           const [p, sp] = k.slice(SPRINT_PREFIX.length).split("::");
           return t.project === p && t.sprint === sp;
         });
@@ -616,7 +625,7 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
   const sections = useMemo(() => {
     const map = new Map();
     for (const t of filtered) {
-      const key = groupByArea ? (t.listName || "—") : (t.project || "—");
+      const key = groupByArea ? (t.listName || "—") : clientId(t.project, t.space) || "—";
       const label = groupByArea ? (t.listName || "Sin área") : (t.project || "Sin cliente");
       if (!map.has(key)) map.set(key, { key, label, campaign: !groupByArea && campaignSet.has(t.project), items: [] });
       map.get(key).items.push(t);
@@ -787,7 +796,9 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
       {/* Clientes (apilados) + filtros. En móvil se apilan: avatares arriba,
           controles debajo con wrap; en sm+, una sola línea. */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-3">
-        <div className="flex items-center w-full sm:flex-1 min-w-0 overflow-x-auto scrollbar-none -mx-1 px-1 py-1">
+        {/* isolate: contiene el z-index de los iconos maestros para que la barra
+            pase POR DEBAJO de la cabecera sticky (z-20), no por encima. */}
+        <div className="isolate flex items-center w-full sm:flex-1 min-w-0 overflow-x-auto scrollbar-none -mx-1 px-1 py-1">
           {(() => {
             const fixed = clients.filter((c) => !c.campaign);
             // Temporales: campañas (carpeta entera) + sprints (lista de un cliente).

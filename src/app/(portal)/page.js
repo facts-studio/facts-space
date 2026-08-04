@@ -2,7 +2,9 @@ import BirthdayConfetti from "@/components/BirthdayConfetti";
 import TodayHero from "@/components/TodayHero";
 import FichajeReminder from "@/components/FichajeReminder";
 import AprobacionesReminder from "@/components/AprobacionesReminder";
+import ConflictoVacacionesReminder from "@/components/ConflictoVacacionesReminder";
 import DecisionReminder from "@/components/DecisionReminder";
+import { taskVacationConflicts } from "@/lib/conflicts";
 import HomePanels from "@/components/HomePanels";
 import { getCalendarEvents } from "@/lib/data/calendar";
 import { getPendingApprovals } from "@/lib/data/admin";
@@ -30,6 +32,8 @@ export default async function HomePage() {
   const birthdayPeople = events
     .filter((e) => e.type === "cumple" && e.start === todayISO && e.who)
     .map((e) => e.who);
+  // Aviso admin: tareas asignadas a alguien en un día que tiene ausencia aprobada.
+  const conflicts = me?.is_admin ? taskVacationConflicts(events, tasks) : [];
   const mine = weekTasks(tasks, me?.email);
   const teamWeek = teamWeekTasks(tasks); // modo Status: todo el equipo, por cliente
   // Vencidas: ya vienen dentro de `mine` (weekTasks no tiene límite inferior),
@@ -71,6 +75,7 @@ export default async function HomePage() {
               <DecisionReminder decisions={decisions} />
               {me && <FichajeReminder days={daysSinceFichaje} />}
               <AprobacionesReminder requests={approvals} />
+              <ConflictoVacacionesReminder conflicts={conflicts} />
             </div>
           }
         />

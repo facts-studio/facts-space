@@ -7,6 +7,12 @@ import { setTheme as persistTheme } from "@/lib/actions/prefs";
 // vía server action + cookie espejo, así que viaja entre navegadores/dispositivos.
 // serverTheme: valor guardado del empleado ('light'|'dark'|null). Si no hay
 // cookie todavía (p. ej. primer acceso en este navegador) se aplica ese valor.
+// Sincroniza el theme-color de la barra (PWA) con el tema activo.
+const syncBar = (d) => {
+  const m = typeof document !== "undefined" && document.querySelector('meta[name="theme-color"]');
+  if (m) m.setAttribute("content", d ? "#1c1c1a" : "#EFEEEB");
+};
+
 export default function ThemeToggle({ serverTheme = null }) {
   const [dark, setDark] = useState(false);
 
@@ -20,6 +26,7 @@ export default function ThemeToggle({ serverTheme = null }) {
       document.documentElement.classList.toggle("dark", d);
       persistTheme(serverTheme);
     }
+    syncBar(d);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- sincroniza el estado del switch con la clase del <html> (sistema externo)
     setDark(d);
   }, [serverTheme]);
@@ -28,6 +35,7 @@ export default function ThemeToggle({ serverTheme = null }) {
     const next = !dark;
     setDark(next);
     document.documentElement.classList.toggle("dark", next);
+    syncBar(next);
     persistTheme(next ? "dark" : "light");
   };
 

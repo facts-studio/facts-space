@@ -15,7 +15,6 @@ const POLICY_BANNER = { ok: "bg-successSoft/50 text-success", warn: "bg-warnSoft
 const POLICY_TONE = { ok: "text-success", warn: "text-warn", bad: "text-danger" };
 const POLICY_GLYPH = { ok: "✓", warn: "!", bad: "✕" };
 
-const MEMBER = new Map(TEAM.map((m) => [m.name, m]));
 // Tipos con persona asociada → mostramos miniatura.
 const WITH_PERSON = new Set(["cumple", "vacaciones", "ausencia"]);
 // Con la vista de tareas activa, el resto de eventos se apaga a gris para que el
@@ -144,7 +143,10 @@ const FILTER_ON = {
   danger: "bg-dangerSoft text-danger border-danger/30",
 };
 
-export default function CalendarMonth({ events = [], tasks = [], canRequest = false }) {
+export default function CalendarMonth({ events = [], tasks = [], team = [], canRequest = false }) {
+  // Plantilla real (activos). Fallback al mock solo en preview sin Supabase.
+  const roster = team.length ? team : TEAM;
+  const MEMBER = useMemo(() => new Map(roster.map((m) => [m.name, m])), [roster]);
   const [showTasks, setShowTasks] = useState(false);
   const allEvents = useMemo(() => (showTasks ? events.concat(tasks) : events), [events, tasks, showTasks]);
   const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
@@ -406,7 +408,7 @@ export default function CalendarMonth({ events = [], tasks = [], canRequest = fa
               </button>
             )}
             <div className="flex items-center -space-x-1.5">
-              {TEAM.map((m) => {
+              {roster.map((m) => {
                 const on = !people || people.has(m.name);
                 return (
                   <button
@@ -418,8 +420,12 @@ export default function CalendarMonth({ events = [], tasks = [], canRequest = fa
                       on ? "ring-2 ring-bg" : "opacity-35 grayscale ring-2 ring-bg"
                     }`}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={m.photo} alt={m.name} className="w-7 h-7 rounded-full object-cover block" />
+                    {m.photo ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={m.photo} alt={m.name} className="w-7 h-7 rounded-full object-cover block" />
+                    ) : (
+                      <span className="w-7 h-7 rounded-full bg-surface2 text-inkSoft grid place-items-center text-[11px] font-medium block">{(m.name || "?")[0]?.toUpperCase()}</span>
+                    )}
                   </button>
                 );
               })}
