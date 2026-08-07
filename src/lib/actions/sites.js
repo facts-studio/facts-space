@@ -8,7 +8,7 @@ import { getSiteTraffic, isAnalyticsConfigured } from "@/lib/data/analytics";
 // Campos que administración puede escribir de una web. `image` se guarda como
 // URL (og:image de la propia web o una captura subida al bucket `sites`).
 // `ga_property_id` = id numérico de la propiedad GA4 para el análisis de tráfico.
-const WRITABLE = ["url", "title", "description", "client", "color", "tags", "image", "active", "position", "ga_property_id"];
+const WRITABLE = ["url", "title", "description", "client", "color", "tags", "image", "active", "position", "ga_property_id", "repo_url"];
 
 function pick(fields) {
   const patch = {};

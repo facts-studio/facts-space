@@ -9,6 +9,14 @@ import { cn } from "@/lib/cn";
 import { createSite, updateSite, deleteSite, fetchSiteMeta, analyzeSiteMeta, checkEmbeddable, fetchSiteTraffic } from "@/lib/actions/sites";
 
 const hostOf = (url) => { try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return url; } };
+// "https://github.com/org/repo/" → "org/repo" (o el host si no es reconocible).
+const repoLabel = (url) => {
+  try {
+    const u = new URL(url);
+    const path = u.pathname.replace(/^\/+|\/+$/g, "");
+    return path || u.hostname.replace(/^www\./, "");
+  } catch { return url; }
+};
 const favicon = (url) => { try { return `https://www.google.com/s2/favicons?domain=${new URL(url).hostname}&sz=64`; } catch { return null; } };
 
 // Tinte del cliente (o del propio nombre de la web si no hay cliente).
@@ -681,6 +689,23 @@ function SiteDetail({ site, onClose }) {
           </div>
         )}
 
+        {site.repo_url && (
+          <div className="mt-4">
+            <h3 className="section-eyebrow mb-2">Repositorio</h3>
+            <a
+              href={site.repo_url}
+              target="_blank"
+              rel="noreferrer"
+              title={site.repo_url}
+              className="flex items-center gap-2 rounded-xl bg-surface2/50 px-3 py-2 text-small text-inkSoft hover:text-ink hover:bg-surface2/80 transition min-w-0"
+            >
+              <svg className="h-4 w-4 shrink-0 text-mutedSoft" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.46-1.11-1.46-.9-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.89 1.53 2.34 1.09 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02a9.5 9.5 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 12 2Z" /></svg>
+              <span className="truncate flex-1">{repoLabel(site.repo_url)}</span>
+              <span className="text-micro text-mutedSoft shrink-0">↗</span>
+            </a>
+          </div>
+        )}
+
         <a href={site.url} target="_blank" rel="noreferrer" className="btn-primary w-full mt-6">Abrir la web ↗</a>
       </aside>
     </div>
@@ -702,6 +727,7 @@ function SiteForm({ site, clientNames, onClose, onSaved, onDeleted }) {
     image: site?.image || "",
     active: site?.active ?? true,
     ga_property_id: site?.ga_property_id || "",
+    repo_url: site?.repo_url || "",
   }));
   const [msg, setMsg] = useState(null);
   const [busy, start] = useTransition();
@@ -751,6 +777,7 @@ function SiteForm({ site, clientNames, onClose, onSaved, onDeleted }) {
       color: form.color || null,
       client: form.client.trim() || null,
       ga_property_id: form.ga_property_id.trim() || null,
+      repo_url: form.repo_url.trim() || null,
     };
     start(async () => {
       const r = editing ? await updateSite(site.id, payload) : await createSite(payload);
@@ -818,6 +845,10 @@ function SiteForm({ site, clientNames, onClose, onSaved, onDeleted }) {
 
           <Field label="GA4 · ID de propiedad" hint="Solo el número (Administrar → Detalles de la propiedad). Alimenta la pestaña Tráfico.">
             <Input value={form.ga_property_id} onChange={(e) => set("ga_property_id")(e.target.value)} placeholder="123456789" inputMode="numeric" />
+          </Field>
+
+          <Field label="Repositorio (Git)" hint="URL del repo. Se muestra en la ficha de la web.">
+            <Input value={form.repo_url} onChange={(e) => set("repo_url")(e.target.value)} placeholder="https://github.com/org/repo" />
           </Field>
 
           <Field label="Preview">
