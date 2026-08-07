@@ -6,7 +6,7 @@ import { Surface, Select, Badge, Button, Field, Input, EmptyState, ScreenHeader,
 import { paletteColor, CLIENT_COLORS } from "@/lib/client-palette";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/cn";
-import { createSite, updateSite, deleteSite, fetchSiteMeta, analyzeSiteMeta, checkEmbeddable } from "@/lib/actions/sites";
+import { createSite, updateSite, deleteSite, fetchSiteMeta, analyzeSiteMeta, checkEmbeddable, fetchSiteTraffic } from "@/lib/actions/sites";
 
 const hostOf = (url) => { try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return url; } };
 const favicon = (url) => { try { return `https://www.google.com/s2/favicons?domain=${new URL(url).hostname}&sz=64`; } catch { return null; } };
@@ -457,16 +457,100 @@ function MetaPanel({ meta, state, site }) {
 }
 
 // ── Detalle: la web en vivo (iframe) + ficha a la derecha ────────────────────
+// KPI grande del panel de tráfico.
+function TrafficStat({ label, value, sub }) {
+  return (
+    <div className="rounded-2xl bg-surface/55 p-5">
+      <p className="section-eyebrow mb-2">{label}</p>
+      <p className="font-display text-[28px] leading-none text-ink tabular-nums">{value}</p>
+      {sub ? <p className="text-micro text-mutedSoft mt-1.5">{sub}</p> : null}
+    </div>
+  );
+}
+
+// Gráfico de línea (sesiones/día) — SVG inline, se estira al ancho. Trazo de
+// grosor constante (non-scaling-stroke) y área tenue con el color de la web.
+function TrafficChart({ series = [], color }) {
+  const pts = series.filter((d) => d && d.date);
+  if (pts.length < 2) return <p className="text-small text-mutedSoft">Aún no hay suficientes datos para el gráfico.</p>;
+  const max = Math.max(1, ...pts.map((d) => d.sessions));
+  const W = 100, H = 40, n = pts.length;
+  const x = (i) => (i / (n - 1)) * W;
+  const y = (v) => H - (v / max) * H;
+  const line = pts.map((d, i) => `${i ? "L" : "M"}${x(i).toFixed(2)},${y(d.sessions).toFixed(2)}`).join(" ");
+  const area = `${line} L${W.toFixed(2)},${H} L0,${H} Z`;
+  return (
+    <div className="rounded-2xl bg-surface/55 p-5" style={{ color }}>
+      <div className="flex items-baseline justify-between mb-3">
+        <p className="section-eyebrow">Sesiones · últimos 30 días</p>
+        <span className="text-micro text-mutedSoft tabular-nums">pico {max.toLocaleString("es-ES")}</span>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full h-40 block" role="img" aria-label="Sesiones por día en los últimos 30 días">
+        <path d={area} fill="currentColor" opacity="0.10" />
+        <path d={line} fill="none" stroke="currentColor" strokeWidth="1.6" vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />
+      </svg>
+      <div className="flex justify-between mt-2 text-micro text-mutedSoft tabular-nums">
+        <span>{fmtDay(pts[0].date)}</span>
+        <span>{fmtDay(pts[pts.length - 1].date)}</span>
+      </div>
+    </div>
+  );
+}
+
+function fmtDay(iso) {
+  return new Date(iso + "T00:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+}
+
+// Panel "Tráfico": KPIs + gráfico de 30 días desde GA4.
+function TrafficPanel({ data, state, tint }) {
+  const color = tint?.fg || "rgb(var(--ct-ink))";
+  if (state !== "done") {
+    const err = state === "error";
+    return (
+      <div className="p-6 h-full grid place-items-center text-center">
+        <div>
+          {err ? (
+            <>
+              <p className="text-body text-ink">Sin datos de tráfico</p>
+              <p className="text-micro text-mutedSoft mt-1 max-w-[34ch] mx-auto">{data?.error || "No se pudo leer GA4."}</p>
+            </>
+          ) : (
+            <p className="text-small text-mutedSoft inline-flex items-center gap-2">
+              <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M21 12a9 9 0 1 1-2.64-6.36" /></svg>
+              Cargando tráfico…
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+  const nf = (v) => Number(v || 0).toLocaleString("es-ES");
+  return (
+    <div className="p-5 space-y-4">
+      <div className="grid grid-cols-3 gap-3">
+        <TrafficStat label="Usuarios" value={nf(data.users)} sub="30 días" />
+        <TrafficStat label="Sesiones" value={nf(data.sessions)} sub="30 días" />
+        <TrafficStat label="Páginas vistas" value={nf(data.views)} sub="30 días" />
+      </div>
+      <TrafficChart series={data.series} color={color} />
+      <p className="text-micro text-mutedSoft">Fuente: Google Analytics 4.</p>
+    </div>
+  );
+}
+
 function SiteDetail({ site, onClose }) {
   const tint = tintOf(site);
   // "web" = la web embebida (puede quedar en blanco si bloquea el iframe);
   // "meta" = análisis de metadatos (compartir, iconos, SEO), cargado al vuelo.
-  const [view, setView] = useState("web"); // "web" | "meta"
+  const [view, setView] = useState("web"); // "web" | "meta" | "trafico"
   const [meta, setMeta] = useState(null);
   const [metaState, setMetaState] = useState("idle"); // idle | done | error
   const [runId, setRunId] = useState(0); // ↑ fuerza un re-análisis
   const doneFor = useRef(-1); // último runId ya analizado (evita refetch en bucle)
   const [embed, setEmbed] = useState("checking"); // checking | ok | blocked
+  const [traffic, setTraffic] = useState(null);
+  const [trafficState, setTrafficState] = useState("idle"); // idle | done | error
+  const askedTraffic = useRef(false); // evita repetir la llamada a GA4
 
   // ¿La web deja embeberse? Si sus cabeceras lo bloquean, en vez del iframe en
   // blanco mostramos un recuadro. Se comprueba una vez (el detalle se remonta por key).
@@ -490,6 +574,19 @@ function SiteDetail({ site, onClose }) {
     return () => { alive = false; };
   }, [view, site.url, runId]);
 
+  // Tráfico (GA4): se pide la primera vez que se abre la pestaña.
+  useEffect(() => {
+    if (view !== "trafico" || askedTraffic.current) return;
+    askedTraffic.current = true;
+    let alive = true;
+    fetchSiteTraffic(site.id).then((r) => {
+      if (!alive) return;
+      if (r?.ok) { setTraffic(r); setTrafficState("done"); }
+      else { setTraffic({ error: r?.error || "No se pudo leer el tráfico." }); setTrafficState("error"); }
+    });
+    return () => { alive = false; };
+  }, [view, site.id]);
+
   // Vuelve a lanzar el diagnóstico desde cero.
   const reanalyze = () => { setMeta(null); setMetaState("idle"); setRunId((n) => n + 1); };
 
@@ -507,6 +604,7 @@ function SiteDetail({ site, onClose }) {
           <div className="flex rounded-lg bg-surface2/70 p-0.5 text-[11.5px]">
             <button onClick={() => setView("web")} className={`px-2.5 py-1 rounded-md transition ${view === "web" ? "bg-paper text-ink shadow-sm" : "text-mutedSoft hover:text-ink"}`}>Web</button>
             <button onClick={() => setView("meta")} className={`px-2.5 py-1 rounded-md transition ${view === "meta" ? "bg-paper text-ink shadow-sm" : "text-mutedSoft hover:text-ink"}`}>Meta</button>
+            <button onClick={() => setView("trafico")} className={`px-2.5 py-1 rounded-md transition ${view === "trafico" ? "bg-paper text-ink shadow-sm" : "text-mutedSoft hover:text-ink"}`}>Tráfico</button>
           </div>
           {view === "meta" && (
             <button
@@ -522,7 +620,11 @@ function SiteDetail({ site, onClose }) {
           <a href={site.url} target="_blank" rel="noreferrer" className="text-micro text-mutedSoft hover:text-ink transition px-1.5">Abrir ↗</a>
         </div>
         <div className="relative bg-paper" style={{ height: "calc(100vh - 12rem)" }}>
-          {view === "meta" ? (
+          {view === "trafico" ? (
+            <div className="h-full overflow-y-auto">
+              <TrafficPanel data={traffic} state={trafficState} tint={tint} />
+            </div>
+          ) : view === "meta" ? (
             <div className="h-full overflow-y-auto">
               <MetaPanel meta={meta} state={metaState} site={site} />
             </div>
@@ -599,6 +701,7 @@ function SiteForm({ site, clientNames, onClose, onSaved, onDeleted }) {
     tags: (site?.tags || []).join(", "),
     image: site?.image || "",
     active: site?.active ?? true,
+    ga_property_id: site?.ga_property_id || "",
   }));
   const [msg, setMsg] = useState(null);
   const [busy, start] = useTransition();
@@ -647,6 +750,7 @@ function SiteForm({ site, clientNames, onClose, onSaved, onDeleted }) {
       tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
       color: form.color || null,
       client: form.client.trim() || null,
+      ga_property_id: form.ga_property_id.trim() || null,
     };
     start(async () => {
       const r = editing ? await updateSite(site.id, payload) : await createSite(payload);
@@ -711,6 +815,10 @@ function SiteForm({ site, clientNames, onClose, onSaved, onDeleted }) {
           </div>
 
           <Field label="Etiquetas" hint="Separadas por comas."><Input value={form.tags} onChange={(e) => set("tags")(e.target.value)} placeholder="landing, saas, evento" /></Field>
+
+          <Field label="GA4 · ID de propiedad" hint="Solo el número (Administrar → Detalles de la propiedad). Alimenta la pestaña Tráfico.">
+            <Input value={form.ga_property_id} onChange={(e) => set("ga_property_id")(e.target.value)} placeholder="123456789" inputMode="numeric" />
+          </Field>
 
           <Field label="Preview">
             <div className="flex items-center gap-3">

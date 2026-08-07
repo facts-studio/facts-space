@@ -3,10 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentEmployee } from "@/lib/data/helpers";
+import { getSiteTraffic, isAnalyticsConfigured } from "@/lib/data/analytics";
 
 // Campos que administración puede escribir de una web. `image` se guarda como
 // URL (og:image de la propia web o una captura subida al bucket `sites`).
-const WRITABLE = ["url", "title", "description", "client", "color", "tags", "image", "active", "position"];
+// `ga_property_id` = id numérico de la propiedad GA4 para el análisis de tráfico.
+const WRITABLE = ["url", "title", "description", "client", "color", "tags", "image", "active", "position", "ga_property_id"];
 
 function pick(fields) {
   const patch = {};
@@ -254,6 +256,27 @@ export async function checkEmbeddable(url) {
   } catch {
     return { ok: false }; // no se pudo comprobar → que lo intente el iframe
   }
+}
+
+/**
+ * Tráfico de una web (GA4) para la pestaña "Tráfico": KPIs + serie de 30 días.
+ * Requiere sesión (lo ve el equipo, no solo admin) y que la web tenga
+ * ga_property_id. Best-effort: devuelve {ok:false, error} legible si algo falla.
+ */
+export async function fetchSiteTraffic(id) {
+  const me = await getCurrentEmployee();
+  if (!me) return { ok: false, error: "No hay sesión activa." };
+  if (!id) return { ok: false, error: "Falta el identificador." };
+  if (!isAnalyticsConfigured()) return { ok: false, error: "Analytics no está configurado en el servidor." };
+
+  const db = createAdminClient();
+  if (!db) return { ok: false, error: "Falta la configuración del servidor." };
+  const { data: site } = await db.from("sites").select("ga_property_id").eq("id", id).single();
+  if (!site?.ga_property_id) return { ok: false, error: "Esta web aún no tiene una propiedad de GA4 vinculada." };
+
+  const r = await getSiteTraffic(site.ga_property_id, { days: 30 });
+  if (!r || !r.ok) return { ok: false, error: r?.error || "No se pudo leer GA4." };
+  return { ok: true, ...r };
 }
 
 export async function createSite(fields = {}) {
