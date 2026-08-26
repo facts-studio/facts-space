@@ -128,7 +128,11 @@ export async function getSlackTickets() {
     }
     const names = await directory(people);
     const labels = channelLabels();
+    // Enlace a la lista en el workspace. Slack no documenta un permalink por
+    // item, así que apuntamos a la lista: abre y desde ahí se ve el ticket.
     const team = process.env.SLACK_TEAM_ID;
+    const workspace = (process.env.SLACK_WORKSPACE_URL || "https://slack.com").replace(/\/$/, "");
+    const listUrl = team ? `${workspace}/lists/${team}/${listId}` : `${workspace}/lists/${listId}`;
 
     const soloConfigurados = Object.keys(labels).length > 0;
     return (items.items ?? []).map((it) => {
@@ -152,9 +156,7 @@ export async function getSlackTickets() {
         channel: channelId,
         list: labels[channelId] ?? null,
         createdAt: it.date_created ? Number(it.date_created) * 1000 : null,
-        url: team
-          ? `https://app.slack.com/lists/${team}/${listId}/record/${it.id}`
-          : `https://slack.com/lists/${listId}`,
+        url: listUrl,
       };
     })
     // Si hay canales configurados, el resto no nos incumbe (p. ej. los de tech).
