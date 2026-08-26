@@ -85,7 +85,7 @@ function Resumen({ e, employees, requests, documents, time, vacUsed, year, onDon
 
       <div className="space-y-3">
         <div className="grid sm:grid-cols-3 gap-3">
-          <Stat label={`Vacaciones ${year}`} value={`${allowance - vacUsed}`} sub={`de ${allowance} · ${vacUsed} usados`} />
+          <Stat label={`Vac. disponibles ${year}`} value={`${allowance - vacUsed}`} sub={`de ${allowance} · ${vacUsed} usados`} />
           <Stat label="Horas del mes" value={formatDuration(monthMs)} />
           <Stat label="Jornadas" value={String(time.length)} sub="este mes" />
         </div>

@@ -4,8 +4,10 @@ import { useState } from "react";
 import { ScreenHeader } from "@/components/ui";
 import { TOOLS } from "@/lib/content";
 
+// sz=128 y no 64: el icono se pinta a 40px CSS, que en pantallas 2x son 80px
+// reales. Con 64 se escalaba hacia arriba y se veía borroso.
 function favicon(url) {
-  try { return `https://www.google.com/s2/favicons?domain=${new URL(url).hostname}&sz=64`; } catch { return null; }
+  try { return `https://www.google.com/s2/favicons?domain=${new URL(url).hostname}&sz=128`; } catch { return null; }
 }
 const iconOf = (t) => t.icon || favicon(t.url);
 

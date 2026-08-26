@@ -2,6 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { isConfigured, getCurrentEmployee } from "./helpers";
 import { monthEndISO } from "@/lib/dates";
+import { withClickUpAvatars } from "./avatars";
 
 // Todos los empleados (incluidos inactivos) para el panel de RR.HH.
 export async function getAllEmployees() {
@@ -11,7 +12,7 @@ export async function getAllEmployees() {
     .from("employees")
     .select("id, name, last_name, email, role, photo, color, birthday, manager_id, is_admin, vacation_allowance, vacation_adjustment, active, clickup_group_id")
     .order("name");
-  return data ?? [];
+  return withClickUpAvatars(data ?? []);
 }
 
 // Solicitudes de vacaciones pendientes (todas), con nombre del solicitante.
@@ -107,7 +108,9 @@ export async function getEmployeeById(id) {
   if (!isConfigured() || !id) return null;
   const supabase = await createClient();
   const { data } = await supabase.from("employees").select("*").eq("id", id).maybeSingle();
-  return data ?? null;
+  if (!data) return null;
+  const [withAvatar] = await withClickUpAvatars([data]);
+  return withAvatar;
 }
 
 // Solicitudes/ausencias de un empleado (recientes primero).

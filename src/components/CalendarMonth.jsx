@@ -120,6 +120,12 @@ const YFILL = {
   brand: "bg-brandSoft", info: "bg-infoSoft", warn: "bg-warnSoft", violet: "bg-violetSoft", success: "bg-successSoft", danger: "bg-dangerSoft",
 };
 // Prioridad de color cuando un día tiene varios eventos.
+// A qué pertenece un evento de ClickUp: su cliente y su lista. Es lo que da
+// contexto a un hito suelto en el calendario ("Montaje del CMS" ¿de quién?).
+function belongsTo(e) {
+  return [e.client, e.list].filter(Boolean).join(" · ");
+}
+
 const YORDER = ["hito", "festivo", "cumple", "vacaciones", "ausencia"];
 // Tile del panel del día: fondo suave + borde + acento por tipo.
 const TILE = {
@@ -707,11 +713,19 @@ export default function CalendarMonth({ events = [], tasks = [], team = [], canR
                     const tint = e.type === "tarea" ? e.tint : (showTasks && e.type === "hito" ? e.tint ?? null : null);
                     const muted = showTasks && !KEEP_COLOR.has(e.type);
                     const pending = Boolean(e.pending);
+                    // Hitos y tareas de ClickUp llevan enlace: la fila entera abre
+                    // la tarea en ClickUp, en otra pestaña.
+                    const Row = e.url ? "a" : "div";
+                    const rowProps = e.url
+                      ? { href: e.url, target: "_blank", rel: "noreferrer", title: "Abrir en ClickUp" }
+                      : {};
                     return (
-                      <li
-                        key={j}
+                      <li key={j}>
+                      <Row
+                        {...rowProps}
                         className={cn(
                           "rounded-lg border p-2.5 flex items-center gap-3",
+                          e.url && "group/ev cursor-pointer transition hover:shadow-soft",
                           !tint && (
                             pending
                               ? "border-dashed border-borderStrong bg-transparent"
@@ -737,12 +751,23 @@ export default function CalendarMonth({ events = [], tasks = [], team = [], canR
                             style={tint ? { color: tint.fg } : undefined}
                           >
                             {/* En ausencias el tipo y la persona ya van en el título
-                                ("Vacaciones Carles"): aquí la duración. En tareas,
-                                el cliente; en el resto, el tipo. */}
-                            {WITH_SPAN.has(e.type) ? spanLabel(e) : tint ? (e.client || t.label) : t.label}
+                                ("Vacaciones Carles"): aquí la duración. En hitos y
+                                tareas, a qué pertenecen (cliente · lista); en el
+                                resto, el tipo. */}
+                            {WITH_SPAN.has(e.type) ? spanLabel(e) : belongsTo(e) || t.label}
                             {pending ? <span className="text-mutedSoft font-normal"> · pendiente de aprobar</span> : null}
                           </p>
                         </div>
+                        {e.url && (
+                          <svg
+                            width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden
+                            className="shrink-0 opacity-0 transition-opacity group-hover/ev:opacity-60"
+                          >
+                            <path d="M14 3h7v7M10 14 21 3M19 13v7a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h7" />
+                          </svg>
+                        )}
+                      </Row>
                       </li>
                     );
                   })}

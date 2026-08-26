@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import ContentBlocks from "@/components/ContentBlocks";
+import PolicyReader from "@/components/PolicyReader";
 import VacacionesChecker from "@/components/VacacionesChecker";
 import { POLICIES } from "@/lib/content";
 
@@ -15,8 +15,10 @@ export default async function PoliticaPage({ params }) {
     <>
       <Link href="/politicas" className="text-small text-muted hover:text-ink transition">← Políticas</Link>
       <header className="mt-4 mb-8">
-        <div className="text-[28px] mb-3">{p.icon}</div>
-        <h1 className="section-title">{p.title}</h1>
+        <div className="flex items-center gap-3">
+          <span className="text-[26px] leading-none shrink-0" aria-hidden>{p.icon}</span>
+          <h1 className="section-title">{p.title}</h1>
+        </div>
         <p className="section-helper">{p.summary}</p>
       </header>
     </>
@@ -25,8 +27,9 @@ export default async function PoliticaPage({ params }) {
   return (
     <div>
       {Head}
-      <ContentBlocks blocks={p.body} />
-      {withChecker && <VacacionesChecker />}
+      <PolicyReader blocks={p.body}>
+        {withChecker && <VacacionesChecker />}
+      </PolicyReader>
     </div>
   );
 }

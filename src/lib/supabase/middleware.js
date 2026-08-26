@@ -1,7 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 
-// Refresca la sesión y protege rutas. El login es solo para el dominio del equipo.
+// Refresca la sesión y protege rutas. Solo entra quien esté dado de alta y
+// activo en la tabla employees (allowlist por tabla).
 export async function updateSession(request) {
   let response = NextResponse.next({ request });
 
@@ -46,15 +47,19 @@ export async function updateSession(request) {
     return NextResponse.redirect(url);
   }
 
-  // Con sesión pero dominio no permitido → fuera.
-  const allowedDomain = process.env.NEXT_PUBLIC_ALLOWED_EMAIL_DOMAIN;
-  if (user && allowedDomain) {
-    const email = user.email || "";
-    if (!email.toLowerCase().endsWith(`@${allowedDomain.toLowerCase()}`)) {
+  // Con sesión pero sin ficha de empleado activa → fuera. La allowlist es la
+  // tabla employees: si no estás dado de alta (o estás inactivo), no entras.
+  if (user) {
+    const { data: employee } = await supabase
+      .from("employees")
+      .select("id, active")
+      .ilike("email", user.email || "")
+      .maybeSingle();
+    if (!employee || employee.active === false) {
       await supabase.auth.signOut();
       const url = request.nextUrl.clone();
       url.pathname = "/login";
-      url.searchParams.set("error", "domain");
+      url.searchParams.set("error", "unregistered");
       return NextResponse.redirect(url);
     }
   }

@@ -59,3 +59,50 @@ export async function getMyOverview(employee) {
     upcoming: upR.data ?? [],
   };
 }
+
+// Ritmo de vacaciones: cuántos días deberías llevar planificados a estas alturas
+// del año y cuántos llevas de verdad. Cuenta las aprobadas Y las pendientes: si
+// ya las has pedido, el aviso no tiene por qué insistir.
+//
+// El reparto no es lineal por meses naturales: octubre y noviembre están
+// cerrados (ver la política de vacaciones), así que el año útil son diez meses
+// —enero a septiembre y diciembre—. Ir "al día" significa haber planificado la
+// parte proporcional de esos diez.
+const USABLE_MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 12];
+
+export async function getVacationPace(employee) {
+  if (!isConfigured() || !employee) return null;
+  const supabase = await createClient();
+  const today = madridDateISO();
+  const year = Number(today.slice(0, 4));
+  const month = Number(today.slice(5, 7));
+  const day = Number(today.slice(8, 10));
+
+  const { data } = await supabase
+    .from("vacation_requests")
+    .select("working_days, status")
+    .eq("employee_id", employee.id)
+    .eq("type", "vacaciones")
+    .in("status", ["approved", "pending"])
+    .gte("start_date", `${year}-01-01`)
+    .lte("start_date", `${year}-12-31`);
+
+  const allowance = Number(employee.vacation_allowance) + Number(employee.vacation_adjustment || 0);
+  if (!allowance) return null;
+  const planned = (data ?? []).reduce((s, v) => s + Number(v.working_days), 0);
+
+  // Meses útiles ya consumidos, contando el actual por la parte transcurrida.
+  const elapsed =
+    USABLE_MONTHS.filter((m) => m < month).length +
+    (USABLE_MONTHS.includes(month) ? day / 30 : 0);
+  const expected = (allowance * Math.min(elapsed, USABLE_MONTHS.length)) / USABLE_MONTHS.length;
+
+  return {
+    allowance,
+    planned,
+    remaining: allowance - planned,
+    behind: Math.round(expected - planned),
+    // En diciembre ya no hay margen: lo que quede sin planificar se pierde.
+    lastCall: month === 12,
+  };
+}

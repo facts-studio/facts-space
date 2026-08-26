@@ -12,7 +12,7 @@ import { fmtRange, fmtDate } from "@/lib/mock";
 import { formatDuration } from "@/lib/dates";
 import { absenceLabel } from "@/lib/absences";
 import { evaluateVacation } from "@/lib/vacation-policy";
-import { Badge } from "@/components/ui";
+import { Avatar, Badge } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import ClickUpSources from "@/components/admin/ClickUpSources";
 
@@ -399,7 +399,7 @@ function Equipo({ meId, employees, vacUsed, year, clickupGroups = [], onDone }) 
         <div className="flex items-center gap-3 px-3 pb-2 text-micro uppercase tracking-wide text-mutedSoft">
           <span className="flex-1">Persona</span>
           <span className="w-[160px] hidden lg:block">Perfil ClickUp</span>
-          <span className="w-[80px] text-right">Vac. {year}</span>
+          <span className="w-[80px] text-right" title={`Días de vacaciones disponibles en ${year}`}>Vac. disp.</span>
           <span className="w-[212px]" />
         </div>
         {list.length === 0 ? (
@@ -430,11 +430,11 @@ function AddEmployee({ onDone }) {
     <div className="rounded-xl bg-surface2/40 p-4 mb-4">
       <div className="flex flex-wrap items-end gap-2">
         <Field label="Nombre"><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre y apellido" className="h-9 rounded-lg bg-surface px-2.5 text-[13px] text-ink min-w-[180px]" /></Field>
-        <Field label="Email"><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nombre@fcts.studio" className="h-9 rounded-lg bg-surface px-2.5 text-[13px] text-ink min-w-[200px]" /></Field>
+        <Field label="Email"><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nombre@dominio.com" className="h-9 rounded-lg bg-surface px-2.5 text-[13px] text-ink min-w-[200px]" /></Field>
         <Field label="Puesto"><input value={role} onChange={(e) => setRole(e.target.value)} placeholder="Opcional" className="h-9 rounded-lg bg-surface px-2.5 text-[13px] text-ink min-w-[150px]" /></Field>
         <button onClick={submit} disabled={pending} className="btn-primary h-9 text-[13px] disabled:opacity-50">{pending ? "Creando…" : "Crear"}</button>
       </div>
-      <p className="text-micro text-mutedSoft mt-2">Se vincula al entrar con su email @fcts.studio. Después completa su ficha.</p>
+      <p className="text-micro text-mutedSoft mt-2">Se vincula al entrar con Google usando ese mismo email. Después completa su ficha.</p>
       {msg && <p className="text-micro text-danger mt-1.5">{msg}</p>}
     </div>
   );
@@ -462,8 +462,7 @@ function EmployeeRow({ e, used, isSelf, clickupGroups = [], onDone }) {
   return (
     <div className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-surface2/40 transition ${e.active ? "" : "opacity-60"}`}>
       <Link href={`/admin/${e.id}`} className="flex items-center gap-2.5 flex-1 min-w-0">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        {e.photo ? <img src={e.photo} alt="" className="w-8 h-8 rounded-full object-cover" /> : <span className="w-8 h-8 rounded-full bg-surface2" />}
+        <Avatar name={e.name} lastName={e.last_name} color={e.color} photo={e.photo} size={32} />
         <div className="min-w-0">
           <p className="text-small text-ink truncate flex items-center gap-1.5">
             {e.name}{e.last_name ? ` ${e.last_name}` : ""}
@@ -533,8 +532,7 @@ function FichajeRow({ e, stats, month, onDone }) {
   return (
     <div className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-surface2/40 transition">
       <div className="flex items-center gap-2.5 flex-1 min-w-0">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        {e.photo ? <img src={e.photo} alt="" className="w-7 h-7 rounded-full object-cover" /> : <span className="w-7 h-7 rounded-full bg-surface2" />}
+        <Avatar name={e.name} lastName={e.last_name} color={e.color} photo={e.photo} size={28} />
         <p className="text-small text-ink truncate">{e.name}</p>
       </div>
       <span className="text-micro text-mutedSoft tabular-nums w-[150px] text-right">

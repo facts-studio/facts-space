@@ -24,6 +24,8 @@ function toEvent(t, colorsByClient) {
     // marcarían conflicto en cuanto alguien se fuese de vacaciones.
     whoAll: t.everyone ? [] : (t.assignees || []).map((a) => a.name).filter(Boolean),
     client: t.project || null,
+    list: t.listName || null,
+    url: t.url || null,
     tint: paletteColor(t.project || "Sin cliente", colorsByClient[t.project]),
   };
 }

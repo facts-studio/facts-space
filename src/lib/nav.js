@@ -1,6 +1,7 @@
 // Navegación del portal, en grupos separados por hairlines. Cada grupo es un
 // array de items; un item puede tener `children` (sub-navegación, p. ej. las
-// áreas de Recursos).
+// áreas de Recursos). Un item con `children` NO navega: es solo el desplegable
+// de lo que contiene (su `href` se usa para saber si la sección está activa).
 export const NAV_GROUPS = [
   [
     { href: "/", label: "Inicio", icon: "home" },
@@ -19,9 +20,9 @@ export const NAV_GROUPS = [
       label: "Recursos",
       icon: "grid",
       children: [
-        { href: "/recursos/programas", label: "Programas" },
-        { href: "/recursos/websites", label: "Websites" },
-        { href: "/tools", label: "F*cts Tools" },
+        { href: "/recursos/programas", label: "Programas", icon: "grid" },
+        { href: "/recursos/websites", label: "Websites", icon: "eye" },
+        { href: "/tools", label: "F*cts Tools", icon: "tools" },
       ],
     },
     { href: "/clientes", label: "Clientes", icon: "briefcase" },

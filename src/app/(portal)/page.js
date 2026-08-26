@@ -4,11 +4,12 @@ import FichajeReminder from "@/components/FichajeReminder";
 import AprobacionesReminder from "@/components/AprobacionesReminder";
 import ConflictoVacacionesReminder from "@/components/ConflictoVacacionesReminder";
 import DecisionReminder from "@/components/DecisionReminder";
+import VacacionesReminder from "@/components/VacacionesReminder";
 import { taskVacationConflicts } from "@/lib/conflicts";
 import HomePanels from "@/components/HomePanels";
 import { getCalendarEvents } from "@/lib/data/calendar";
 import { getPendingApprovals } from "@/lib/data/admin";
-import { getMyDecisions } from "@/lib/data/me";
+import { getMyDecisions, getVacationPace } from "@/lib/data/me";
 import { getCurrentEmployee } from "@/lib/data/helpers";
 import { getMyNotes } from "@/lib/data/notes";
 import { getLastWorkedDate } from "@/lib/data/time";
@@ -53,6 +54,8 @@ export default async function HomePage() {
 
   // Días sin fichar (para el aviso en Inicio). null = nunca ha fichado.
   const lastWorked = me ? await getLastWorkedDate(me.id) : null;
+  // Ritmo de vacaciones (aviso recurrente si no vas al día).
+  const vacationPace = me ? await getVacationPace(me) : null;
   const daysSinceFichaje = lastWorked
     ? Math.round((new Date(madridDateISO() + "T00:00:00") - new Date(lastWorked + "T00:00:00")) / 86400000)
     : null;
@@ -74,6 +77,7 @@ export default async function HomePage() {
             <div className="mt-8 empty:mt-0 space-y-3">
               <DecisionReminder decisions={decisions} />
               {me && <FichajeReminder days={daysSinceFichaje} />}
+              <VacacionesReminder pace={vacationPace} />
               <AprobacionesReminder requests={approvals} />
               <ConflictoVacacionesReminder conflicts={conflicts} />
             </div>

@@ -123,6 +123,14 @@ export async function deleteEmployee({ id }) {
 }
 
 // Alta de un empleado nuevo. Se vincula al usuario cuando entra con su email.
+// Color del avatar mientras no haya foto: estable a partir del email.
+const AVATAR_COLORS = ["brand", "info", "warn", "violet", "success"];
+function colorFor(email) {
+  let h = 0;
+  for (const ch of email) h = (h * 31 + ch.charCodeAt(0)) % 9973;
+  return AVATAR_COLORS[h % AVATAR_COLORS.length];
+}
+
 export async function createEmployee({ name, email, role = "" }) {
   const me = await requireAdmin();
   if (!me) return { ok: false, error: "Solo administración." };
@@ -134,7 +142,7 @@ export async function createEmployee({ name, email, role = "" }) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("employees")
-    .insert({ name: n, email: em, role: String(role ?? ""), active: true, is_admin: false, vacation_allowance: 22 })
+    .insert({ name: n, email: em, role: String(role ?? ""), color: colorFor(em), active: true, is_admin: false, vacation_allowance: 22 })
     .select("id")
     .single();
   if (error) {

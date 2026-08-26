@@ -38,7 +38,11 @@ function TabLink({ href, label, icon, active }) {
 // Hoja inferior con el resto de secciones + tema + logout.
 function MoreSheet({ open, onClose, isAdmin, serverTheme }) {
   const pathname = usePathname();
-  const items = NAV_GROUPS.flat().filter((i) => !TAB_HREFS.has(i.href));
+  // Los items con `children` no navegan (son solo contenedores): en la hoja se
+  // sustituyen por lo que contienen, que sí son destinos reales.
+  const items = NAV_GROUPS.flat()
+    .flatMap((i) => i.children ?? [i])
+    .filter((i) => !TAB_HREFS.has(i.href));
 
   async function signOut() {
     const supabase = createClient();

@@ -16,18 +16,18 @@ const PanelIcon = ({ className = "h-[18px] w-[18px]" }) => (
   </svg>
 );
 
+const navRowCls = (active, collapsed) =>
+  [
+    "group/nav relative flex items-center rounded-xl text-[14px] transition-[background-color,color] duration-150",
+    collapsed ? "justify-center h-10 w-10 mx-auto" : "gap-3 px-3 py-2.5",
+    active
+      ? "bg-surface2 text-ink shadow-card"
+      : "text-muted hover:text-ink hover:bg-surface2/60",
+  ].join(" ");
+
 function NavLink({ href, label, icon, active, collapsed }) {
   return (
-    <Link
-      href={href}
-      className={[
-        "group/nav relative flex items-center rounded-xl text-[14px] transition-[background-color,color] duration-150",
-        collapsed ? "justify-center h-10 w-10 mx-auto" : "gap-3 px-3 py-2.5",
-        active
-          ? "bg-surface2 text-ink shadow-card"
-          : "text-muted hover:text-ink hover:bg-surface2/60",
-      ].join(" ")}
-    >
+    <Link href={href} className={navRowCls(active, collapsed)}>
       <span className={`shrink-0 ${active ? "opacity-100" : "opacity-70"}`}><NavIcon name={icon} /></span>
       {!collapsed && label}
       {/* Menú recogido: burbuja con el nombre de la acción al pasar el ratón. */}
@@ -37,6 +37,40 @@ function NavLink({ href, label, icon, active, collapsed }) {
         </span>
       )}
     </Link>
+  );
+}
+
+function Chevron({ open }) {
+  return (
+    <svg
+      viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden
+      className={`ml-auto shrink-0 opacity-60 transition-transform duration-150 ${open ? "rotate-180" : ""}`}
+    >
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+
+// Item que no navega: solo abre/cierra la sub-navegación que contiene.
+function NavToggle({ label, icon, active, collapsed, open, onToggle }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={open}
+      title={collapsed ? label : undefined}
+      className={`${navRowCls(active, collapsed)} w-full text-left`}
+    >
+      <span className={`shrink-0 ${active ? "opacity-100" : "opacity-70"}`}><NavIcon name={icon} /></span>
+      {!collapsed && label}
+      {!collapsed && <Chevron open={open} />}
+      {collapsed && (
+        <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded-full bg-surface2 border border-border/70 px-3 py-1 text-[12px] text-ink opacity-0 transition-opacity group-hover/nav:opacity-100 z-50">
+          {label}
+        </span>
+      )}
+    </button>
   );
 }
 
@@ -71,6 +105,17 @@ export default function Sidebar({ user, isAdmin = false, serverTheme = null, ini
   // Los sub-items con ancla (#) no se marcan activos; los de ruta real, sí.
   const childActive = (href) =>
     !href.includes("#") && pathname.startsWith(href.split("#")[0]);
+
+  // Secciones desplegadas. Por defecto se abre sola aquella en la que estás;
+  // en cuanto la tocas manda tu elección (se guarda por href).
+  const [sections, setSections] = useState({});
+  const autoOpen = (item) => (item.children ?? []).some((c) => childActive(c.href));
+  const isOpen = (item) => sections[item.href] ?? autoOpen(item);
+  const toggleSection = (item) => {
+    // Con la barra recogida no hay sitio para los hijos: la abrimos primero.
+    if (collapsed) toggle();
+    setSections((prev) => ({ ...prev, [item.href]: !(prev[item.href] ?? autoOpen(item)) }));
+  };
 
   const name = user?.user_metadata?.full_name || user?.email || "Equipo";
   const avatar = user?.user_metadata?.avatar_url;
@@ -135,8 +180,19 @@ export default function Sidebar({ user, isAdmin = false, serverTheme = null, ini
           >
             {group.map((item) => (
               <div key={item.href}>
-                <NavLink {...item} active={isActive(item.href)} collapsed={collapsed} />
-                {!collapsed && item.children && (
+                {item.children ? (
+                  <NavToggle
+                    label={item.label}
+                    icon={item.icon}
+                    active={isActive(item.href) || item.children.some((c) => childActive(c.href))}
+                    collapsed={collapsed}
+                    open={isOpen(item)}
+                    onToggle={() => toggleSection(item)}
+                  />
+                ) : (
+                  <NavLink {...item} active={isActive(item.href)} collapsed={collapsed} />
+                )}
+                {!collapsed && item.children && isOpen(item) && (
                   <div className="mt-0.5 flex flex-col gap-0.5">
                     {item.children.map((c) => (
                       <SubLink key={c.href} href={c.href} label={c.label} active={childActive(c.href)} />

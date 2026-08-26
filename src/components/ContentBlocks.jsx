@@ -12,20 +12,60 @@ const TONES = {
 };
 const tone = (t) => TONES[t] || TONES.muted;
 
+// Resalte inline: lo que va entre **dobles asteriscos** se pinta en una caja
+// sutil. Es para la frase que no queremos que nadie se salte, no para decorar:
+// si se subraya media política, deja de resaltar nada.
+function rich(text) {
+  if (typeof text !== "string") return text;
+  if (!text.includes("**") && !text.includes("`")) return text;
+  // Primero el resalte y, dentro de cada trozo, los nombres literales `así`.
+  return text.split(/\*\*(.+?)\*\*/g).map((part, i) =>
+    i % 2 === 1 ? (
+      <mark key={i} className="rounded-md bg-surface2/80 text-ink px-1.5 py-0.5 -mx-0.5 box-decoration-clone">
+        {code(part)}
+      </mark>
+    ) : (
+      <span key={i}>{code(part)}</span>
+    )
+  );
+}
+
+// `Nombre literal` → tipografía mono discreta, para rutas y nombres de archivo.
+function code(text) {
+  if (!text.includes("`")) return text;
+  return text.split(/`([^`]+)`/g).map((part, i) =>
+    i % 2 === 1 ? (
+      <code key={i} className="font-mono text-[0.9em] text-ink bg-surface2/70 rounded px-1 py-px">
+        {part}
+      </code>
+    ) : (
+      part
+    )
+  );
+}
+
 // Renderiza un array de bloques de contenido (ver src/lib/content.js).
 export default function ContentBlocks({ blocks = [] }) {
   return (
     <div className="flex flex-col gap-4">
       {blocks.map((b, i) => {
         if (b.h) return <h2 key={i} className="font-display text-[24px] text-ink mt-6 first:mt-0">{b.h}</h2>;
-        if (b.h3) return <h3 key={i} className="text-title text-ink mt-4">{b.h3}</h3>;
-        if (b.p) return <p key={i} className="text-body-lg text-inkSoft leading-relaxed max-w-[70ch]">{b.p}</p>;
+        if (b.h3) return (
+          <div key={i} className="flex items-center gap-2.5 mt-8 pt-7 border-t border-border/60 first:mt-0 first:pt-0 first:border-t-0">
+            {b.icon && <span className="text-[16px] leading-none shrink-0" aria-hidden>{b.icon}</span>}
+            <h3 className="text-title text-ink">{b.h3}</h3>
+          </div>
+        );
+        if (b.lead) return (
+          <p key={i} className="text-[17px] leading-[1.6] text-ink">{rich(b.lead)}</p>
+        );
+        if (b.p) return <p key={i} className="text-body-lg text-inkSoft leading-relaxed">{rich(b.p)}</p>;
         if (b.ul) return (
           <ul key={i} className="flex flex-col gap-2">
             {b.ul.map((it, j) => (
-              <li key={j} className="flex gap-2.5 text-body-lg text-inkSoft leading-relaxed">
-                <span className="text-brand mt-[0.1em] shrink-0">·</span>
-                <span>{it}</span>
+              <li key={j} className="flex gap-3 text-body-lg text-inkSoft leading-relaxed">
+                <span className="mt-[0.65em] h-[3px] w-[3px] rounded-full bg-mutedSoft shrink-0" aria-hidden />
+                <span>{rich(it)}</span>
               </li>
             ))}
           </ul>
@@ -33,17 +73,18 @@ export default function ContentBlocks({ blocks = [] }) {
         if (b.check) return (
           <ul key={i} className="flex flex-col gap-2">
             {b.check.map((it, j) => (
-              <li key={j} className="flex items-center gap-3 text-body-lg text-inkSoft">
-                <span className="w-5 h-5 rounded-md border border-borderStrong grid place-items-center text-[11px] text-mutedSoft shrink-0">✓</span>
-                <span>{it}</span>
+              <li key={j} className="flex items-start gap-3 rounded-xl bg-surface2/40 px-4 py-3 text-body text-inkSoft leading-relaxed">
+                <span className="mt-[0.15em] w-[18px] h-[18px] rounded-full bg-ink text-bg grid place-items-center text-[10px] shrink-0" aria-hidden>✓</span>
+                <span>{rich(it)}</span>
               </li>
             ))}
           </ul>
         );
         if (b.note) return (
-          <p key={i} className="border-l-2 border-borderStrong/50 pl-4 text-body text-muted leading-relaxed italic">
-            {b.note}
-          </p>
+          <div key={i} className="flex gap-3 rounded-2xl bg-surface2/50 px-5 py-4">
+            <span className="text-[15px] leading-[1.5] shrink-0" aria-hidden>{b.icon ?? "☞"}</span>
+            <p className="text-body text-muted leading-relaxed">{rich(b.note)}</p>
+          </div>
         );
         // Cifras clave: módulo contenido con divisores internos.
         if (b.figures) return (
@@ -113,9 +154,21 @@ export default function ContentBlocks({ blocks = [] }) {
             </table>
           </div>
         );
-        if (b.link) return (
-          <Link key={i} href={b.link.href} className="text-body-lg text-brand hover:underline w-fit">{b.link.label}</Link>
-        );
+        // Enlace suelto. Si es externo sale del portal, así que abre en otra pestaña.
+        if (b.link) {
+          const ext = /^https?:\/\//.test(b.link.href);
+          const cls = "text-body-lg text-brand hover:underline w-fit inline-flex items-center gap-1.5";
+          return ext ? (
+            <a key={i} href={b.link.href} target="_blank" rel="noreferrer" className={cls}>
+              {b.link.label}
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="opacity-70">
+                <path d="M14 3h7v7M10 14 21 3M19 13v7a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h7" />
+              </svg>
+            </a>
+          ) : (
+            <Link key={i} href={b.link.href} className={cls}>{b.link.label}</Link>
+          );
+        }
         // Stats: números grandes (cifras clave).
         if (b.stats) return (
           <div key={i} className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -168,6 +221,40 @@ export default function ContentBlocks({ blocks = [] }) {
                     ))}
                   </ul>
                 </div>
+              );
+            })}
+          </div>
+        );
+        // Destinos: tarjeta con icono, descripción y enlace. Para cuando la lista
+        // "nombre → explicación → enlace" se lee mejor como sitios a los que ir.
+        if (b.places) return (
+          <div key={i} className="grid sm:grid-cols-2 gap-3">
+            {b.places.map((pl, j) => {
+              const ext = /^https?:\/\//.test(pl.href ?? "");
+              const Tag = pl.href ? (ext ? "a" : Link) : "div";
+              const props = pl.href
+                ? ext
+                  ? { href: pl.href, target: "_blank", rel: "noreferrer" }
+                  : { href: pl.href }
+                : {};
+              return (
+                <Tag
+                  key={j}
+                  {...props}
+                  className={`group rounded-2xl bg-surface/55 p-5 flex flex-col ${pl.href ? "transition hover:bg-surface" : ""}`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    {pl.icon && <span className="text-[17px] leading-none shrink-0" aria-hidden>{pl.icon}</span>}
+                    <span className="text-body font-semibold text-ink">{pl.title}</span>
+                  </div>
+                  <p className="text-small text-muted leading-relaxed mt-2 flex-1">{rich(pl.desc)}</p>
+                  {pl.href && (
+                    <span className="mt-4 text-micro text-mutedSoft group-hover:text-ink transition-colors inline-flex items-center gap-1.5">
+                      {pl.action ?? "Abrir"}
+                      <span aria-hidden>→</span>
+                    </span>
+                  )}
+                </Tag>
               );
             })}
           </div>

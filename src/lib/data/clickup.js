@@ -445,7 +445,13 @@ export async function getClickUpMilestones() {
         // `client`: mismo criterio que las tareas (tag de cliente → carpeta), para
         // poder teñir el hito con el color de su cliente en el calendario.
         const client = clientFromTags(t) ?? (t.folder?.name && !t.folder?.hidden ? t.folder.name : null);
-        out.push({ id: `hito-cu-${t.id}`, type: "hito", title: t.name, start: toISO(Math.min(start, due)), end: toISO(due), who: null, client });
+        // `url` y `list` permiten abrir el hito en ClickUp y saber a qué pertenece
+        // desde el detalle del día en el calendario.
+        out.push({
+          id: `hito-cu-${t.id}`, type: "hito", title: t.name,
+          start: toISO(Math.min(start, due)), end: toISO(due),
+          who: null, client, list: t.list?.name ?? null, url: t.url ?? null,
+        });
       }
       if (batch.length < 100) break;
     }
@@ -514,10 +520,28 @@ export async function getClickUpMembers() {
       email: m.user?.email ?? null,
       username: m.user?.username ?? m.user?.email ?? "—",
       color: m.user?.color ?? null,
+      avatar: m.user?.profilePicture ?? null,
     }));
   } catch {
     return [];
   }
+}
+
+// Foto del grupo: ClickUp la guarda como adjunto en g.avatar (no en los miembros,
+// que vienen vacíos en este endpoint). Las URLs son públicas, así que sirven como
+// src directo. Vamos al original (512px) y no a thumbnail_medium (300px), que se
+// ve borroso en las tarjetas de Equipo. OJO: avatar.attachment.user es quien la
+// subió, no la persona del grupo.
+function groupAvatar(g) {
+  const a = g.avatar?.attachment;
+  return a?.url || a?.thumbnail_large || a?.thumbnail_medium || null;
+}
+
+// Avatares de ClickUp por id de grupo, para completar las fichas sin foto propia.
+// Devuelve un objeto plano { [groupId]: url }. Vacío si ClickUp no está configurado.
+export async function getClickUpAvatarsByGroup() {
+  const groups = await getClickUpGroups();
+  return Object.fromEntries(groups.filter((g) => g.avatar).map((g) => [g.id, g.avatar]));
 }
 
 // Grupos de usuario del workspace (perfiles de asignación por persona). Son los
@@ -529,7 +553,12 @@ export async function getClickUpGroups() {
     if (!res.ok) return [];
     const json = await res.json();
     return (json.groups ?? [])
-      .map((g) => ({ id: String(g.id), name: g.name ?? "—", members: (g.members ?? []).length }))
+      .map((g) => ({
+        id: String(g.id),
+        name: g.name ?? "—",
+        members: (g.members ?? []).length,
+        avatar: groupAvatar(g),
+      }))
       .sort((a, b) => a.name.localeCompare(b.name, "es"));
   } catch {
     return [];

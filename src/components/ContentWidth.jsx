@@ -8,10 +8,11 @@ import { cn } from "@/lib/cn";
  * ancho centrado que Inicio (max-w-4xl) para que la lectura sea consistente.
  *
  * Excepciones a ancho completo: las vistas que son una rejilla o una tabla y
- * se ahogan en una columna estrecha (el tablero de Tareas y el mes del
- * Calendario). Se comparan por prefijo, así que sus subrutas heredan.
+ * se ahogan en una columna estrecha (el tablero de Tareas, el mes del Calendario
+ * y las rejillas de Recursos). Se comparan por prefijo, así que sus subrutas
+ * heredan — "/recursos" cubre Programas, Websites y sus fichas.
  */
-const ANCHO_COMPLETO = ["/tareas", "/calendario", "/recursos/websites"];
+const ANCHO_COMPLETO = ["/tareas", "/calendario", "/recursos"];
 
 export default function ContentWidth({ children, className }) {
   const pathname = usePathname() || "/";

@@ -1,12 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import FctsMark from "@/components/FctsMark";
 
+const ERRORS = {
+  unregistered: "Esa cuenta no está dada de alta en el portal. Pídeselo a un admin.",
+  auth: "No hemos podido iniciar sesión. Inténtalo otra vez.",
+};
+
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const [loading, setLoading] = useState(false);
-  const domain = process.env.NEXT_PUBLIC_ALLOWED_EMAIL_DOMAIN || "fcts.studio";
+  const code = useSearchParams().get("error");
+  const error = code ? ERRORS[code] || ERRORS.auth : "";
 
   async function signIn() {
     setLoading(true);
@@ -18,7 +33,7 @@ export default function LoginPage() {
       provider: "google",
       options: {
         redirectTo: `${siteUrl}/auth/callback`,
-        queryParams: { hd: domain, prompt: "select_account" },
+        queryParams: { prompt: "select_account" },
       },
     });
   }
@@ -58,7 +73,7 @@ export default function LoginPage() {
         </button>
 
         <p className="text-micro text-mutedSoft mt-5">
-          Solo cuentas @{domain}
+          {error || "Solo cuentas dadas de alta por un admin."}
         </p>
       </div>
     </main>
