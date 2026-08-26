@@ -284,3 +284,14 @@ html, body {
 .dark * { scrollbar-color: rgb(var(--ct-ink)) transparent; }
 .dark *::-webkit-scrollbar-thumb { background: rgb(var(--ct-ink)); }
 .dark *::-webkit-scrollbar-thumb:hover { background: rgb(var(--ct-inkSoft)); }
+
+/* Bombeo de atención — halo que late alrededor de la etiqueta de lo que espera
+   a que alguien lo coja (tickets sin responsable). Va en la etiqueta y no en el
+   fondo de la tarjeta: llama igual sin teñir media rejilla. */
+@keyframes attentionPulse {
+  0%   { box-shadow: 0 0 0 0 rgb(var(--ct-ink) / 0.30); }
+  70%  { box-shadow: 0 0 0 7px rgb(var(--ct-ink) / 0); }
+  100% { box-shadow: 0 0 0 0 rgb(var(--ct-ink) / 0); }
+}
+.pulse-attention { animation: attentionPulse 2.6s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+@media (prefers-reduced-motion: reduce) { .pulse-attention { animation: none; } }

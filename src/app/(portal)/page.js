@@ -12,12 +12,13 @@ import { getPendingApprovals } from "@/lib/data/admin";
 import { getMyDecisions, getVacationPace } from "@/lib/data/me";
 import { getCurrentEmployee } from "@/lib/data/helpers";
 import { getMyNotes } from "@/lib/data/notes";
+import { getSlackTickets } from "@/lib/data/slack";
 import { getLastWorkedDate } from "@/lib/data/time";
 import { madridDateISO } from "@/lib/dates";
 import { getClickUpTasks, getConfiguredLists, weekTasks, teamWeekTasks, activeSprints } from "@/lib/data/clickup";
 
 export default async function HomePage() {
-  const [events, me, tasks, notes, lists, approvals, decisions] = await Promise.all([
+  const [events, me, tasks, notes, lists, approvals, decisions, tickets] = await Promise.all([
     getCalendarEvents(),
     getCurrentEmployee(),
     getClickUpTasks(),
@@ -25,6 +26,7 @@ export default async function HomePage() {
     getConfiguredLists(),
     getPendingApprovals(), // solicitudes que me toca resolver (responsable/admin)
     getMyDecisions(),      // mis solicitudes ya resueltas que aún no he visto
+    getSlackTickets(),     // tickets de los canales compartidos (Slack Lists)
   ]);
   const nombre = me?.name?.split(" ")[0] || "equipo";
   // Cumpleaños de HOY (Madrid) desde el calendario ya filtrado: solo perfiles de
@@ -92,6 +94,8 @@ export default async function HomePage() {
           statusesByList={statusesByList}
           sprintMeta={sprintMeta}
           sprints={sprints}
+          tickets={tickets}
+          meSlackId={me?.slack_user_id ?? null}
           isAdmin={Boolean(me?.is_admin)}
           initialNotes={notes}
           canUseNotes={Boolean(me)}

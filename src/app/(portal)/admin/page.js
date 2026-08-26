@@ -43,6 +43,7 @@ export default async function AdminPage() {
   const documents = await getAllDocuments();
   const clickupLists = await getConfiguredLists();
   const clickupGroups = await getClickUpGroups();
+  const slackUsers = await getSlackUsers();
 
   return (
     <div>
@@ -60,6 +61,7 @@ export default async function AdminPage() {
         documents={documents}
         clickupLists={clickupLists}
         clickupGroups={clickupGroups}
+        slackUsers={slackUsers}
         month={month}
         year={year}
       />

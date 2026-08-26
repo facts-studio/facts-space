@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { decideVacation, setVacationStatus, deleteVacation } from "@/lib/actions/vacations";
-import { updateEmployee, validateMonth, createEmployee, setEmployeeActive, deleteEmployee, setEmployeeClickupGroup } from "@/lib/actions/admin";
+import { updateEmployee, validateMonth, createEmployee, setEmployeeActive, deleteEmployee, setEmployeeClickupGroup, setEmployeeSlackUser, autolinkSlackUsers } from "@/lib/actions/admin";
 import { recordDocument, deleteDocument, getDocumentUrl } from "@/lib/actions/documents";
 import { extractInvoice } from "@/lib/actions/extract";
 import { createClient } from "@/lib/supabase/client";
@@ -24,7 +24,7 @@ const TABS = [
   ["informes", "Informes"],
 ];
 
-export default function AdminClient({ meId, employees, pending, recent, timeStats, vacUsed, timeHours = {}, documents = [], clickupLists = [], clickupGroups = [], events = [], month, year }) {
+export default function AdminClient({ meId, employees, pending, recent, timeStats, vacUsed, timeHours = {}, documents = [], clickupLists = [], clickupGroups = [], slackUsers = [], events = [], month, year }) {
   const router = useRouter();
   const refresh = () => router.refresh();
   const [tab, setTab] = useState("aprobaciones");
@@ -53,7 +53,7 @@ export default function AdminClient({ meId, employees, pending, recent, timeStat
           <Fichaje employees={employees} timeStats={timeStats} month={month} onDone={refresh} />
         </div>
       )}
-      {tab === "equipo" && <Equipo meId={meId} employees={employees} vacUsed={vacUsed} year={year} clickupGroups={clickupGroups} onDone={refresh} />}
+      {tab === "equipo" && <Equipo meId={meId} employees={employees} vacUsed={vacUsed} year={year} clickupGroups={clickupGroups} slackUsers={slackUsers} onDone={refresh} />}
       {tab === "documentos" && <Documentos employees={employees} documents={documents} nameById={nameById} month={month} onDone={refresh} />}
       {tab === "clickup" && <ClickUpSources lists={clickupLists} />}
       {tab === "informes" && <Informes employees={employees} vacUsed={vacUsed} timeHours={timeHours} month={month} year={year} />}
@@ -372,7 +372,7 @@ function StatusPill({ status, className = "" }) {
 // ── Empleados ────────────────────────────────────────────────────────────────
 const EMP_FILTERS = [["activos", "Activos"], ["inactivos", "Inactivos"], ["todos", "Todos"]];
 
-function Equipo({ meId, employees, vacUsed, year, clickupGroups = [], onDone }) {
+function Equipo({ meId, employees, vacUsed, year, clickupGroups = [], slackUsers = [], onDone }) {
   const [adding, setAdding] = useState(false);
   const [filter, setFilter] = useState("activos");
   const activos = employees.filter((e) => e.active).length;
@@ -399,13 +399,14 @@ function Equipo({ meId, employees, vacUsed, year, clickupGroups = [], onDone }) 
         <div className="flex items-center gap-3 px-3 pb-2 text-micro uppercase tracking-wide text-mutedSoft">
           <span className="flex-1">Persona</span>
           <span className="w-[160px] hidden lg:block">Perfil ClickUp</span>
+          <span className="w-[150px] hidden xl:block">Perfil Slack</span>
           <span className="w-[80px] text-right" title={`Días de vacaciones disponibles en ${year}`}>Vac. disp.</span>
           <span className="w-[212px]" />
         </div>
         {list.length === 0 ? (
           <p className="text-small text-mutedSoft px-3 py-4">No hay empleados {filter === "activos" ? "activos" : filter === "inactivos" ? "inactivos" : ""}.</p>
         ) : list.map((e) => (
-          <EmployeeRow key={e.id} e={e} used={vacUsed[e.id] || 0} isSelf={e.id === meId} clickupGroups={clickupGroups} onDone={onDone} />
+          <EmployeeRow key={e.id} e={e} used={vacUsed[e.id] || 0} isSelf={e.id === meId} clickupGroups={clickupGroups} slackUsers={slackUsers} onDone={onDone} />
         ))}
       </div>
     </div>
@@ -440,7 +441,7 @@ function AddEmployee({ onDone }) {
   );
 }
 
-function EmployeeRow({ e, used, isSelf, clickupGroups = [], onDone }) {
+function EmployeeRow({ e, used, isSelf, clickupGroups = [], slackUsers = [], onDone }) {
   const [pending, run] = useTransition();
   const [confirmDel, setConfirmDel] = useState(false);
   const allowance = Number(e.vacation_allowance) + Number(e.vacation_adjustment || 0);
@@ -448,6 +449,10 @@ function EmployeeRow({ e, used, isSelf, clickupGroups = [], onDone }) {
 
   const linkGroup = (groupId) => run(async () => {
     const r = await setEmployeeClickupGroup({ id: e.id, groupId });
+    if (r.ok) onDone?.(); else alert(r.error);
+  });
+  const linkSlack = (userId) => run(async () => {
+    const r = await setEmployeeSlackUser({ id: e.id, userId });
     if (r.ok) onDone?.(); else alert(r.error);
   });
   const toggle = () => run(async () => {
@@ -484,6 +489,22 @@ function EmployeeRow({ e, used, isSelf, clickupGroups = [], onDone }) {
           {/* Grupo vinculado que ya no existe/lista → no perder la selección */}
           {e.clickup_group_id && !clickupGroups.some((g) => g.id === e.clickup_group_id) && (
             <option value={e.clickup_group_id}>Vinculado (id {e.clickup_group_id})</option>
+          )}
+        </select>
+      </span>
+      <span className="w-[150px] hidden xl:block">
+        <select
+          value={e.slack_user_id || ""}
+          onChange={(ev) => linkSlack(ev.target.value)}
+          disabled={pending}
+          title={e.slack_user_id ? "Perfil de Slack vinculado" : "Sin vincular — sus tickets no se marcan como suyos"}
+          className={`h-7 w-full rounded-lg bg-surface px-2 text-[12px] ${e.slack_user_id ? "text-ink" : "text-mutedSoft"}`}
+        >
+          <option value="">Sin vincular</option>
+          {slackUsers.map((u) => <option key={u.id} value={u.id}>{u.name}{u.guest ? " (invitado)" : ""}</option>)}
+          {/* Perfil vinculado que ya no sale en el directorio → no perder la selección */}
+          {e.slack_user_id && !slackUsers.some((u) => u.id === e.slack_user_id) && (
+            <option value={e.slack_user_id}>Vinculado (id {e.slack_user_id})</option>
           )}
         </select>
       </span>

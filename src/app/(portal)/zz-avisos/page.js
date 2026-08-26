@@ -6,8 +6,12 @@ import DecisionReminder from "@/components/DecisionReminder";
 import FichajeReminder from "@/components/FichajeReminder";
 import AprobacionesReminder from "@/components/AprobacionesReminder";
 import VacacionesReminder from "@/components/VacacionesReminder";
+import TicketsPanel from "@/components/TicketsPanel";
 
 const hoy = new Date();
+const ahora = hoy.getTime();
+const haceH = (n) => ahora - n * 3600000;
+const haceD = (n) => ahora - n * 86400000;
 const iso = (n) => {
   const d = new Date(hoy);
   d.setDate(d.getDate() + n);
@@ -90,7 +94,27 @@ export default function AvisosPage() {
         <VacacionesReminder pace={{ allowance: 22, planned: 22, remaining: 0, behind: 0, lastCall: true }} />
       </Caso>
 
-      <p className="section-eyebrow mb-3 mt-10">5 · Todos juntos (como se apilan en Inicio)</p>
+      <p className="section-eyebrow mb-3 mt-10">5 · Módulo de tickets (TicketsPanel)</p>
+      <Caso label="Con tickets sin dueño (los primeros)">
+        <TicketsPanel tickets={[
+          { id: "t1", list: "Creative", title: "Acceso a métricas brevo", author: "Samuel Sánchez", status: "Pendiente", assignee: null, createdAt: haceH(17), url: "#" },
+          { id: "t2", list: "Creative", title: "Brandear tabla", author: "Alex Ruiz", status: "Pendiente", assignee: null, createdAt: haceD(26), url: "#" },
+          { id: "t3", list: "Tech", title: "Vídeo con figma", author: "Alex Ruiz", status: "Bloqueado", assignee: "Carles Busquets", createdAt: haceD(12), url: "#" },
+          { id: "t4", list: "Creative", title: "Miniaturas Finales", author: "Rubén Rubio", status: "En curso", assignee: "Mariola Moreno", createdAt: haceD(29), url: "#" },
+        ]} />
+      </Caso>
+      <Caso label="Todo asignado">
+        <TicketsPanel tickets={[
+          { id: "t5", list: "Tech", title: "Migrar landing de campaña", author: "Pau Ruiz", status: "En curso", assignee: "Samu", createdAt: haceD(2), url: "#" },
+        ]} />
+      </Caso>
+      <Caso label="Sin tickets abiertos">
+        <TicketsPanel tickets={[
+          { id: "t6", list: "Creative", title: "Banner home", author: "Alba", status: "Hecho", assignee: "Mariola", createdAt: haceD(9), url: "#" },
+        ]} />
+      </Caso>
+
+      <p className="section-eyebrow mb-3 mt-10">6 · Todos juntos (como se apilan en Inicio)</p>
       <div className="mt-8 empty:mt-0 space-y-3">
         <DecisionReminder decisions={[{ id: "c1", type: "vacaciones", start_date: iso(20), end_date: iso(24), status: "approved" }]} />
         <FichajeReminder days={12} />

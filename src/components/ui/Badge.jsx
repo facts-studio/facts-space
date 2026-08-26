@@ -5,7 +5,7 @@ import { cn } from "@/lib/cn";
  * estado: no volver a escribir `bg-warnSoft/60 text-warn` a mano.
  *
  * kind: pending | validated | success | festivo | vacaciones | cumple |
- *       permiso | baja | info | danger | neutral
+ *       permiso | baja | info | danger | neutral | ink
  */
 export const BADGE_KINDS = {
   pending: "bg-warnSoft/60 text-warn",
@@ -19,6 +19,9 @@ export const BADGE_KINDS = {
   info: "bg-infoSoft/60 text-info",
   danger: "bg-dangerSoft/60 text-danger",
   neutral: "bg-surface2 text-muted",
+  // Aviso fuerte: negro relleno. Para lo que reclama una acción concreta
+  // (un ticket sin dueño), donde un tono suave se pierde entre los demás.
+  ink: "bg-ink text-bg",
 };
 
 export default function Badge({ kind = "neutral", className, children }) {

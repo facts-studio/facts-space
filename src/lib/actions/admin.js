@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getSlackUsers } from "@/lib/data/slack";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentEmployee } from "@/lib/data/helpers";
 import { monthEndISO } from "@/lib/dates";
@@ -82,6 +83,48 @@ export async function setEmployeeClickupGroup({ id, groupId }) {
   revalidatePath("/calendario");
   revalidatePath("/");
   return { ok: true };
+}
+
+// Vincula (o desvincula, con userId vacío) un empleado a su perfil de Slack.
+// Con el vínculo, los tickets de los canales compartidos saben de quién son.
+export async function setEmployeeSlackUser({ id, userId }) {
+  const me = await requireAdmin();
+  if (!me) return { ok: false, error: "Solo administración." };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("employees")
+    .update({ slack_user_id: userId || null })
+    .eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin");
+  revalidatePath("/");
+  return { ok: true };
+}
+
+// Vincula de golpe a quien se pueda casar por email con el directorio de Slack.
+// Es lo que evita tener que emparejar a mano a toda la plantilla.
+export async function autolinkSlackUsers() {
+  const me = await requireAdmin();
+  if (!me) return { ok: false, error: "Solo administración." };
+  const [users, supabase] = await Promise.all([getSlackUsers(), createClient()]);
+  if (!users.length) return { ok: false, error: "Slack no está configurado o no devolvió usuarios." };
+  const byEmail = new Map(users.filter((u) => u.email).map((u) => [u.email.toLowerCase(), u.id]));
+
+  const { data: employees } = await supabase
+    .from("employees")
+    .select("id, email, personal_email, slack_user_id")
+    .is("slack_user_id", null);
+
+  let linked = 0;
+  for (const e of employees ?? []) {
+    const match = byEmail.get((e.email || "").toLowerCase()) ?? byEmail.get((e.personal_email || "").toLowerCase());
+    if (!match) continue;
+    const { error } = await supabase.from("employees").update({ slack_user_id: match }).eq("id", e.id);
+    if (!error) linked++;
+  }
+  revalidatePath("/admin");
+  revalidatePath("/");
+  return { ok: true, linked, pending: (employees ?? []).length - linked };
 }
 
 // Borra un archivo/carpeta y su contenido de forma recursiva (best-effort). En

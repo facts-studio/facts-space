@@ -6,6 +6,7 @@ import LoMasCercano from "@/components/LoMasCercano";
 import TareasHoy from "@/components/TareasHoy";
 import TareasEquipoSemana from "@/components/TareasEquipoSemana";
 import SprintsActivos from "@/components/SprintsActivos";
+import TicketsPanel from "@/components/TicketsPanel";
 import NotasClient from "@/app/(portal)/notas/notas-client";
 import { TEAM } from "@/lib/mock";
 
@@ -43,6 +44,8 @@ export default function HomePanels({
   statusesByList = {},
   sprintMeta = {},
   sprints = [],
+  tickets = [],
+  meSlackId = null,
   isAdmin = false,
   initialNotes = [],
   canUseNotes = false,
@@ -70,6 +73,9 @@ export default function HomePanels({
                 va del estado del equipo. */}
             {mode !== "status" && <LoMasCercano events={events} />}
             <SprintsActivos sprints={sprints} className={mode === "status" ? "" : "mt-8"} />
+            {/* Los tickets de los canales compartidos van tras los sprints: son
+                trabajo entrante, antes de bajar a las tareas del día. */}
+            <TicketsPanel tickets={tickets} meSlackId={meSlackId} className="mt-8" />
             {mode === "status" ? (
               <TareasEquipoSemana tasks={teamTasks} campaigns={campaigns} statusesByList={statusesByList} sprintMeta={sprintMeta} className="mt-8" />
             ) : (
