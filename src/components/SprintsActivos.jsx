@@ -27,6 +27,26 @@ function plazo(s) {
   return { text: `quedan ${s.daysLeft} días`, kind: "neutral", urge: s.daysLeft <= 3 };
 }
 
+// Burbuja de info: la definición del sprint (campo "content" de la lista en
+// ClickUp) al pasar el ratón. Solo CSS — el bloque es server component.
+function InfoBubble({ text }) {
+  return (
+    <span className="group/info relative shrink-0 leading-none">
+      <svg
+        width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        strokeWidth="1.8" strokeLinecap="round" aria-hidden
+        className="text-mutedSoft transition-colors group-hover/info:text-ink"
+      >
+        <circle cx="12" cy="12" r="9.5" />
+        <path d="M12 11v5.5M12 7.6v.6" />
+      </svg>
+      <span className="pointer-events-none absolute right-0 top-full mt-2 z-50 w-[280px] rounded-2xl bg-surface border border-border/40 px-4 py-3 text-left opacity-0 translate-y-1 transition-[opacity,transform] duration-150 group-hover/info:opacity-100 group-hover/info:translate-y-0 shadow-float">
+        <span className="block text-[12.5px] leading-relaxed text-muted whitespace-normal">{text}</span>
+      </span>
+    </span>
+  );
+}
+
 function SprintCard({ s }) {
   const p = plazo(s);
   const pct = Math.round(s.pct);
@@ -43,7 +63,10 @@ function SprintCard({ s }) {
       hover
       className="flex flex-col gap-2.5"
     >
-      <p className="text-[14px] font-medium text-ink leading-snug truncate">{s.name}</p>
+      <div className="flex items-start gap-2">
+        <p className="min-w-0 flex-1 text-[14px] font-medium text-ink leading-snug truncate">{s.name}</p>
+        {s.note && <InfoBubble text={s.note} />}
+      </div>
 
       {/* Progreso: verde de "hecho" (token success) con rayas diagonales,
           el mismo tratamiento que las barras de fichaje. */}

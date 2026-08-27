@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { EVENTS as MOCK_EVENTS } from "@/lib/mock";
 import { isConfigured } from "./helpers";
 import { getAgendaEvents, getClickUpMilestones, getSprintEvents } from "./clickup";
+import { eachDayISO } from "@/lib/dates";
 
 const ABS_LABEL = { vacaciones: "Vacaciones", baja: "Baja", permiso: "Permiso", asuntos_propios: "Asuntos propios", teletrabajo: "Teletrabajo", otro: "Ausencia" };
 
@@ -14,10 +15,25 @@ function isoNextDay(iso) {
   return `${dt.getFullYear()}-${p(dt.getMonth() + 1)}-${p(dt.getDate())}`;
 }
 
+// ¿Entre dos tramos solo hay días no laborables? Un viernes y el lunes siguiente
+// son la misma ausencia para quien la mira: nadie "vuelve" el sábado. Sin esto,
+// unas vacaciones que cruzan el fin de semana se cuentan como dos.
+function soloNoLaborables(desdeISO, hastaISO, festivos) {
+  let cursor = isoNextDay(desdeISO);
+  while (cursor < hastaISO) {
+    const [y, m, d] = cursor.split("-").map(Number);
+    const dow = new Date(y, m - 1, d).getDay(); // 0 domingo, 6 sábado
+    if (dow !== 0 && dow !== 6 && !festivos.has(cursor)) return false;
+    cursor = isoNextDay(cursor);
+  }
+  return true;
+}
+
 // Une ausencias contiguas o solapadas del MISMO empleado y tipo en un solo
 // tramo. En la intranet una baja larga puede partirse en varias solicitudes
 // (p. ej. 16→22 y 23→23); para el calendario es una sola ausencia 16→23.
-function mergeAbsences(rows) {
+// Los fines de semana y festivos intermedios no rompen el tramo.
+function mergeAbsences(rows, festivos = new Set()) {
   const byKey = new Map();
   for (const r of rows) {
     const k = `${r.employee_id}|${r.type ?? "vacaciones"}`;
@@ -29,8 +45,13 @@ function mergeAbsences(rows) {
     arr.sort((a, b) => (a.start_date < b.start_date ? -1 : 1));
     let cur = null;
     for (const r of arr) {
-      // Contigua = empieza el día siguiente al fin del tramo actual (o antes).
-      if (cur && r.start_date <= isoNextDay(cur.end_date)) {
+      // Contigua = empieza el día siguiente al fin del tramo actual (o antes),
+      // o solo la separan días que nadie trabaja.
+      const contigua =
+        cur &&
+        (r.start_date <= isoNextDay(cur.end_date) ||
+          soloNoLaborables(cur.end_date, r.start_date, festivos));
+      if (contigua) {
         if (r.end_date > cur.end_date) cur.end_date = r.end_date;
       } else {
         cur = { ...r };
@@ -125,9 +146,16 @@ export async function getCalendarEvents() {
 
   const events = [];
 
+  // Días de festivo, para que tampoco rompan un tramo de ausencia.
+  const festivos = new Set();
+  for (const e of agenda ?? []) {
+    if (e.type !== "festivo") continue;
+    for (const d of eachDayISO(e.start, e.end ?? e.start)) festivos.add(d);
+  }
+
   // Los empleados desactivados (bajas/despidos) no pintan ausencias.
   const vacActivas = (vac.data ?? []).filter((v) => activos.has(v.employee_id));
-  for (const v of mergeAbsences(vacActivas)) events.push(absenceToEvent(v, nameById));
+  for (const v of mergeAbsences(vacActivas, festivos)) events.push(absenceToEvent(v, nameById));
 
   // Agenda de empresa (festivos, cumpleaños, hitos) + hitos a nivel de tarea +
   // inicio/fin de los sprints. El cumpleaños solo se pinta si su grupo de

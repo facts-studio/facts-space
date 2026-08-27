@@ -969,7 +969,7 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
                 <span
                   role="img"
                   aria-label="Descripción del sprint"
-                  onMouseEnter={(ev) => { const r = ev.currentTarget.getBoundingClientRect(); setHoverCtx({ desc: secNote, title: sec.label, x: r.left + r.width / 2, y: r.top, yb: r.bottom }); }}
+                  onMouseEnter={(ev) => { const r = ev.currentTarget.getBoundingClientRect(); setHoverCtx({ desc: secNote, title: sec.label, x: r.left + r.width / 2, xr: r.right, y: r.top, yb: r.bottom }); }}
                   onMouseLeave={() => setHoverCtx(null)}
                   className="shrink-0 inline-flex text-mutedSoft/70 hover:text-ink transition"
                 >
@@ -989,7 +989,7 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
                               <button
                                 type="button"
                                 aria-label="Descripción del sprint"
-                                onMouseEnter={(ev) => { const r = ev.currentTarget.getBoundingClientRect(); setHoverCtx({ desc: sprintNotes[sub.key], title: sub.label, x: r.left + r.width / 2, y: r.top, yb: r.bottom }); }}
+                                onMouseEnter={(ev) => { const r = ev.currentTarget.getBoundingClientRect(); setHoverCtx({ desc: sprintNotes[sub.key], title: sub.label, x: r.left + r.width / 2, xr: r.right, y: r.top, yb: r.bottom }); }}
                                 onMouseLeave={() => setHoverCtx(null)}
                                 className="shrink-0 text-mutedSoft/70 hover:text-ink transition"
                               >
@@ -1056,10 +1056,20 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
       {hoverCtx && typeof document !== "undefined" && createPortal(
         (() => {
           const below = hoverCtx.desc && hoverCtx.y < 340; // poco hueco arriba → debajo
+          // La descripción de sprint se abre arriba a la DERECHA del icono, y no
+          // centrada sobre él: así no tapa la fila ni lo que hay encima.
+          const derecha = Boolean(hoverCtx.desc);
           return (
         <div
-          className={cn("pointer-events-none fixed z-[90] -translate-x-1/2", below ? "translate-y-0" : "-translate-y-full")}
-          style={{ left: hoverCtx.x, top: below ? (hoverCtx.yb ?? hoverCtx.y) + 8 : hoverCtx.y - 8 }}
+          className={cn(
+            "pointer-events-none fixed z-[90]",
+            derecha ? "" : "-translate-x-1/2",
+            below ? "translate-y-0" : "-translate-y-full"
+          )}
+          style={{
+            left: derecha ? (hoverCtx.xr ?? hoverCtx.x) + 8 : hoverCtx.x,
+            top: below ? (hoverCtx.yb ?? hoverCtx.y) + 8 : hoverCtx.y + 8,
+          }}
         >
           {hoverCtx.desc ? (
             // Descripción de sprint: caja muy suave, sin sombra, con aire.

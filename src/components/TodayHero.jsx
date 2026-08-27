@@ -149,8 +149,8 @@ export default function TodayHero({ nombre = "equipo", meName = "", events = [],
   const nodeFor = (e, skipIcon = false) => {
     const ico = skipIcon ? null : <><Ico>{ICON[e.type]}</Ico> </>;
     if (e.type === "cumple") return <>{ico}{esYo(e.who) ? <>tu cumple</> : <>el cumple de <Hi>{e.who}</Hi></>} el <Hi>{corto(e.start)}</Hi></>;
-    if (e.type === "festivo") return <>{ico}el festivo <Hi>«{e.title}»</Hi> el <Hi>{corto(e.start)}</Hi></>;
-    if (e.type === "hito") return <>{ico}el hito <Hi>«{e.title}»</Hi> el <Hi>{corto(e.start)}</Hi></>;
+    if (e.type === "festivo") return <>{ico}el festivo <Hi>{e.title}</Hi> el <Hi>{corto(e.start)}</Hi></>;
+    if (e.type === "hito") return <>{ico}el hito <Hi>{e.title}</Hi> el <Hi>{corto(e.start)}</Hi></>;
     return <>{ico}{esYo(e.who) ? <>tus vacaciones</> : <>las vacaciones de <Hi>{e.who}</Hi></>} {rango(e)}</>;
   };
 
@@ -158,9 +158,8 @@ export default function TodayHero({ nombre = "equipo", meName = "", events = [],
   // cumple de X" / "hoy es tu cumple"); el resto, con su fecha.
   const parteFor = (e) =>
     e.type === "cumple" && e.dias === 0
-      ? <><Ico>🎂</Ico> {esYo(e.who) ? <>hoy es tu cumple</> : <>hoy es el cumple de <Hi>{e.who}</Hi></>}</>
+      ? (esYo(e.who) ? <>hoy es tu cumple</> : <>hoy es el cumple de <Hi>{e.who}</Hi></>)
       : nodeFor(e);
-  const partes = near.map(parteFor);
 
   // Agrupa eventos consecutivos de la misma persona (p. ej. dos tramos de
   // vacaciones de Carla) para no repetir "las vacaciones de Carla … Carla …".
@@ -168,7 +167,14 @@ export default function TodayHero({ nombre = "equipo", meName = "", events = [],
     const groups = [];
     for (const e of items) {
       const last = groups[groups.length - 1];
-      if (last && last.type === e.type && e.type === "vacaciones" && last.who === e.who) {
+      const mismaPersona = last && e.type === "vacaciones" && last.who === e.who;
+      // Dos hitos el mismo día se dicen juntos: "los hitos A y B el 8".
+      // Un final de sprint no se agrupa con un hito normal aunque caigan el
+      // mismo día: se cuentan distinto.
+      const mismoSabor = last && Boolean(last.events[0].kind) === Boolean(e.kind) && last.events[0].kind === e.kind;
+      const mismoDia =
+        last && (e.type === "hito" || e.type === "festivo") && last.events[0].start === e.start && mismoSabor;
+      if (last && last.type === e.type && (mismaPersona || mismoDia)) {
         last.events.push(e);
       } else {
         groups.push({ type: e.type, who: e.who, title: e.title, events: [e] });
@@ -184,15 +190,41 @@ export default function TodayHero({ nombre = "equipo", meName = "", events = [],
     }
     return joinNodes(evs.map((e) => <>el <Hi>{corto(e.start)}</Hi></>));
   };
-  const nodeForGroup = (g, skipIcon = false) => {
-    const ico = skipIcon ? null : <><Ico>{ICON[g.type]}</Ico> </>;
+  // ¿El grupo siguiente cae el mismo día? Entonces este no repite la fecha:
+  // "el hito A y el final de B el 8 de septiembre".
+  const mismaFechaQueElSiguiente = (groups, i) => {
+    const sig = groups[i + 1];
+    if (!sig) return false;
+    const fechable = (g) => g.type === "hito" || g.type === "festivo";
+    return fechable(groups[i]) && fechable(sig) && groups[i].events[0].start === sig.events[0].start;
+  };
+
+  // Títulos de un grupo: "A", "A y B", "A, B y C".
+  const titulosNode = (evs) => joinNodes(evs.map((e) => <Hi key={e.id}>{e.title}</Hi>));
+  const nodeForGroup = (g, sinTipo = false, sinFecha = false) => {
+    // `sinFecha`: el grupo siguiente cae el mismo día y la dirá por los dos.
+    const fecha = sinFecha ? null : <> {fechasNode([g.events[0]])}</>;
     const quienVac = esYo(g.who) ? <>tus vacaciones</> : <>las vacaciones de <Hi>{g.who}</Hi></>;
-    if (g.type === "cumple") return <>{ico}{esYo(g.who) ? <>tu cumple</> : <>el cumple de <Hi>{g.who}</Hi></>} {fechasNode(g.events)}</>;
-    if (g.type === "festivo") return <>{ico}el festivo <Hi>«{g.title}»</Hi> {fechasNode(g.events)}</>;
-    if (g.type === "hito") return <>{ico}el hito <Hi>«{g.title}»</Hi> {fechasNode(g.events)}</>;
+    const varios = g.events.length > 1;
+    if (g.type === "cumple") return <>{esYo(g.who) ? <>tu cumple</> : <>el cumple de <Hi>{g.who}</Hi></>} {fechasNode(g.events)}</>;
+    // `sinTipo`: el anterior ya dijo "el hito", no hace falta repetirlo.
+    if (g.type === "festivo") return <>{sinTipo ? null : varios ? "los festivos " : "el festivo "}{titulosNode(g.events)}{fecha}</>;
+    if (g.type === "hito") {
+      // Los marcadores de sprint dicen qué son, no su título literal
+      // ("Formación TradingMind · fin" → "el final de Formación TradingMind").
+      const kind = g.events[0].kind;
+      if (kind === "fin" || kind === "inicio") {
+        const nombres = joinNodes(g.events.map((e) => <Hi key={e.id}>{e.sprint ?? e.title}</Hi>));
+        const etiqueta = kind === "fin"
+          ? (varios ? "los finales de " : "el final de ")
+          : (varios ? "los arranques de " : "el arranque de ");
+        return <>{etiqueta}{nombres}{fecha}</>;
+      }
+      return <>{sinTipo ? null : varios ? "los hitos " : "el hito "}{titulosNode(g.events)}{fecha}</>;
+    }
     // Vacaciones: un solo tramo → rango con duración; varios → fechas de inicio.
-    if (g.events.length === 1) return <>{ico}{quienVac} {rango(g.events[0])}</>;
-    return <>{ico}{quienVac} {fechasNode(g.events)}</>;
+    if (!varios) return <>{quienVac} {rango(g.events[0])}</>;
+    return <>{quienVac} {fechasNode(g.events)}</>;
   };
 
   // Concordancia de "será/serán": plural si hay más de un evento o si el único
@@ -234,8 +266,8 @@ export default function TodayHero({ nombre = "equipo", meName = "", events = [],
           {overdueCount > 0 && <>, {vencidas(overdueCount)}</>}.
         </>
       );
-  // Con agenda, "En la agenda:" ya hace de lead → nada de intro (evita repetir
-  // "…la agenda. En la agenda:"). En calma, la frase de tareas sustituye al intro.
+  // Con eventos cercanos, el propio enlace ("Además, …" / "Por delante, …") hace
+  // de lead → nada de intro. En calma, la frase de tareas sustituye al intro.
   const showIntro = hasContent && !hasNow && !tareasFrase;
 
   return (
@@ -254,22 +286,30 @@ export default function TodayHero({ nombre = "equipo", meName = "", events = [],
         {showIntro && <>{intro} </>}
         {hasNow ? (
           <>
-            En la agenda:{" "}
-            {partes.map((p, i) => (
-              <span key={i}>
-                {i === 0 ? "" : i === partes.length - 1 ? " y " : ", "}
-                {p}
-              </span>
-            ))}
+            {tareasFrase ? "Además, " : "Por delante, "}
+            {(() => {
+              const groups = groupFill(near);
+              return joinNodes(
+                groups.map((g, i) =>
+                  g.type === "cumple" && g.events[0].dias === 0
+                    ? parteFor(g.events[0])
+                    : nodeForGroup(
+                        g,
+                        i > 0 && groups[i - 1].type === g.type && !groups[i - 1].events[0].kind && !g.events[0].kind,
+                        mismaFechaQueElSiguiente(groups, i)
+                      )
+                )
+              );
+            })()}
             .
           </>
         ) : fill.length > 0 ? (
           (() => {
             const groups = groupFill(fill);
-            return <>Lo próximo {seraVerbo(fill)} {joinNodes(groups.map((g, i) => nodeForGroup(g, i > 0 && groups[i - 1].type === g.type)))}.</>;
+            return <>Lo próximo {seraVerbo(fill)} {joinNodes(groups.map((g, i) => nodeForGroup(g, i > 0 && groups[i - 1].type === g.type && !groups[i - 1].events[0].kind && !g.events[0].kind)))}.</>;
           })()
         ) : tareasFrase ? (
-          <>Nada más señalado en la agenda; buen momento para ir avanzándolas.</>
+          <>Nada más por delante; buen momento para ir avanzándolas.</>
         ) : (
           <>Parece que de momento nada más. Buen momento para avanzar con calma.</>
         )}
