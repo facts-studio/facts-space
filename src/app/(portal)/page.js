@@ -15,7 +15,7 @@ import { getMyNotes } from "@/lib/data/notes";
 import { getSlackTickets } from "@/lib/data/slack";
 import { getLastWorkedDate } from "@/lib/data/time";
 import { madridDateISO } from "@/lib/dates";
-import { getClickUpTasks, getConfiguredLists, weekTasks, teamWeekTasks, activeSprints } from "@/lib/data/clickup";
+import { getClickUpTasks, getVisibleLists, weekTasks, teamWeekTasks, activeSprints } from "@/lib/data/clickup";
 
 export default async function HomePage() {
   const [events, me, tasks, notes, lists, approvals, decisions, tickets] = await Promise.all([
@@ -23,7 +23,7 @@ export default async function HomePage() {
     getCurrentEmployee(),
     getClickUpTasks(),
     getMyNotes(),
-    getConfiguredLists(),
+    getVisibleLists(),
     getPendingApprovals(), // solicitudes que me toca resolver (responsable/admin)
     getMyDecisions(),      // mis solicitudes ya resueltas que aún no he visto
     getSlackTickets(),     // tickets de los canales compartidos (Slack Lists)

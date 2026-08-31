@@ -1,7 +1,7 @@
 import CalendarMonth from "@/components/CalendarMonth";
 import { getCalendarEvents, getPendingAbsenceEvents } from "@/lib/data/calendar";
 import { getCurrentEmployee } from "@/lib/data/helpers";
-import { getClickUpTasks, getConfiguredLists } from "@/lib/data/clickup";
+import { getClickUpTasks, getVisibleLists } from "@/lib/data/clickup";
 import { getEmployees } from "@/lib/data/employees";
 import { paletteColor } from "@/lib/client-palette";
 
@@ -36,7 +36,7 @@ export default async function CalendarioPage() {
     getPendingAbsenceEvents(), // solicitadas sin aprobar → pastilla discontinua
     getCurrentEmployee(),
     getClickUpTasks(),
-    getConfiguredLists(),
+    getVisibleLists(),
     getEmployees(), // plantilla activa real (no el mock) para la fila de personas
   ]);
   const colorsByClient = Object.fromEntries(lists.filter((l) => l.color && l.folder_name).map((l) => [l.folder_name, l.color]));

@@ -1,12 +1,12 @@
 import TareasClient from "./tareas-client";
 import { getCurrentEmployee } from "@/lib/data/helpers";
-import { getClickUpTasks, getConfiguredLists, getSprintEvents } from "@/lib/data/clickup";
+import { getClickUpTasks, getVisibleLists, getSprintEvents } from "@/lib/data/clickup";
 
 export default async function TareasPage() {
   const [me, tasks, lists, milestones] = await Promise.all([
     getCurrentEmployee(),
     getClickUpTasks(),
-    getConfiguredLists(),
+    getVisibleLists(),
     getSprintEvents(), // inicio/fin de los sprints → se pintan en la vista Calendario
   ]);
   const visibleCount = lists.filter((l) => l.visible).length;

@@ -13,6 +13,7 @@ import {
 import { getAllDocuments } from "@/lib/data/documents";
 import { getCalendarEvents } from "@/lib/data/calendar";
 import { getConfiguredLists, getClickUpGroups } from "@/lib/data/clickup";
+import { getSlackUsers } from "@/lib/data/slack";
 import { madridDateISO } from "@/lib/dates";
 
 export default async function AdminPage() {

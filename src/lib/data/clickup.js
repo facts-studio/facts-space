@@ -245,6 +245,27 @@ export async function getConfiguredLists() {
   }
 }
 
+// ── Visibilidad ──────────────────────────────────────────────────────────────
+// ÚNICA regla de quién ve qué lista. Todo lo que salga de ClickUp (tareas,
+// sprints, hitos, colores…) tiene que pasar por aquí: una lista "bloqueada"
+// (admin_only) no debe filtrarse ni por el nombre de un sprint.
+export function filterVisibleLists(lists, isAdmin) {
+  return (lists ?? []).filter(
+    (l) =>
+      l.visible &&
+      (!l.admin_only || isAdmin) &&
+      // "Management" es privada por norma, esté como esté marcada.
+      (isAdmin || (l.list_name || "").trim().toLowerCase() !== "management")
+  );
+}
+
+// Listas que puede ver QUIEN está mirando. Es lo que deben usar las pantallas;
+// getConfiguredLists() devuelve la configuración entera y es solo para admin.
+export async function getVisibleLists() {
+  const [lists, me] = await Promise.all([getConfiguredLists(), getCurrentEmployee()]);
+  return filterVisibleLists(lists, Boolean(me?.is_admin));
+}
+
 // Tareas del portal. Orden de preferencia:
 //  1) listas ACTIVADAS en el admin (clickup_lists.visible) → filtro list_ids.
 //  2) CLICKUP_VIEW_ID (vista fija) como fallback legacy.
@@ -259,11 +280,7 @@ export async function getClickUpTasks() {
     const isAdmin = Boolean(me?.is_admin);
     // Visibles = activadas; "bloqueadas" (admin_only) y las de "Management"
     // (privadas por norma) solo para admins.
-    const visibleIds = configured
-      .filter((l) => l.visible
-        && (!l.admin_only || isAdmin)
-        && (isAdmin || (l.list_name || "").trim().toLowerCase() !== "management"))
-      .map((l) => l.list_id);
+    const visibleIds = filterVisibleLists(configured, isAdmin).map((l) => l.list_id);
     // Listas marcadas como sprint: mini-proyecto temporal DENTRO de un cliente.
     // La tarea conserva su cliente (project) y añade `sprint` con el nombre de
     // la lista; no es un cliente aparte.
@@ -402,11 +419,11 @@ export async function getAgendaEvents() {
  * `note` lleva la definición del sprint (el "content" de la lista).
  */
 export async function getSprintEvents() {
-  const lists = await getConfiguredLists();
+  const lists = await getVisibleLists();
   const iso = (ts) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date(ts));
   const out = [];
   for (const l of lists) {
-    if (!l.is_sprint || !l.visible) continue;
+    if (!l.is_sprint) continue;
     // `kind` va aparte del título para poder pintarlo como tag; el título
     // completo se mantiene para quien solo muestra texto (agenda, saludo…).
     const base = { type: "hito", who: null, sprint: l.list_name, client: l.folder_name ?? null, note: (l.list_content || "").trim() || null };
@@ -429,6 +446,10 @@ export async function getClickUpMilestones() {
   if (!isClickUpConfigured()) return [];
   const opts = authOpts();
   const team = process.env.CLICKUP_TEAM_ID;
+  // Este endpoint devuelve los hitos de TODO el workspace, incluidos los de
+  // listas bloqueadas: hay que quedarse solo con los de listas que esta persona
+  // puede ver, o el calendario destapa proyectos privados.
+  const permitidas = new Set((await getVisibleLists()).map((l) => String(l.list_id)));
   const toISO = (ms) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date(Number(ms)));
   const out = [];
   try {
@@ -440,6 +461,7 @@ export async function getClickUpMilestones() {
       const batch = json.tasks ?? [];
       for (const t of batch) {
         if (t.custom_item_id !== 1 || !t.due_date) continue;
+        if (!permitidas.has(String(t.list?.id))) continue;
         const due = Number(t.due_date);
         const start = t.start_date ? Number(t.start_date) : due;
         // `client`: mismo criterio que las tareas (tag de cliente → carpeta), para
