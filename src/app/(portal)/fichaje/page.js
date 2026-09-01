@@ -3,6 +3,7 @@ import FichajeClient from "./fichaje-client";
 import { getCurrentEmployee } from "@/lib/data/helpers";
 import { getTimeEntries, getDayMarks, getMissingWorkdays } from "@/lib/data/time";
 import { madridDateISO, monthEndISO } from "@/lib/dates";
+import { isExternal } from "@/lib/team";
 
 export default async function FichajePage({ searchParams }) {
   const me = await getCurrentEmployee();
@@ -13,6 +14,19 @@ export default async function FichajePage({ searchParams }) {
         <ScreenHeader kicker="Jornada" title="Fichaje" />
         <div className="card p-6 text-small text-muted">
           Tu cuenta no está dada de alta como empleado. Pide a administración que te añada para poder fichar.
+        </div>
+      </div>
+    );
+  }
+
+  // El registro de jornada es de la plantilla del estudio. Se comprueba aquí y
+  // no solo en el menú: esconder un enlace no protege una ruta.
+  if (isExternal(me)) {
+    return (
+      <div>
+        <ScreenHeader kicker="Jornada" title="Fichaje" />
+        <div className="rounded-2xl bg-surface/55 p-6 text-small text-muted">
+          El registro de jornada es solo para el equipo de F*cts Studio. Tu relación es de colaboración, así que aquí no tienes nada que fichar.
         </div>
       </div>
     );

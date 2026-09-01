@@ -5,12 +5,14 @@ import Link from "next/link";
 import { fmtRange, fmtDate } from "@/lib/mock";
 import { ABSENCE_TYPES } from "@/lib/absences";
 import { getDocumentUrl } from "@/lib/actions/documents";
+import { isExternal, companyOf } from "@/lib/team";
 
+// `team`: pestañas que solo tienen sentido con relación laboral con el estudio.
 const TABS = [
   ["resumen", "Resumen"],
   ["ausencias", "Ausencias"],
   ["datos", "Datos"],
-  ["nominas", "Nóminas"],
+  ["nominas", "Nóminas", true],
   ["documentos", "Documentos"],
 ];
 
@@ -22,13 +24,15 @@ const STATUS = {
 };
 
 export default function MiEspacioClient({ me, overview, missingCount, requests = [], documents = [] }) {
+  const externo = isExternal(me);
   const nominas = documents.filter((d) => d.category === "nomina");
   const otros = documents.filter((d) => d.category !== "nomina");
   const [tab, setTab] = useState("resumen");
+  const tabs = TABS.filter(([, , soloEquipo]) => !soloEquipo || !externo);
   return (
     <div className="space-y-3">
       <div className="flex items-center bg-surface2/60 rounded-lg p-0.5 w-fit">
-        {TABS.map(([v, l]) => (
+        {tabs.map(([v, l]) => (
           <button
             key={v}
             onClick={() => setTab(v)}
@@ -39,23 +43,31 @@ export default function MiEspacioClient({ me, overview, missingCount, requests =
         ))}
       </div>
 
-      {tab === "resumen" && <Resumen me={me} overview={overview} missingCount={missingCount} />}
+      {tab === "resumen" && <Resumen me={me} overview={overview} missingCount={missingCount} externo={externo} />}
       {tab === "ausencias" && <Ausencias requests={requests} />}
-      {tab === "datos" && <Datos me={me} />}
-      {tab === "nominas" && <DocList title="Nóminas" items={nominas} empty="Aún no hay nóminas publicadas." />}
+      {tab === "datos" && <Datos me={me} externo={externo} />}
+      {tab === "nominas" && !externo && <DocList title="Nóminas" items={nominas} empty="Aún no hay nóminas publicadas." />}
       {tab === "documentos" && <DocList title="Documentos" items={otros} empty="Aún no hay documentos." />}
     </div>
   );
 }
 
-function Resumen({ me, overview, missingCount }) {
+function Resumen({ me, overview, missingCount, externo = false }) {
   const o = overview;
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         <Stat label="Vacaciones restantes" value={o ? `${o.remaining}` : "—"} sub={o ? `de ${o.allowance} días · ${o.used} usados` : ""} />
-        <Stat label="Días sin fichar" value={String(missingCount)} sub="este mes" />
-        <Stat label="Jornada" value={`${Number(me.weekly_hours)}h`} sub="semanales" />
+        {/* Días sin fichar y jornada son de la plantilla; un externo ve de qué
+            empresa viene, que es lo que le sitúa en el portal. */}
+        {externo ? (
+          <Stat label="Empresa" value={companyOf(me) || "—"} sub="colaboración externa" />
+        ) : (
+          <>
+            <Stat label="Días sin fichar" value={String(missingCount)} sub="este mes" />
+            <Stat label="Jornada" value={`${Number(me.weekly_hours)}h`} sub="semanales" />
+          </>
+        )}
       </div>
 
       <div className="rounded-2xl bg-surface/55 p-6">
@@ -111,7 +123,23 @@ function Ausencias({ requests }) {
   );
 }
 
-function Datos({ me }) {
+function Datos({ me, externo = false }) {
+  // De un colaborador externo no guardamos nómina, contrato ni banco: solo lo
+  // necesario para trabajar juntos.
+  if (externo) {
+    return (
+      <div className="grid lg:grid-cols-2 gap-3">
+        <FieldCard
+          title="Contacto"
+          rows={[["Nombre", [me.name, me.last_name].filter(Boolean).join(" ")], ["Email", me.email], ["Teléfono", me.phone]]}
+        />
+        <FieldCard title="Colaboración" rows={[["Empresa", companyOf(me)], ["Rol", me.role]]} />
+        <p className="lg:col-span-2 text-micro text-mutedSoft">
+          Colaboras con F*cts Studio desde fuera, así que aquí no guardamos datos laborales tuyos: ni contrato, ni nómina, ni datos bancarios.
+        </p>
+      </div>
+    );
+  }
   const personales = [
     ["DNI / NIE", me.dni],
     ["Teléfono", me.phone],

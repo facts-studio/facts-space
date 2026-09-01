@@ -5,6 +5,7 @@
 // Puro (sin I/O): recibe los eventos del calendario y las tareas ya cargadas.
 //   events: [{ type, who, start, end, pending }]  (vacaciones/ausencia aprobadas)
 //   tasks:  [{ id, name, url, assignees:[{name}], everyone, dueDate(ms), startDate(ms), statusType }]
+// Solo devuelve cruces de hoy en adelante: lo pasado ya no se puede evitar.
 // Devuelve: [{ taskId, taskName, url, person, date }] (una por tarea+persona).
 
 function isoFromDate(d) {
@@ -20,7 +21,9 @@ function eachDayISO(startISO, endISO, fn) {
   while (d <= end && guard < 370) { fn(isoFromDate(d)); d.setDate(d.getDate() + 1); guard++; }
 }
 
-export function taskVacationConflicts(events = [], tasks = []) {
+// `todayISO`: los cruces que ya han pasado no se avisan. Un solape de hace dos
+// semanas no se puede recolocar; solo añade ruido al panel.
+export function taskVacationConflicts(events = [], tasks = [], todayISO = isoFromDate(new Date())) {
   // Quién está fuera cada día (solo ausencias APROBADAS, no las pendientes).
   const off = new Map(); // iso → Set(nombre)
   for (const e of events) {
@@ -42,7 +45,10 @@ export function taskVacationConflicts(events = [], tasks = []) {
     if (!quien.length) continue;
     const endISO = isoFromMs(t.dueDate);
     const startISO = t.startDate && t.startDate < t.dueDate ? isoFromMs(t.startDate) : endISO;
+    // Si la tarea venció antes de hoy, el cruce ya es historia.
+    if (endISO < todayISO) continue;
     eachDayISO(startISO, endISO, (k) => {
+      if (k < todayISO) return;
       const fuera = off.get(k);
       if (!fuera) return;
       for (const person of quien) {

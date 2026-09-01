@@ -19,6 +19,11 @@ export default async function TareasPage() {
   const sprintNotes = Object.fromEntries(
     lists.filter((l) => l.is_sprint && (l.list_content || "").trim()).map((l) => [l.list_name, l.list_content.trim()])
   );
+  // Cliente de cada sprint. El deep-link ?sprint=… lo necesita para filtrar
+  // aunque el sprint no tenga ninguna tarea que mostrar.
+  const sprintClients = Object.fromEntries(
+    lists.filter((l) => l.is_sprint && l.folder_name).map((l) => [l.list_name, l.folder_name])
+  );
 
-  return <TareasClient tasks={tasks} milestones={milestones} myEmail={me?.email ?? null} isAdmin={Boolean(me?.is_admin)} visibleCount={visibleCount} campaigns={campaigns} statusesByList={statusesByList} iconsByClient={iconsByClient} colorsByClient={colorsByClient} sprintNotes={sprintNotes} />;
+  return <TareasClient tasks={tasks} milestones={milestones} myEmail={me?.email ?? null} isAdmin={Boolean(me?.is_admin)} visibleCount={visibleCount} campaigns={campaigns} statusesByList={statusesByList} iconsByClient={iconsByClient} colorsByClient={colorsByClient} sprintNotes={sprintNotes} sprintClients={sprintClients} />;
 }

@@ -57,7 +57,13 @@ function SprintCard({ s }) {
     // tareas-client contra las tareas para componer su clave interna).
     <Surface
       as={Link}
-      href={`/tareas?sprint=${encodeURIComponent(s.name)}`}
+      // Los sprints tienen agrupación propia en Tareas; los proyectos temporales
+      // no (viven dentro de su cliente), así que esos se filtran por su lista.
+      href={
+        s.kind === "sprint"
+          ? `/tareas?sprint=${encodeURIComponent(s.name)}`
+          : `/tareas?list=${encodeURIComponent(s.name)}`
+      }
       variant="muted"
       pad="sm"
       hover

@@ -434,7 +434,7 @@ function Section({ label, count, campaign, sprint, info, children }) {
 
 /* ── Pantalla ───────────────────────────────────────────────────────────── */
 
-export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin = false, visibleCount, campaigns = [], statusesByList = {}, iconsByClient = {}, colorsByClient = {}, sprintNotes = {} }) {
+export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin = false, visibleCount, campaigns = [], statusesByList = {}, iconsByClient = {}, colorsByClient = {}, sprintNotes = {}, sprintClients = {} }) {
   const [q, setQ] = useState("");
   // Deep-links: ?task=id abre una tarea; ?scope=mine arranca en "Mis tareas";
   // ?sprint=nombre llega desde el bloque "Sprints activos" de Inicio.
@@ -447,10 +447,26 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
     if (!sp) return new Set();
     const keys = new Set();
     for (const t of tasks) if (t.sprint === sp && t.project) keys.add(sprintKey(t.project, t.sprint));
+    // Un sprint sin tareas visibles no aparece en `tasks`; sin esto el filtro
+    // se quedaba vacío y la pantalla mostraba TODO, que es justo lo contrario
+    // de lo que pide quien viene desde "Sprints activos".
+    if (!keys.size && sprintClients[sp]) keys.add(sprintKey(sprintClients[sp], sp));
     return keys;
   }); // multi-selección de clientes/campañas
+  // Sprint que llega por URL desde Inicio. Se recuerda aparte porque su filtro
+  // debe aplicarse aunque el sprint no tenga ninguna tarea: quien pulsa un
+  // sprint vacío espera verlo vacío, no la lista entera.
+  const deepSprintKey = useMemo(() => {
+    const sp = searchParams.get("sprint");
+    if (!sp) return null;
+    const desdeTareas = tasks.find((t) => t.sprint === sp && t.project);
+    if (desdeTareas) return sprintKey(desdeTareas.project, sp);
+    return sprintClients[sp] ? sprintKey(sprintClients[sp], sp) : null;
+  }, [searchParams, tasks, sprintClients]);
   const [hoverCtx, setHoverCtx] = useState(null); // tooltip por portal {name,count,x,y}
-  const [area, setArea] = useState(""); // "" = todas las disciplinas
+  // ?list=nombre llega desde los proyectos temporales de Inicio: acota a esa
+  // lista aunque no tenga ninguna tarea abierta.
+  const [area, setArea] = useState(() => searchParams.get("list") || ""); // "" = todas las disciplinas
   const [member, setMember] = useState(""); // "" = todo el equipo (solo admin)
   const [showClosed, setShowClosed] = useState(false); // false = solo abiertas
   const [scope, setScope] = useState(() => (searchParams.get("scope") === "mine" ? "mine" : "all")); // all | mine
@@ -566,8 +582,8 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
   // original se conserva, así que al volver a "Todas" reaparece.
   const selection = useMemo(() => {
     const avail = new Set([...clients.map((c) => c.key), ...sprints.map((sp) => sp.key)]);
-    return new Set([...clientSet].filter((k) => avail.has(k)));
-  }, [clientSet, clients, sprints]);
+    return new Set([...clientSet].filter((k) => avail.has(k) || k === deepSprintKey));
+  }, [clientSet, clients, sprints, deepSprintKey]);
 
 
   const filtered = useMemo(() => {
@@ -957,7 +973,27 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
       {/* LISTA — cada grupo (cliente/área) en su propia caja */}
       {view === "lista" && (
         sections.length === 0 ? (
-          <Surface pad="sm"><EmptyState className="my-2">Nada con esos filtros.</EmptyState></Surface>
+          <Surface pad="sm">
+            <EmptyState className="my-2">
+              {(() => {
+                const soloSprint = deepSprintKey && selection.has(deepSprintKey) && selection.size === 1;
+                const nombre = soloSprint ? searchParams.get("sprint") : area ? area : null;
+                if (!nombre) return "Nada con esos filtros.";
+                return (
+                  <>
+                    {nombre} no tiene tareas ahora mismo.{" "}
+                    <button
+                      type="button"
+                      onClick={() => { setClientSet(new Set()); setArea(""); }}
+                      className="underline hover:text-ink transition"
+                    >
+                      Ver todas
+                    </button>
+                  </>
+                );
+              })()}
+            </EmptyState>
+          </Surface>
         ) : (
           <div className="space-y-3">
             {sections.map((sec) => {

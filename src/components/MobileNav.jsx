@@ -36,11 +36,12 @@ function TabLink({ href, label, icon, active }) {
 }
 
 // Hoja inferior con el resto de secciones + tema + logout.
-function MoreSheet({ open, onClose, isAdmin, serverTheme }) {
+function MoreSheet({ open, onClose, isAdmin, isExternal, serverTheme }) {
   const pathname = usePathname();
   // Los items con `children` no navegan (son solo contenedores): en la hoja se
   // sustituyen por lo que contienen, que sí son destinos reales.
   const items = NAV_GROUPS.flat()
+    .filter((i) => !i.team || !isExternal)
     .flatMap((i) => i.children ?? [i])
     .filter((i) => !TAB_HREFS.has(i.href));
 
@@ -120,7 +121,7 @@ function MoreSheet({ open, onClose, isAdmin, serverTheme }) {
   );
 }
 
-export default function MobileNav({ isAdmin = false, serverTheme = null }) {
+export default function MobileNav({ isAdmin = false, isExternal = false, serverTheme = null }) {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
   const isActive = (href) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
@@ -152,7 +153,7 @@ export default function MobileNav({ isAdmin = false, serverTheme = null }) {
         </div>
       </nav>
 
-      <MoreSheet open={moreOpen} onClose={() => setMoreOpen(false)} isAdmin={isAdmin} serverTheme={serverTheme} />
+      <MoreSheet open={moreOpen} onClose={() => setMoreOpen(false)} isAdmin={isAdmin} isExternal={isExternal} serverTheme={serverTheme} />
     </>
   );
 }

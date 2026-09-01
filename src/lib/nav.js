@@ -7,7 +7,8 @@ export const NAV_GROUPS = [
     { href: "/", label: "Inicio", icon: "home" },
     { href: "/tareas", label: "Tareas", icon: "tasks" },
     { href: "/calendario", label: "Calendario", icon: "calendar" },
-    { href: "/fichaje", label: "Fichaje", icon: "clock" },
+    // `team`: solo para la plantilla del estudio; los externos no fichan.
+    { href: "/fichaje", label: "Fichaje", icon: "clock", team: true },
   ],
   [
     { href: "/mi-espacio", label: "Mi espacio", icon: "user" },

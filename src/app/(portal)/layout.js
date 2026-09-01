@@ -4,6 +4,7 @@ import { getCurrentEmployee } from "@/lib/data/helpers";
 import Sidebar from "@/components/Sidebar";
 import MobileNav from "@/components/MobileNav";
 import ContentWidth from "@/components/ContentWidth";
+import { isExternal } from "@/lib/team";
 
 const PREVIEW = process.env.NEXT_PUBLIC_AUTH_DISABLED === "true";
 const PREVIEW_USER = {
@@ -23,12 +24,15 @@ export default async function PortalLayout({ children }) {
   }
 
   const emp = await getCurrentEmployee();
+  // Los colaboradores externos no ven las secciones de plantilla.
+  const externo = isExternal(emp);
 
   return (
     <div className="flex min-h-screen">
       <Sidebar
         user={user}
         isAdmin={Boolean(emp?.is_admin)}
+        isExternal={externo}
         serverTheme={emp?.theme ?? null}
         initialCollapsed={Boolean(emp?.nav_collapsed)}
       />
@@ -38,7 +42,7 @@ export default async function PortalLayout({ children }) {
         <ContentWidth>{children}</ContentWidth>
       </main>
 
-      <MobileNav isAdmin={Boolean(emp?.is_admin)} serverTheme={emp?.theme ?? null} />
+      <MobileNav isAdmin={Boolean(emp?.is_admin)} isExternal={externo} serverTheme={emp?.theme ?? null} />
     </div>
   );
 }

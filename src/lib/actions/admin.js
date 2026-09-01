@@ -22,6 +22,8 @@ export async function updateEmployee({ id, patch }) {
   if ("vacation_allowance" in patch) allowed.vacation_allowance = Number(patch.vacation_allowance) || 0;
   if ("vacation_adjustment" in patch) allowed.vacation_adjustment = Number(patch.vacation_adjustment) || 0;
   if ("is_admin" in patch) allowed.is_admin = Boolean(patch.is_admin);
+  // Colaborador externo: sin fichaje ni ficha laboral (ver src/lib/team.js).
+  if ("is_external" in patch) allowed.is_external = Boolean(patch.is_external);
   if ("active" in patch) allowed.active = Boolean(patch.active);
   if ("clickup_group_id" in patch) allowed.clickup_group_id = patch.clickup_group_id || null;
   if ("role" in patch) allowed.role = String(patch.role);
@@ -35,7 +37,7 @@ export async function updateEmployee({ id, patch }) {
     "dni", "nss", "iban", "phone", "address", "emergency_contact", "contract_type",
     "last_name", "nationality", "gender", "marital_status", "id_doc_type",
     "mobile", "city", "postal_code", "province", "country", "bank_name", "swift", "personal_email",
-    "work_schedule", "work_mode",
+    "work_schedule", "work_mode", "company",
   ]) {
     if (k in patch) allowed[k] = String(patch[k] ?? "");
   }

@@ -155,7 +155,7 @@ const FICHA_GROUPS = [
     ["email", "Email de la empresa", "email"], ["personal_email", "Email personal", "email"], ["phone", "Teléfono", "text"], ["mobile", "Móvil", "text"],
     ["address", "Dirección", "text"], ["postal_code", "Código postal", "text"], ["city", "Ciudad", "text"],
     ["province", "Provincia", "text"], ["country", "País", "text"], ["emergency_contact", "Contacto de emergencia", "text"],
-    ["photo", "Foto (URL)", "text"],
+    ["photo", "Foto (URL)", "text"], ["company", "Empresa", "text"],
   ]],
   ["Datos bancarios", [
     ["bank_name", "Banco", "text"], ["iban", "IBAN", "text"], ["swift", "SWIFT/BIC", "text"],
@@ -175,6 +175,7 @@ function FichaForm({ e, employees, onCancel, onSaved }) {
     const f = {};
     for (const [, fields] of FICHA_GROUPS) for (const [k] of fields) f[k] = e[k] ?? "";
     f.manager_id = e.manager_id || ""; f.is_admin = e.is_admin; f.active = e.active;
+    f.is_external = Boolean(e.is_external);
     return f;
   });
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
@@ -207,6 +208,10 @@ function FichaForm({ e, employees, onCancel, onSaved }) {
           <div className="flex items-end gap-5">
             <label className="flex items-center gap-2 text-small text-ink"><input type="checkbox" checked={form.is_admin} onChange={(ev) => set("is_admin", ev.target.checked)} /> Admin</label>
             <label className="flex items-center gap-2 text-small text-ink"><input type="checkbox" checked={form.active} onChange={(ev) => set("active", ev.target.checked)} /> Activo</label>
+            {/* Externo = colabora desde fuera: sin fichaje ni ficha laboral. */}
+            <label className="flex items-center gap-2 text-small text-ink" title="Colabora desde fuera: sin fichaje, nómina, contrato ni datos bancarios">
+              <input type="checkbox" checked={form.is_external} onChange={(ev) => set("is_external", ev.target.checked)} /> Externo
+            </label>
           </div>
         </div>
       </div>

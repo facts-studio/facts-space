@@ -70,7 +70,8 @@ const MenuRow = ({ glyph, label, on, onClick }) => (
 // Píldora de lista + menú. Antes ciclaba estados a ciegas con cada clic y el
 // sprint era un ✦ que solo asomaba al hacer hover: imposible de adivinar. Ahora
 // la píldora MUESTRA su estado y el menú lo dice con palabras.
-function ListMenu({ name, access, sprint, onAccess, onToggleSprint }) {
+// `showState`: el disparador dice el estado (cuando el nombre ya va en la fila).
+function ListMenu({ name, access, sprint, onAccess, onToggleSprint, showState = false }) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState(null);
   const btnRef = useRef(null);
@@ -114,8 +115,9 @@ function ListMenu({ name, access, sprint, onAccess, onToggleSprint }) {
         )}
       >
         <AccessGlyph access={access} />
-        {name}
-        {sprint && <span className="text-brandMid text-[10px] leading-none" title="Sprint">✦</span>}
+        {showState ? (ACCESS.find((o) => o.key === access)?.label ?? "Desactivada") : name}
+        {sprint && !showState && <span className="text-brandMid text-[10px] leading-none" title="Sprint">✦</span>}
+        <span className="text-mutedSoft text-[9px] leading-none" aria-hidden>▾</span>
       </button>
 
       {open && pos && typeof document !== "undefined" && createPortal(
@@ -245,6 +247,9 @@ export default function ClickUpSources({ lists }) {
   const [sprint, setSprint] = useState(() => new Map(lists.map((l) => [l.list_id, l.is_sprint])));
   const [iconMap, setIconMap] = useState(() => new Map(lists.map((l) => [l.list_id, l.icon])));
   const [colorMap, setColorMap] = useState(() => new Map(lists.map((l) => [l.list_id, l.color])));
+  // Qué clientes están desplegados. Arrancan cerrados: con trece clientes, ver
+  // todas sus listas a la vez era un muro de píldoras.
+  const [openGroups, setOpenGroups] = useState(() => new Set());
 
   const spaces = groupBySpace(lists);
   const isOn = (id) => Boolean(local.get(id));
@@ -400,6 +405,7 @@ export default function ClickUpSources({ lists }) {
                 {space.groups.map((group) => {
                   const rIds = group.lists.map((l) => l.list_id);
                   const isClient = group.key !== "__space__";
+                  const abierto = openGroups.has(group.key);
                   return (
                     <div key={group.key} className="group/row flex items-start gap-3 py-2.5 flex-wrap">
                       <div className="flex items-center gap-2.5 min-w-0">
@@ -453,19 +459,42 @@ export default function ClickUpSources({ lists }) {
                         )}
                       </div>
 
-                      {/* Sus listas */}
-                      <div className="flex items-center gap-1.5 flex-wrap ml-auto">
-                        {group.lists.map((l) => (
-                          <ListMenu
-                            key={l.list_id}
-                            name={l.list_name}
-                            access={accessOf(l.list_id)}
-                            onAccess={(a) => setAccess([l.list_id], a)}
-                            sprint={isSprint(l.list_id)}
-                            onToggleSprint={isClient ? () => toggleSprint(l.list_id) : null}
-                          />
-                        ))}
+                      {/* Estado del cliente a la derecha; sus listas, debajo. */}
+                      <div className="ml-auto flex items-center gap-3 shrink-0">
+                        <span className="text-micro text-mutedSoft tabular-nums">{activeIn(rIds)}/{rIds.length}</span>
+                        <button
+                          type="button"
+                          onClick={() => setOpenGroups((o) => { const n = new Set(o); n.has(group.key) ? n.delete(group.key) : n.add(group.key); return n; })}
+                          aria-expanded={abierto}
+                          className="h-6 w-6 grid place-items-center rounded-lg text-mutedSoft hover:text-ink hover:bg-surface2/70 transition"
+                          title={abierto ? "Ocultar listas" : "Ver listas"}
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={cn("transition-transform", abierto && "rotate-180")}>
+                            <path d="m6 9 6 6 6-6" />
+                          </svg>
+                        </button>
                       </div>
+
+                      {abierto && (
+                        <ul className="w-full mt-1 ml-7 flex flex-col divide-y divide-border/30">
+                          {group.lists.map((l) => (
+                            <li key={l.list_id} className="flex items-center gap-3 py-1.5">
+                              <span className="min-w-0 flex-1 text-small text-inkSoft truncate">
+                                {l.list_name}
+                                {isSprint(l.list_id) && <span className="ml-1.5 text-brandMid text-[10px]" title="Sprint">✦</span>}
+                              </span>
+                              <ListMenu
+                                showState
+                                name={l.list_name}
+                                access={accessOf(l.list_id)}
+                                onAccess={(a) => setAccess([l.list_id], a)}
+                                sprint={isSprint(l.list_id)}
+                                onToggleSprint={isClient ? () => toggleSprint(l.list_id) : null}
+                              />
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
                   );
                 })}
