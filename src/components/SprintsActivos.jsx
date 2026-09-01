@@ -31,9 +31,9 @@ function plazo(s) {
 // ClickUp) al pasar el ratón. Solo CSS — el bloque es server component.
 function InfoBubble({ text }) {
   return (
-    <span className="group/info relative shrink-0 leading-none">
+    <span className="group/info relative shrink-0 h-6 w-6 grid place-items-center">
       <svg
-        width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
         strokeWidth="1.8" strokeLinecap="round" aria-hidden
         className="text-mutedSoft transition-colors group-hover/info:text-ink"
       >
@@ -55,22 +55,33 @@ function SprintCard({ s }) {
   return (
     // Lleva a Tareas ya filtrado por este sprint (?sprint=… lo resuelve
     // tareas-client contra las tareas para componer su clave interna).
-    <Surface
-      as={Link}
-      // Los sprints tienen agrupación propia en Tareas; los proyectos temporales
-      // no (viven dentro de su cliente), así que esos se filtran por su lista.
-      href={
-        s.kind === "sprint"
-          ? `/tareas?sprint=${encodeURIComponent(s.name)}`
-          : `/tareas?list=${encodeURIComponent(s.name)}`
-      }
-      variant="muted"
-      pad="sm"
-      hover
-      className="flex flex-col gap-2.5"
-    >
-      <div className="flex items-start gap-2">
+    <Surface variant="muted" pad="sm" hover className="relative flex flex-col gap-2.5">
+      {/* El enlace es una capa que cubre la tarjeta: así los botones de arriba
+          no quedan anidados dentro de un <a> (HTML inválido) y siguen pulsables.
+          Los sprints tienen agrupación propia en Tareas; los proyectos
+          temporales no, así que esos se filtran por su lista. */}
+      <Link
+        href={
+          s.kind === "sprint"
+            ? `/tareas?sprint=${encodeURIComponent(s.name)}`
+            : `/tareas?list=${encodeURIComponent(s.name)}`
+        }
+        aria-label={`Ver tareas de ${s.name}`}
+        className="absolute inset-0 rounded-2xl"
+      />
+      <div className="relative flex items-center gap-0.5">
         <p className="min-w-0 flex-1 text-[14px] font-medium text-ink leading-snug truncate">{s.name}</p>
+        <Link
+          href={`/cronograma/${s.id}`}
+          title="Ver cronograma"
+          aria-label={`Abrir el cronograma de ${s.name}`}
+          className="relative shrink-0 h-6 w-6 grid place-items-center rounded-md text-mutedSoft hover:text-ink hover:bg-surface2/70 transition"
+        >
+          {/* Tres barras escalonadas: el gesto universal de un Gantt. */}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+            <path d="M4 7h9M8 12h11M4 17h7" />
+          </svg>
+        </Link>
         {s.note && <InfoBubble text={s.note} />}
       </div>
 
@@ -111,6 +122,7 @@ function SprintCard({ s }) {
           {fechas && <Badge kind="neutral">{fechas}</Badge>}
         </div>
       </div>
+
     </Surface>
   );
 }

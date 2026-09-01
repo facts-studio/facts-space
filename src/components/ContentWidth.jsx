@@ -12,7 +12,7 @@ import { cn } from "@/lib/cn";
  * y las rejillas de Recursos). Se comparan por prefijo, así que sus subrutas
  * heredan — "/recursos" cubre Programas, Websites y sus fichas.
  */
-const ANCHO_COMPLETO = ["/tareas", "/calendario", "/recursos"];
+const ANCHO_COMPLETO = ["/tareas", "/calendario", "/recursos", "/cronograma"];
 
 export default function ContentWidth({ children, className }) {
   const pathname = usePathname() || "/";
