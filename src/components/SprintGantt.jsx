@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Tabs, Badge, Select } from "@/components/ui";
+import { Tabs, Badge, Select, Switch, ProgressBar } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { paletteColor } from "@/lib/client-palette";
 
@@ -41,17 +41,28 @@ function barStyle(t, col) {
   return { background: "transparent", borderColor: `${col.fg}55` };
 }
 
-// Rango a dibujar: el del sprint, ampliado si alguna tarea se sale, más unos
-// días de margen a cada lado para que nada quede pegado al borde.
+// Rango a dibujar: el del sprint (ampliado si alguna tarea se sale) más margen
+// generoso a los lados y cuadrado a meses completos. La línea de tiempo no debe
+// morir en la última tarea: se sigue pudiendo mirar meses por delante y por
+// detrás, que es de lo que va un cronograma.
+const MESES_ANTES = 1;
+const MESES_DESPUES = 4;
+const primerDiaDelMes = (ts, salto = 0) => {
+  const d = new Date(ts);
+  return new Date(d.getFullYear(), d.getMonth() + salto, 1).setHours(0, 0, 0, 0);
+};
+
 function rangeOf(sprint, tasks) {
   const fechas = [sprint.start, sprint.due];
   for (const t of tasks) { if (t.startDate) fechas.push(t.startDate); if (t.dueDate) fechas.push(t.dueDate); }
   const validas = fechas.filter(Boolean).map(startOfDay);
-  if (!validas.length) return null;
-  const from = addDays(Math.min(...validas), -3);
-  const to = addDays(Math.max(...validas), 3);
-  const days = Math.max(Math.round((to - from) / DAY) + 1, 14);
-  return { from, to: addDays(from, days - 1), days };
+  // Sin ninguna fecha, el cronograma se ancla en el mes actual.
+  const min = validas.length ? Math.min(...validas) : startOfDay(new Date().getTime());
+  const max = validas.length ? Math.max(...validas) : min;
+  const from = primerDiaDelMes(min, -MESES_ANTES);
+  const to = addDays(primerDiaDelMes(max, MESES_DESPUES + 1), -1); // último día del mes
+  const days = Math.round((to - from) / DAY) + 1;
+  return { from, to, days };
 }
 
 export default function SprintGantt({ sprint, tasks = [], back = null }) {
@@ -61,6 +72,25 @@ export default function SprintGantt({ sprint, tasks = [], back = null }) {
   const scroller = useRef(null);
   // Tooltip propio: el `title` del navegador es lento, feo y no se puede diseñar.
   const [tip, setTip] = useState(null); // { task, x, y }
+  // Ancho de la columna de tareas. Se arrastra desde la línea que la separa del
+  // calendario, como en cualquier tabla con columnas redimensionables.
+  const [colW, setColW] = useState(260);
+  const dragCol = (ev) => {
+    ev.preventDefault();
+    const x0 = ev.clientX;
+    const w0 = colW;
+    const move = (e) => setColW(Math.min(560, Math.max(150, w0 + e.clientX - x0)));
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
   const hoy = useMemo(() => startOfDay(new Date().getTime()), []);
 
   const people = useMemo(() => {
@@ -108,70 +138,105 @@ export default function SprintGantt({ sprint, tasks = [], back = null }) {
 
   return (
     // Alto de la ventana menos el aire del layout: el scroll vive dentro.
-    <div className="flex flex-col h-[calc(100vh-5rem)] -mt-2">
-      <header className="shrink-0 border-b border-border/60 pb-4">
-        <div className="flex items-start justify-between gap-4">
+    <div className="flex flex-col h-[calc(100vh-5rem)] -mt-2 md:-mt-8">
+      <header className="shrink-0 border-b border-border/60 px-5 md:px-10 pb-4">
+        {/* Identidad: de dónde vienes, qué estás mirando y cómo va */}
+        <div className="flex items-end justify-between gap-6 flex-wrap">
           <div className="min-w-0">
             {back}
-            <p className="section-eyebrow mt-3 mb-1">Cronograma</p>
-            <h1 className="font-display text-[22px] md:text-[26px] leading-tight text-ink truncate">{sprint.name}</h1>
-            <p className="text-micro text-mutedSoft mt-1">
-              {[sprint.client, sprint.start && sprint.due ? `${dm(sprint.start)} – ${dm(sprint.due)}` : null, `${hechas}/${tasks.length} hechas`]
-                .filter(Boolean)
-                .join(" · ")}
-            </p>
+            <h1 className="font-display text-[22px] md:text-[26px] leading-tight text-ink truncate mt-2">
+              {sprint.name}
+            </h1>
+            <div className="flex items-center gap-2 mt-2">
+              {sprint.client && (
+                <span
+                  className="inline-flex items-center h-5 px-2 rounded-full text-[11.5px] font-medium"
+                  style={{ background: col.bg, color: col.fg }}
+                >
+                  {sprint.client}
+                </span>
+              )}
+              {sprint.start && sprint.due && (
+                <span className="text-micro text-mutedSoft">{dm(sprint.start)} – {dm(sprint.due)}</span>
+              )}
+            </div>
           </div>
+
+          {/* Progreso, alineado a la derecha: es el titular del sprint */}
+          {tasks.length > 0 && (
+            <div className="w-[180px] shrink-0">
+              <div className="flex items-baseline justify-between mb-1.5">
+                <span className="text-micro text-mutedSoft">Progreso</span>
+                <span className="text-small text-ink tabular-nums">
+                  {Math.round((hechas / tasks.length) * 100)}%
+                </span>
+              </div>
+              <ProgressBar value={hechas} max={tasks.length} />
+              <p className="text-micro text-mutedSoft mt-1.5 tabular-nums">{hechas} de {tasks.length} hechas</p>
+            </div>
+          )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 mt-4">
-          <Tabs
-            value={zoom}
-            onChange={setZoom}
-            tabs={Object.entries(ZOOM).map(([k, v]) => ({ value: k, label: v.label }))}
-          />
-          <button
-            type="button"
-            onClick={() => { const el = scroller.current; if (el && range) el.scrollTo({ left: Math.max(0, x(hoy) - el.clientWidth / 3), behavior: "smooth" }); }}
-            className="h-8 px-3 rounded-lg text-[12.5px] text-muted hover:text-ink hover:bg-surface2/70 transition"
-          >
-            Ir a hoy
-          </button>
-          {people.length > 0 && (
-            <Select
-              value={person}
-              onChange={setPerson}
-              className="h-8"
-              ariaLabel="Filtrar por persona"
-              options={[{ value: "", label: "Todo el equipo" }, ...people.map((p) => ({ value: p.name, label: p.name }))]}
+        {/* Controles: escala a la izquierda, filtros a la derecha */}
+        <div className="flex items-center justify-between gap-4 flex-wrap mt-5">
+          <div className="flex items-center gap-2">
+            <Tabs
+              value={zoom}
+              onChange={setZoom}
+              tabs={Object.entries(ZOOM).map(([k, v]) => ({ value: k, label: v.label }))}
             />
-          )}
-          <label className="flex items-center gap-2 text-[12.5px] text-muted">
-            <input type="checkbox" checked={showClosed} onChange={(e) => setShowClosed(e.target.checked)} />
-            Ver cerradas
-          </label>
-          <Badge kind="neutral" className="ml-auto">{visibles.length} tareas</Badge>
+            <button
+              type="button"
+              onClick={() => { const el = scroller.current; if (el && range) el.scrollTo({ left: Math.max(0, x(hoy) - el.clientWidth / 3), behavior: "smooth" }); }}
+              className="h-8 px-3 rounded-lg text-[12.5px] text-muted hover:text-ink hover:bg-surface2/70 transition"
+            >
+              Hoy
+            </button>
+          </div>
+
+          <div className="flex items-center gap-4">
+            {people.length > 0 && (
+              <Select
+                value={person}
+                onChange={setPerson}
+                className="h-8"
+                ariaLabel="Filtrar por persona"
+                options={[{ value: "", label: "Todo el equipo" }, ...people.map((p) => ({ value: p.name, label: p.name }))]}
+              />
+            )}
+            <Switch checked={showClosed} onChange={setShowClosed} label="Cerradas" />
+            <span className="hidden sm:block h-4 w-px bg-border/70" aria-hidden />
+            <Badge kind="neutral">{visibles.length} tareas</Badge>
+          </div>
         </div>
       </header>
 
       {!range || visibles.length === 0 ? (
-        <div className="flex-1 grid place-items-center px-6">
+        <div className="flex-1 grid place-items-center px-5 md:px-10">
           <p className="text-small text-mutedSoft text-center">
             {tasks.length === 0 ? "Este sprint aún no tiene tareas." : "Ninguna tarea con estos filtros."}
           </p>
         </div>
       ) : (
         <div ref={scroller} className="flex-1 overflow-auto">
-          <div className="min-w-max">
+          <div className="w-max min-w-full">
             {/* Cabecera del calendario, pegada arriba al hacer scroll vertical */}
             <div className="sticky top-0 z-20 flex bg-bg border-b border-border/60">
-              <div className="sticky left-0 z-30 w-[260px] shrink-0 bg-bg border-r border-border/60" />
-              <div style={{ width }}>
+              <div className="sticky left-0 z-30 shrink-0 bg-bg border-r border-border/60" style={{ width: colW }} />
+              <div className="flex-1" style={{ minWidth: width }}>
                 <div className="flex h-6">
-                  {meses.map((m) => (
-                    <div key={m.key} style={{ width: m.days * px }} className="text-[11px] text-muted px-2 truncate border-r border-border/40 leading-6">
-                      {new Date(m.ts).toLocaleDateString("es-ES", { month: "long", year: "numeric" })}
-                    </div>
-                  ))}
+                  {meses.map((m, i) => {
+                    const d = new Date(m.ts);
+                    // El año solo cuando cambia (o en enero): repetirlo en cada
+                    // mes come sitio y no dice nada nuevo.
+                    const nuevoAño = i === 0 || d.getFullYear() !== new Date(meses[i - 1].ts).getFullYear();
+                    return (
+                      <div key={m.key} style={{ width: m.days * px }} className="text-[11px] text-muted px-2 truncate border-r border-border/40 leading-6 capitalize">
+                        {d.toLocaleDateString("es-ES", { month: "long" })}
+                        {nuevoAño && <span className="text-mutedSoft"> {d.getFullYear()}</span>}
+                      </div>
+                    );
+                  })}
                 </div>
                 <div className="flex h-6">
                   {dias.map((d) => (
@@ -200,7 +265,7 @@ export default function SprintGantt({ sprint, tasks = [], back = null }) {
                 return (
                   <div key={t.id} className="flex border-b border-border/30 hover:bg-surface2/30 transition-colors">
                     {/* Columna fija de tareas */}
-                    <div className="sticky left-0 z-10 w-[260px] shrink-0 bg-bg border-r border-border/60 px-4 py-2.5 flex items-center gap-2.5">
+                    <div className="sticky left-0 z-10 shrink-0 bg-bg border-r border-border/60 pl-5 md:pl-10 pr-4 py-2.5 flex items-center gap-2.5 group/col" style={{ width: colW }}>
                       <span
                         className="h-1.5 w-1.5 rounded-full shrink-0"
                         style={{ background: cerrada(t) ? `${col.fg}66` : t.statusType === "custom" ? col.fg : "transparent", boxShadow: cerrada(t) || t.statusType === "custom" ? "none" : `inset 0 0 0 1px ${col.fg}66` }}
@@ -217,10 +282,15 @@ export default function SprintGantt({ sprint, tasks = [], back = null }) {
                       {(t.assignees ?? []).slice(0, 1).map((a) => (
                         <span key={a.name} title={a.name} className="shrink-0 text-micro text-mutedSoft">{a.initials ?? a.name?.[0]}</span>
                       ))}
+                      <span
+                        onPointerDown={dragCol}
+                        title="Arrastra para ensanchar la columna"
+                        className="absolute right-0 inset-y-0 w-2 translate-x-1/2 cursor-col-resize z-20 after:absolute after:inset-y-0 after:left-1/2 after:w-px after:-translate-x-1/2 after:bg-transparent hover:after:bg-borderStrong after:transition-colors"
+                      />
                     </div>
 
                     {/* Carril */}
-                    <div className="relative" style={{ width }}>
+                    <div className="relative flex-1" style={{ minWidth: width }}>
                       {/* Fondo de fines de semana, para leer las semanas */}
                       <div className="absolute inset-0 flex" aria-hidden>
                         {dias.map((d) => (
@@ -262,7 +332,7 @@ export default function SprintGantt({ sprint, tasks = [], back = null }) {
 
               {/* Hoy, por encima de todas las filas */}
               {hoy >= range.from && hoy <= range.to && (
-                <span aria-hidden className="pointer-events-none absolute top-0 bottom-0 w-px bg-danger/50" style={{ left: 260 + x(hoy) + px / 2 }} />
+                <span aria-hidden className="pointer-events-none absolute top-0 bottom-0 w-px bg-danger/50" style={{ left: colW + x(hoy) + px / 2 }} />
               )}
             </div>
           </div>
