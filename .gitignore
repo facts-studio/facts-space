@@ -40,3 +40,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .mcp.json
+
+# Dependencias del servidor MCP de F*ctito (se instalan aparte del portal)
+mcp-clickup/node_modules

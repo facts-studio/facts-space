@@ -295,3 +295,72 @@ html, body {
 }
 .pulse-attention { animation: attentionPulse 2.6s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
 @media (prefers-reduced-motion: reduce) { .pulse-attention { animation: none; } }
+
+/* ── F*ctito ───────────────────────────────────────────────────────────────
+   Entrada de cada mensaje. Corta (220ms) y con recorrido mínimo: el chat es
+   lo más repetido de la pantalla y una animación vistosa aquí cansa a los
+   cinco mensajes. */
+@keyframes msgIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.msg-in { animation: msgIn 0.22s var(--ease-out) both; }
+
+/* Cursor de escritura mientras la respuesta llega en directo. */
+@keyframes caretBlink { 0%, 45% { opacity: 1; } 55%, 100% { opacity: 0; } }
+.caret::after {
+  content: "";
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: -0.14em;
+  background: rgb(var(--ct-ink) / 0.75);
+  animation: caretBlink 1s steps(1) infinite;
+}
+
+/* «pensando…» — barrido de luz sobre el propio texto. Dice "vivo" sin ocupar
+   sitio ni mover nada de lo que hay alrededor. */
+@keyframes shimmer { from { background-position: 180% 0; } to { background-position: -80% 0; } }
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgb(var(--ct-mutedSoft)) 0%,
+    rgb(var(--ct-mutedSoft)) 38%,
+    rgb(var(--ct-ink)) 50%,
+    rgb(var(--ct-mutedSoft)) 62%,
+    rgb(var(--ct-mutedSoft)) 100%
+  );
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 1.6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .msg-in { animation: fadeOnly 0.18s ease both; }
+  .caret::after, .shimmer { animation: none; }
+  .shimmer { color: rgb(var(--ct-mutedSoft)); background: none; -webkit-text-fill-color: currentColor; }
+}
+
+/* El fantasma flota. Siempre un poco —está vivo— y más cuando piensa.
+   A 18px cualquier recorrido grande se lee como un glitch, así que el listón
+   es 1px en reposo y 2px trabajando: se percibe sin llamar la atención. */
+@keyframes fantasmaFlota {
+  0%, 100% { transform: translateY(0)    rotate(0deg); }
+  50%      { transform: translateY(-1px) rotate(1.5deg); }
+}
+@keyframes fantasmaPiensa {
+  0%, 100% { transform: translateY(0)    rotate(-3deg); }
+  50%      { transform: translateY(-2px) rotate(3deg); }
+}
+.fantasma        { animation: fantasmaFlota 3.7s ease-in-out infinite; }
+.fantasma-piensa { animation: fantasmaPiensa 1.3s ease-in-out infinite; }
+/* Al pasar por encima del lanzador asoma un poco más: acusa recibo antes de
+   que llegues a pulsarlo. */
+.group:hover > .fantasma { animation-duration: 1.9s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fantasma, .fantasma-piensa { animation: none; }
+}

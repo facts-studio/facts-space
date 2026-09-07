@@ -5,6 +5,10 @@ import Sidebar from "@/components/Sidebar";
 import MobileNav from "@/components/MobileNav";
 import ContentWidth from "@/components/ContentWidth";
 import { isExternal } from "@/lib/team";
+import TeamPhotos from "@/components/tasks/TeamPhotos";
+import AsistenteDock from "@/components/asistente/AsistenteDock";
+import { AsistenteProvider } from "@/lib/asistente";
+import { getEmployees } from "@/lib/data/employees";
 
 const PREVIEW = process.env.NEXT_PUBLIC_AUTH_DISABLED === "true";
 const PREVIEW_USER = {
@@ -23,12 +27,15 @@ export default async function PortalLayout({ children }) {
     if (!user) redirect("/login");
   }
 
-  const emp = await getCurrentEmployee();
+  const [emp, team] = await Promise.all([getCurrentEmployee(), getEmployees()]);
   // Los colaboradores externos no ven las secciones de plantilla.
   const externo = isExternal(emp);
 
   return (
+    <AsistenteProvider>
     <div className="flex min-h-screen">
+      {/* Fotos del equipo real, para los avatares que solo tienen el email. */}
+      <TeamPhotos people={team.map((e) => ({ email: e.email, photo: e.photo }))} />
       <Sidebar
         user={user}
         isAdmin={Boolean(emp?.is_admin)}
@@ -43,6 +50,11 @@ export default async function PortalLayout({ children }) {
       </main>
 
       <MobileNav isAdmin={Boolean(emp?.is_admin)} isExternal={externo} serverTheme={emp?.theme ?? null} />
+
+      {/* F*ctito. Solo se pinta donde el portal lo sirve tu máquina: en
+          producción la ruta ni existe (ver src/lib/lineasRojas.js). */}
+      <AsistenteDock />
     </div>
+    </AsistenteProvider>
   );
 }

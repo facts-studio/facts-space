@@ -1,0 +1,16 @@
+{
+  "name": "mcp-clickup",
+  "version": "0.1.0",
+  "description": "MCP server que conecta Claude con el ClickUp de F*cts Studio (proyectos, sprints y tareas), respetando la visibilidad configurada en el portal.",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "mcp-clickup": "./index.js"
+  },
+  "scripts": {
+    "start": "node index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
