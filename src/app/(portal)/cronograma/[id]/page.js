@@ -2,12 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import SprintGantt from "@/components/SprintGantt";
 import { getClickUpTasks, getVisibleLists } from "@/lib/data/clickup";
+import { getCurrentEmployee } from "@/lib/data/helpers";
 
 // Cronograma de una lista (sprint o proyecto temporal), en su propia página:
 // una vista así necesita el ancho entero y su propio scroll, no un modal.
 export default async function CronogramaPage({ params }) {
   const { id } = await params;
-  const [lists, tasks] = await Promise.all([getVisibleLists(), getClickUpTasks()]);
+  const [lists, tasks, me] = await Promise.all([getVisibleLists(), getClickUpTasks(), getCurrentEmployee()]);
   // getVisibleLists ya filtra por permisos: si no está, o no existe o no es
   // para esta persona. En ambos casos, 404.
   const list = lists.find((l) => String(l.list_id) === String(id));
@@ -26,6 +27,9 @@ export default async function CronogramaPage({ params }) {
     <SprintGantt
       sprint={sprint}
       tasks={tasks.filter((t) => String(t.listId) === String(list.list_id))}
+      statuses={list.statuses ?? []}
+      isAdmin={Boolean(me?.is_admin)}
+      myEmail={me?.email ?? null}
       back={<Link href="/" className="text-small text-muted hover:text-ink transition">← Inicio</Link>}
     />
   );

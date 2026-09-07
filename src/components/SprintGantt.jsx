@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Tabs, Badge, Select, Switch, ProgressBar } from "@/components/ui";
+import { Tabs, ProgressBar } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { paletteColor } from "@/lib/client-palette";
+import { teamPhoto } from "@/components/tasks/task-atoms";
+import PersonFilter from "@/components/tasks/PersonFilter";
+import { setClickUpTaskStatus } from "@/lib/actions/clickup";
 
 const DAY = 86400000;
 const startOfDay = (ts) => new Date(ts).setHours(0, 0, 0, 0);
@@ -16,29 +19,35 @@ const dm = (ts) => `${new Date(ts).getDate()} ${MESES[new Date(ts).getMonth()]}`
 // Ancho de un día en píxeles por nivel de zoom. Es lo único que cambia entre
 // vistas: el resto del dibujo se deriva de aquí.
 const ZOOM = {
-  dia: { px: 34, label: "Días" },
-  semana: { px: 13, label: "Semanas" },
-  mes: { px: 5, label: "Meses" },
+  dia: { px: 52, label: "Días" },
+  semana: { px: 18, label: "Semanas" },
+  mes: { px: 6, label: "Meses" },
 };
 
+const norm = (v) => (v || "").toLowerCase().trim();
+const TODOS = "__todos__"; // "sin filtro" con un valor propio, no ""
 const cerrada = (t) => ["done", "closed"].includes(t.statusType);
 
-// Aspecto de la barra según el estado, sobre el color del proyecto:
-//  · pendiente → contorno, sin relleno (aún no ha empezado)
-//  · en curso  → relleno suave con rayas, como las barras de progreso del portal
-//  · hecha     → relleno pleno y apagado
+// Barra sólida en el color del proyecto. El estado se distingue por el acabado,
+// no por el relleno, para que todas se lean igual de fuertes:
+//  · pendiente → sólido
+//  · en curso  → sólido con rayas claras, como las barras de progreso del portal
+//  · hecha     → sólido atenuado, pasa a segundo plano
 function barStyle(t, col) {
   if (cerrada(t)) {
-    return { background: col.bg, borderColor: "transparent", opacity: 0.55 };
+    return { style: { background: col.fg, borderColor: "transparent", opacity: 0.4 }, text: "#fff" };
   }
   if (t.statusType === "custom") {
     return {
-      backgroundColor: col.bg,
-      backgroundImage: `repeating-linear-gradient(45deg, ${col.fg}22 0 4px, transparent 4px 10px)`,
-      borderColor: `${col.fg}33`,
+      style: {
+        backgroundColor: col.fg,
+        backgroundImage: "repeating-linear-gradient(45deg, rgba(255,255,255,0.28) 0 4px, transparent 4px 10px)",
+        borderColor: "transparent",
+      },
+      text: "#fff",
     };
   }
-  return { background: "transparent", borderColor: `${col.fg}55` };
+  return { style: { background: col.fg, borderColor: "transparent" }, text: "#fff" };
 }
 
 // Rango a dibujar: el del sprint (ampliado si alguna tarea se sale) más margen
@@ -65,34 +74,34 @@ function rangeOf(sprint, tasks) {
   return { from, to, days };
 }
 
-export default function SprintGantt({ sprint, tasks = [], back = null }) {
+export default function SprintGantt({ sprint, tasks = [], statuses = [], isAdmin = false, myEmail = null, back = null }) {
+  // Cambios de estado hechos aquí: se pintan al momento y se revierten si la
+  // llamada a ClickUp falla.
+  const [overrides, setOverrides] = useState(() => new Map());
+  const [panel, setPanel] = useState(null); // { task, x, y } — tarjeta al hacer clic
   const [zoom, setZoom] = useState("dia");
-  const [showClosed, setShowClosed] = useState(false);
-  const [person, setPerson] = useState("");
+  const [person, setPerson] = useState(TODOS); // solo admin
+  const [soloMias, setSoloMias] = useState(false);
   const scroller = useRef(null);
   // Tooltip propio: el `title` del navegador es lento, feo y no se puede diseñar.
-  const [tip, setTip] = useState(null); // { task, x, y }
-  // Ancho de la columna de tareas. Se arrastra desde la línea que la separa del
-  // calendario, como en cualquier tabla con columnas redimensionables.
-  const [colW, setColW] = useState(260);
-  const dragCol = (ev) => {
-    ev.preventDefault();
-    const x0 = ev.clientX;
-    const w0 = colW;
-    const move = (e) => setColW(Math.min(560, Math.max(150, w0 + e.clientX - x0)));
-    const up = () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-    };
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
+  const [tip, setTip] = useState(null); // { task, x, y } — al pasar el ratón
+  // Estado efectivo de una tarea (con el cambio optimista aplicado).
+  const conEstado = useCallback((t) => ({ ...t, ...(overrides.get(t.id) ?? {}) }), [overrides]);
+  const cambiarEstado = async (t, st) => {
+    const previo = overrides.get(t.id);
+    setOverrides((m) => new Map(m).set(t.id, { status: st.status, statusType: st.type, statusColor: st.color }));
+    setPanel(null);
+    const res = await setClickUpTaskStatus(t.id, st.status);
+    if (!res?.ok) {
+      setOverrides((m) => {
+        const n = new Map(m);
+        if (previo) n.set(t.id, previo); else n.delete(t.id);
+        return n;
+      });
+    }
   };
+  // Una sola lectura del reloj por render.
   const hoy = useMemo(() => startOfDay(new Date().getTime()), []);
-
   const people = useMemo(() => {
     const m = new Map();
     for (const t of tasks) for (const a of t.assignees ?? []) if (a.name) m.set(a.name, a);
@@ -100,10 +109,16 @@ export default function SprintGantt({ sprint, tasks = [], back = null }) {
   }, [tasks]);
 
   const visibles = useMemo(() => {
-    const list = tasks.filter((t) => (showClosed || !cerrada(t)) && (!person || (t.assignees ?? []).some((a) => a.name === person)));
+    // Las cerradas no se ocultan: en un cronograma lo ya hecho también cuenta.
+    // Se dibujan apagadas (ver barStyle) para que no compitan con lo vivo.
+    const list = tasks.map(conEstado).filter(
+      (t) =>
+        (!isAdmin || person === TODOS || (t.assignees ?? []).some((a) => a.email === person)) &&
+        (!soloMias || t.everyone || (t.assignees ?? []).some((a) => a.email === myEmail))
+    );
     // Por fecha de inicio: un cronograma se lee en diagonal, de arriba a abajo.
     return list.sort((a, b) => (a.startDate ?? a.dueDate ?? Infinity) - (b.startDate ?? b.dueDate ?? Infinity));
-  }, [tasks, showClosed, person]);
+  }, [tasks, person, soloMias, isAdmin, myEmail, conEstado]);
 
   const range = useMemo(() => rangeOf(sprint, visibles), [sprint, visibles]);
   const px = ZOOM[zoom].px;
@@ -133,81 +148,59 @@ export default function SprintGantt({ sprint, tasks = [], back = null }) {
     return out;
   }, [dias]);
 
-  const hechas = tasks.filter(cerrada).length;
+  const hechas = tasks.map(conEstado).filter(cerrada).length;
   const col = paletteColor(sprint.client || sprint.name, sprint.colorKey);
 
   return (
     // Alto de la ventana menos el aire del layout: el scroll vive dentro.
-    <div className="flex flex-col h-[calc(100vh-5rem)] -mt-2 md:-mt-8">
-      <header className="shrink-0 border-b border-border/60 px-5 md:px-10 pb-4">
-        {/* Identidad: de dónde vienes, qué estás mirando y cómo va */}
-        <div className="flex items-end justify-between gap-6 flex-wrap">
-          <div className="min-w-0">
-            {back}
-            <h1 className="font-display text-[22px] md:text-[26px] leading-tight text-ink truncate mt-2">
-              {sprint.name}
-            </h1>
-            <div className="flex items-center gap-2 mt-2">
-              {sprint.client && (
-                <span
-                  className="inline-flex items-center h-5 px-2 rounded-full text-[11.5px] font-medium"
-                  style={{ background: col.bg, color: col.fg }}
-                >
-                  {sprint.client}
-                </span>
-              )}
-              {sprint.start && sprint.due && (
-                <span className="text-micro text-mutedSoft">{dm(sprint.start)} – {dm(sprint.due)}</span>
-              )}
-            </div>
-          </div>
-
-          {/* Progreso, alineado a la derecha: es el titular del sprint */}
-          {tasks.length > 0 && (
-            <div className="w-[180px] shrink-0">
-              <div className="flex items-baseline justify-between mb-1.5">
-                <span className="text-micro text-mutedSoft">Progreso</span>
-                <span className="text-small text-ink tabular-nums">
-                  {Math.round((hechas / tasks.length) * 100)}%
-                </span>
-              </div>
-              <ProgressBar value={hechas} max={tasks.length} />
-              <p className="text-micro text-mutedSoft mt-1.5 tabular-nums">{hechas} de {tasks.length} hechas</p>
-            </div>
+    <div className="flex flex-col h-dvh -mt-8 md:-mt-10 -mb-[calc(58px+env(safe-area-inset-bottom)+1.75rem)] md:-mb-10">
+      {/* Una sola barra: identidad a la izquierda, controles a la derecha. */}
+      <header className="shrink-0 border-b border-border/60 px-5 md:px-10 py-3 flex items-center gap-x-5 gap-y-3 flex-wrap">
+        <div className="flex items-center gap-3 min-w-0">
+          {back}
+          <span className="h-4 w-px bg-border/70 shrink-0" aria-hidden />
+          <h1 className="font-display text-[19px] leading-none text-ink truncate">{sprint.name}</h1>
+          {sprint.client && (
+            <span
+              className="shrink-0 inline-flex items-center h-5 px-2 rounded-full text-[11.5px] font-medium"
+              style={{ background: col.bg, color: col.fg }}
+            >
+              {sprint.client}
+            </span>
+          )}
+          {sprint.start && sprint.due && (
+            <span className="hidden lg:block text-micro text-mutedSoft shrink-0">{dm(sprint.start)} – {dm(sprint.due)}</span>
           )}
         </div>
 
-        {/* Controles: escala a la izquierda, filtros a la derecha */}
-        <div className="flex items-center justify-between gap-4 flex-wrap mt-5">
-          <div className="flex items-center gap-2">
-            <Tabs
-              value={zoom}
-              onChange={setZoom}
-              tabs={Object.entries(ZOOM).map(([k, v]) => ({ value: k, label: v.label }))}
-            />
-            <button
-              type="button"
-              onClick={() => { const el = scroller.current; if (el && range) el.scrollTo({ left: Math.max(0, x(hoy) - el.clientWidth / 3), behavior: "smooth" }); }}
-              className="h-8 px-3 rounded-lg text-[12.5px] text-muted hover:text-ink hover:bg-surface2/70 transition"
-            >
-              Hoy
-            </button>
-          </div>
-
-          <div className="flex items-center gap-4">
-            {people.length > 0 && (
-              <Select
-                value={person}
-                onChange={setPerson}
-                className="h-8"
-                ariaLabel="Filtrar por persona"
-                options={[{ value: "", label: "Todo el equipo" }, ...people.map((p) => ({ value: p.name, label: p.name }))]}
-              />
-            )}
-            <Switch checked={showClosed} onChange={setShowClosed} label="Cerradas" />
-            <span className="hidden sm:block h-4 w-px bg-border/70" aria-hidden />
-            <Badge kind="neutral">{visibles.length} tareas</Badge>
-          </div>
+        <div className="flex items-center gap-4 ml-auto">
+          {tasks.length > 0 && (
+            <div className="hidden sm:flex items-center gap-2.5">
+              <ProgressBar value={hechas} max={tasks.length} className="w-[80px]" />
+              <span className="text-micro text-mutedSoft tabular-nums">{hechas}/{tasks.length}</span>
+            </div>
+          )}
+          <Tabs
+            value={zoom}
+            onChange={setZoom}
+            tabs={Object.entries(ZOOM).map(([k, v]) => ({ value: k, label: v.label }))}
+          />
+          <button
+            type="button"
+            onClick={() => { const el = scroller.current; if (el && range) el.scrollTo({ left: Math.max(0, x(hoy) - el.clientWidth / 3), behavior: "smooth" }); }}
+            className="h-8 px-2.5 rounded-lg text-[12.5px] text-muted hover:text-ink hover:bg-surface2/70 transition"
+          >
+            Hoy
+          </button>
+          <PersonFilter
+            isAdmin={isAdmin && people.length > 1}
+            members={people.map((p) => ({ email: p.email, name: p.name }))}
+            value={person === TODOS ? "" : person}
+            onChange={(email) => setPerson(email || TODOS)}
+            myEmail={myEmail}
+            mine={soloMias}
+            onToggleMine={() => setSoloMias((v) => !v)}
+          />
         </div>
       </header>
 
@@ -219,21 +212,24 @@ export default function SprintGantt({ sprint, tasks = [], back = null }) {
         </div>
       ) : (
         <div ref={scroller} className="flex-1 overflow-auto">
-          <div className="w-max min-w-full">
+          <div className="w-max min-w-full min-h-full flex flex-col">
             {/* Cabecera del calendario, pegada arriba al hacer scroll vertical */}
-            <div className="sticky top-0 z-20 flex bg-bg border-b border-border/60">
-              <div className="sticky left-0 z-30 shrink-0 bg-bg border-r border-border/60" style={{ width: colW }} />
+            <div className="sticky top-0 z-20 bg-bg border-b border-border/60">
               <div className="flex-1" style={{ minWidth: width }}>
                 <div className="flex h-6">
                   {meses.map((m, i) => {
                     const d = new Date(m.ts);
-                    // El año solo cuando cambia (o en enero): repetirlo en cada
-                    // mes come sitio y no dice nada nuevo.
-                    const nuevoAño = i === 0 || d.getFullYear() !== new Date(meses[i - 1].ts).getFullYear();
+                    // El año, solo al saltar de uno a otro. En el primer mes se
+                    // sobreentiende y solo añadía ruido.
+                    const nuevoAño = i > 0 && d.getFullYear() !== new Date(meses[i - 1].ts).getFullYear();
                     return (
-                      <div key={m.key} style={{ width: m.days * px }} className="text-[11px] text-muted px-2 truncate border-r border-border/40 leading-6 capitalize">
-                        {d.toLocaleDateString("es-ES", { month: "long" })}
-                        {nuevoAño && <span className="text-mutedSoft"> {d.getFullYear()}</span>}
+                      <div key={m.key} style={{ width: m.days * px }} className="relative shrink-0 border-r border-border/40 leading-6">
+                        {/* Sticky: el mes acompaña al scroll mientras quede
+                            alguno de sus días en pantalla. */}
+                        <span className="sticky left-2 inline-block px-0.5 text-[12px] font-medium text-ink capitalize whitespace-nowrap">
+                          {d.toLocaleDateString("es-ES", { month: "long" })}
+                          {nuevoAño && <span className="text-mutedSoft font-normal"> {d.getFullYear()}</span>}
+                        </span>
                       </div>
                     );
                   })}
@@ -244,12 +240,21 @@ export default function SprintGantt({ sprint, tasks = [], back = null }) {
                       key={d}
                       style={{ width: px }}
                       className={cn(
-                        "shrink-0 text-[10px] leading-6 text-center tabular-nums",
-                        isWeekend(d) ? "text-mutedSoft/50 bg-surface2/40" : "text-mutedSoft",
-                        d === hoy && "text-danger font-medium"
+                        "shrink-0 grid place-items-center h-6 text-[10px] tabular-nums",
+                        isWeekend(d) ? "text-mutedSoft/50" : "text-mutedSoft"
                       )}
                     >
-                      {zoom === "dia" ? new Date(d).getDate() : new Date(d).getDay() === 1 ? new Date(d).getDate() : ""}
+                      {d === hoy ? (
+                        <span className="grid place-items-center h-[18px] min-w-[18px] px-1 rounded-full bg-danger text-bg font-medium">
+                          {new Date(d).getDate()}
+                        </span>
+                      ) : zoom === "dia" ? (
+                        new Date(d).getDate()
+                      ) : new Date(d).getDay() === 1 ? (
+                        new Date(d).getDate()
+                      ) : (
+                        ""
+                      )}
                     </div>
                   ))}
                 </div>
@@ -257,69 +262,87 @@ export default function SprintGantt({ sprint, tasks = [], back = null }) {
             </div>
 
             {/* Filas */}
-            <div className="relative">
+            <div className="relative flex-1">
+              {/* Fondo del calendario: fines de semana y separadores de semana.
+                  Va detrás de todas las filas y llega hasta el borde inferior. */}
+              <div className="absolute inset-0 flex pointer-events-none" aria-hidden>
+                {dias.map((d) => (
+                  <div
+                    key={d}
+                    // La rejilla se adapta a la escala: en días, cada semana y
+                    // los findes tramados; en semanas, solo la línea semanal;
+                    // en meses, solo el corte de mes. Si no, es un rayado.
+                    className={cn(
+                      "shrink-0",
+                      zoom !== "mes" && new Date(d).getDay() === 1 && "border-l border-border/40",
+                      zoom === "mes" && new Date(d).getDate() === 1 && "border-l border-border/40"
+                    )}
+                    style={{
+                      width: px,
+                      ...(zoom === "dia" && isWeekend(d)
+                        ? {
+                            backgroundImage:
+                              "repeating-linear-gradient(45deg, rgb(var(--ct-surface2) / 0.9) 0 5px, transparent 5px 10px)",
+                          }
+                        : null),
+                    }}
+                  />
+                ))}
+              </div>
               {visibles.map((t) => {
                 const fin = t.dueDate ?? null;
                 const ini = t.startDate && t.startDate < (fin ?? Infinity) ? t.startDate : fin;
                 const vencida = fin && startOfDay(fin) < hoy && !cerrada(t);
                 return (
-                  <div key={t.id} className="flex border-b border-border/30 hover:bg-surface2/30 transition-colors">
-                    {/* Columna fija de tareas */}
-                    <div className="sticky left-0 z-10 shrink-0 bg-bg border-r border-border/60 pl-5 md:pl-10 pr-4 py-2.5 flex items-center gap-2.5 group/col" style={{ width: colW }}>
-                      <span
-                        className="h-1.5 w-1.5 rounded-full shrink-0"
-                        style={{ background: cerrada(t) ? `${col.fg}66` : t.statusType === "custom" ? col.fg : "transparent", boxShadow: cerrada(t) || t.statusType === "custom" ? "none" : `inset 0 0 0 1px ${col.fg}66` }}
-                      />
-                      <a
-                        href={t.url || "#"}
-                        target="_blank"
-                        rel="noreferrer"
-                        title={t.name}
-                        className={cn("min-w-0 flex-1 text-small truncate hover:underline", cerrada(t) ? "text-mutedSoft" : "text-inkSoft")}
-                      >
-                        {t.name}
-                      </a>
-                      {(t.assignees ?? []).slice(0, 1).map((a) => (
-                        <span key={a.name} title={a.name} className="shrink-0 text-micro text-mutedSoft">{a.initials ?? a.name?.[0]}</span>
-                      ))}
-                      <span
-                        onPointerDown={dragCol}
-                        title="Arrastra para ensanchar la columna"
-                        className="absolute right-0 inset-y-0 w-2 translate-x-1/2 cursor-col-resize z-20 after:absolute after:inset-y-0 after:left-1/2 after:w-px after:-translate-x-1/2 after:bg-transparent hover:after:bg-borderStrong after:transition-colors"
-                      />
-                    </div>
-
-                    {/* Carril */}
-                    <div className="relative flex-1" style={{ minWidth: width }}>
-                      {/* Fondo de fines de semana, para leer las semanas */}
-                      <div className="absolute inset-0 flex" aria-hidden>
-                        {dias.map((d) => (
-                          <div key={d} style={{ width: px }} className={cn("shrink-0", isWeekend(d) && "bg-surface2/40")} />
-                        ))}
-                      </div>
+                  <div key={t.id} className="relative flex border-b border-border/30 hover:bg-surface2/20 transition-colors">
+                    <div className="relative flex-1 h-11" style={{ minWidth: width }}>
                       {fin ? (() => {
                         // Mínimo 64px: por debajo, dentro de la barra no cabe ni una sílaba.
                         const w = Math.max(x(fin) - x(ini) + px, 64);
                         return (
-                          <a
-                            href={t.url || "#"}
-                            target="_blank"
-                            rel="noreferrer"
+                          <button
+                            type="button"
+                            onClick={(ev) => {
+                              const r = ev.currentTarget.getBoundingClientRect();
+                              setTip(null);
+                              setPanel({ task: t, ini, fin, x: r.left + r.width / 2, y: r.top });
+                            }}
                             onMouseEnter={(ev) => {
                               const r = ev.currentTarget.getBoundingClientRect();
                               setTip({ task: t, ini, fin, x: r.left + r.width / 2, y: r.top });
                             }}
                             onMouseLeave={() => setTip(null)}
                             className={cn(
-                              "group/task absolute top-1/2 -translate-y-1/2 h-5 rounded-md border flex items-center px-1.5 overflow-hidden transition hover:brightness-[0.97]",
+                              "absolute top-1/2 -translate-y-1/2 h-7 rounded-full border flex items-center pl-3 pr-1 transition hover:brightness-[0.97]",
                               vencida && "ring-1 ring-danger/70"
                             )}
-                            style={{ left: x(ini), width: w, ...barStyle(t, col) }}
+                            style={{ left: x(ini), width: w, ...barStyle(t, col).style }}
                           >
-                            <span className="marquee text-[10.5px] leading-none w-full" style={{ color: col.fg }}>
-                              <span>{t.name}</span>
+                            {/* Sticky: mientras la barra siga en pantalla, el
+                                nombre se queda a la vista aunque su inicio haya
+                                quedado atrás con el scroll. */}
+                            <span
+                              className="sticky left-3 text-[12px] leading-none font-medium whitespace-nowrap overflow-hidden text-ellipsis"
+                              style={{ color: barStyle(t, col).text, maxWidth: w - 44 }}
+                            >
+                              {t.name}
                             </span>
-                          </a>
+                            {(t.assignees ?? []).slice(0, 1).map((a) => {
+                              const foto = teamPhoto(a.email);
+                              return (
+                                <span key={a.email ?? a.name} title={a.name} className="ml-auto shrink-0 pl-1.5">
+                                  {foto ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={foto} alt="" className="h-5 w-5 rounded-full object-cover ring-1 ring-white/50" />
+                                  ) : (
+                                    <span className="grid place-items-center h-5 w-5 rounded-full bg-white/25 text-[9.5px] font-medium text-white">
+                                      {a.initials ?? a.name?.[0]}
+                                    </span>
+                                  )}
+                                </span>
+                              );
+                            })}
+                          </button>
                         );
                       })() : null}
                       {!fin && (
@@ -332,14 +355,14 @@ export default function SprintGantt({ sprint, tasks = [], back = null }) {
 
               {/* Hoy, por encima de todas las filas */}
               {hoy >= range.from && hoy <= range.to && (
-                <span aria-hidden className="pointer-events-none absolute top-0 bottom-0 w-px bg-danger/50" style={{ left: colW + x(hoy) + px / 2 }} />
+                <span aria-hidden className="pointer-events-none absolute top-0 bottom-0 w-px bg-danger/50" style={{ left: x(hoy) + px / 2 }} />
               )}
             </div>
           </div>
         </div>
       )}
 
-      {tip && typeof document !== "undefined" && createPortal(
+      {tip && !panel && typeof document !== "undefined" && createPortal(
         <div
           className="pointer-events-none fixed z-[120] -translate-x-1/2 -translate-y-full"
           style={{ left: tip.x, top: tip.y - 10 }}
@@ -359,6 +382,64 @@ export default function SprintGantt({ sprint, tasks = [], back = null }) {
           {/* Pico, para que se vea de qué barra cuelga */}
           <span className="absolute left-1/2 -translate-x-1/2 -bottom-1 w-2 h-2 rotate-45 bg-paper border-r border-b border-border/70" />
         </div>,
+        document.body
+      )}
+
+      {panel && typeof document !== "undefined" && createPortal(
+        <>
+          <div className="fixed inset-0 z-[110]" onClick={() => setPanel(null)} />
+          <div
+            className="fixed z-[120] -translate-x-1/2 -translate-y-full w-[280px] rounded-2xl bg-paper border border-border/70 shadow-float p-4"
+            style={{ left: panel.x, top: panel.y - 10 }}
+          >
+            <p className="text-small text-ink leading-snug">{panel.task.name}</p>
+            <p className="text-micro text-mutedSoft mt-1">
+              {panel.ini === panel.fin ? dm(panel.fin) : `${dm(panel.ini)} – ${dm(panel.fin)}`}
+              {(panel.task.assignees ?? []).length > 0 &&
+                ` · ${(panel.task.assignees ?? []).map((a) => a.name).filter(Boolean).join(", ")}`}
+            </p>
+
+            {statuses.length > 0 && (
+              <div className="mt-3.5">
+                <p className="text-micro text-mutedSoft mb-1.5">Estado</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {statuses.map((st) => {
+                    const activo = norm(conEstado(panel.task).status) === norm(st.status);
+                    return (
+                      <button
+                        key={st.status}
+                        type="button"
+                        onClick={() => cambiarEstado(panel.task, st)}
+                        className={cn(
+                          "inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[12px] border transition",
+                          activo ? "border-transparent text-bg" : "border-border/70 text-muted hover:text-ink hover:border-borderStrong"
+                        )}
+                        style={activo ? { background: st.color || "var(--ct-ink)" } : undefined}
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full" style={{ background: activo ? "currentColor" : st.color || "currentColor" }} />
+                        <span className="capitalize">{st.status}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {panel.task.url && (
+              <a
+                href={panel.task.url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 mt-3.5 text-micro text-muted hover:text-ink transition"
+              >
+                Abrir en ClickUp
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M14 3h7v7M10 14 21 3M19 13v7a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h7" />
+                </svg>
+              </a>
+            )}
+          </div>
+        </>,
         document.body
       )}
     </div>

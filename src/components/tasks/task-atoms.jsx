@@ -7,12 +7,17 @@ import { cn } from "@/lib/cn";
 import { dueLabel } from "@/lib/clickup-ui";
 import { getListStatuses } from "@/lib/actions/clickup";
 import { TEAM } from "@/lib/mock";
+import { photoByEmail } from "@/components/tasks/TeamPhotos";
 import { FctsAsterisk } from "@/components/FctsMark";
 
 const PHOTO = new Map(TEAM.filter((m) => m.email).map((m) => [m.email, m]));
 
 // Foto del miembro del equipo por email (para avatares mini fuera de <Avatars>).
-export const teamPhoto = (email) => (email ? PHOTO.get(email)?.photo || null : null);
+// Manda la ficha real; el mock solo cubre el modo preview sin Supabase.
+export const teamPhoto = (email) => {
+  if (!email) return null;
+  return photoByEmail(email) || PHOTO.get(email)?.photo || null;
+};
 
 export function Avatars({ assignees }) {
   if (!assignees?.length) return <span className="text-micro text-mutedSoft/70 hidden sm:inline">—</span>;

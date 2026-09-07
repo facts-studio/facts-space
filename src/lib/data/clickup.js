@@ -28,6 +28,30 @@ function assigneesFromField(t) {
 // área Equipo (para email/foto). null si la tarea no tiene grupos.
 // Caso especial: el grupo "Team" equivale a TODA la plantilla (se expande a
 // todos los miembros), como si la tarea se asignara a todo el equipo.
+// Plantilla real indexada por su grupo de ClickUp y por nombre de pila. Es lo
+// que permite poner cara y email a una asignación por grupo: en ClickUp casi
+// nadie tiene usuario propio, se asigna al grupo "Equipo:Nombre".
+async function directorioPorGrupo() {
+  if (!isConfigured()) return { porId: new Map(), porNombre: new Map() };
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("employees")
+      .select("name, last_name, email, photo, clickup_group_id")
+      .eq("active", true);
+    const porId = new Map();
+    const porNombre = new Map();
+    for (const e of data ?? []) {
+      const persona = { email: e.email ?? null, name: e.name, photo: e.photo ?? null };
+      if (e.clickup_group_id) porId.set(String(e.clickup_group_id), persona);
+      porNombre.set(stripAccents(e.name).split(" ")[0], persona);
+    }
+    return { porId, porNombre };
+  } catch {
+    return { porId: new Map(), porNombre: new Map() };
+  }
+}
+
 const memberAssignee = (m, fallbackLabel) => ({
   email: m?.email ?? null,
   name: m?.name ?? fallbackLabel,
@@ -38,7 +62,7 @@ const isTeamGroup = (name) => {
   const n = stripAccents(name);
   return n === "team" || n === "todos" || n === "todo el equipo";
 };
-function assigneesFromGroups(t) {
+function assigneesFromGroups(t, dir = null) {
   const gs = t.group_assignees;
   if (!Array.isArray(gs) || !gs.length) return null;
   // Si la tarea tiene el grupo "Team" (= todos), se muestra SOLO el icono de
@@ -49,7 +73,12 @@ function assigneesFromGroups(t) {
   const out = [];
   const seen = new Set();
   const add = (a) => { const k = a.email || a.name; if (k && !seen.has(k)) { seen.add(k); out.push(a); } };
-  for (const g of gs) add(memberAssignee(TEAM_BY_FIRST.get(stripAccents(g.name).split(" ")[0]), g.name));
+  for (const g of gs) {
+    const clave = stripAccents(g.name).split(" ")[0];
+    const persona =
+      dir?.porId.get(String(g.id)) ?? dir?.porNombre.get(clave) ?? TEAM_BY_FIRST.get(clave);
+    add(memberAssignee(persona, g.name));
+  }
   return out.length ? out : null;
 }
 
@@ -137,7 +166,7 @@ export function isClickUpConfigured() {
 
 // Shape normalizado que consume el portal:
 // { id, name, url, status, statusColor, listName, dueDate(ms|null), assignees:[{email,name,initials,color}] }
-function mapTask(t) {
+function mapTask(t, dir = null) {
   const description = (t.text_content || t.description || "").trim() || null;
   // Recursos = adjuntos del campo "📁 Recursos" + enlaces de la descripción.
   // Los enlaces se buscan en markdown_description porque los embeds de ClickUp
@@ -178,7 +207,7 @@ function mapTask(t) {
     // Tarea de "Team" = asignada a todo el equipo (matchea a todos y no sube subtareas).
     everyone: (t.group_assignees ?? []).some((g) => isTeamGroup(g.name)),
     // Asignación: grupos (Equipo) → campo "Asignado a" → persona asignada real.
-    assignees: assigneesFromGroups(t) ?? assigneesFromField(t) ?? (t.assignees ?? []).map((a) => ({
+    assignees: assigneesFromGroups(t, dir) ?? assigneesFromField(t) ?? (t.assignees ?? []).map((a) => ({
       email: a.email ?? null,
       name: a.username ?? a.email ?? "—",
       initials: a.initials ?? null,
@@ -276,7 +305,7 @@ export async function getClickUpTasks() {
   const opts = authOpts();
   const team = process.env.CLICKUP_TEAM_ID;
   try {
-    const [configured, me] = await Promise.all([getConfiguredLists(), getCurrentEmployee()]);
+    const [configured, me, dir] = await Promise.all([getConfiguredLists(), getCurrentEmployee(), directorioPorGrupo()]);
     const isAdmin = Boolean(me?.is_admin);
     // Visibles = activadas; "bloqueadas" (admin_only) y las de "Management"
     // (privadas por norma) solo para admins.
@@ -320,7 +349,7 @@ export async function getClickUpTasks() {
       for (const t of raw) {
         if (seen.has(t.id)) continue;
         seen.add(t.id);
-        const m = mapTask(t);
+        const m = mapTask(t, dir);
         m.sprint = sprintByList.get(m.listId) ?? null;
         m.space = spaceNameById.get(String(t.space?.id)) ?? m.space; // rama resuelta
         out.push(m);

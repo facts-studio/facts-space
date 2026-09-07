@@ -11,6 +11,7 @@ import { clientIcon } from "@/lib/client-icons";
 import { paletteColor } from "@/lib/client-palette";
 import { TaskRow, StatusMenu, Avatars, teamPhoto, rowCls } from "@/components/tasks/task-atoms";
 import TaskDetail from "@/components/tasks/task-detail";
+import PersonFilter from "@/components/tasks/PersonFilter";
 
 
 // Busca una tarea por id, incluyendo subtareas anidadas.
@@ -910,41 +911,17 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
             <span className="text-ink whitespace-nowrap">{SCOPES.find((s) => s.key === tscope)?.label}</span>
             <span className="text-mutedSoft tabular-nums">{filtered.length}</span>
           </button>
-          {/* Modo Yo — toggle estilo ClickUp: filtra a tus tareas. */}
-          <button
-            type="button"
-            onClick={() => setScope((s) => (s === "mine" ? "all" : "mine"))}
-            title="Ver solo mis tareas"
-            aria-pressed={scope === "mine"}
-            className={cn(
-              "inline-flex items-center gap-2 h-9 pl-1 pr-3 rounded-full border transition text-[13px] shrink-0",
-              scope === "mine"
-                ? "border-brand/40 bg-brand/10 text-brand"
-                : "border-border bg-surface text-ink hover:border-borderStrong"
-            )}
-          >
-            {myPhoto ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={myPhoto} alt="" className="h-7 w-7 rounded-full object-cover" />
-            ) : (
-              <span className="h-7 w-7 rounded-full grid place-items-center text-[11px] text-bg bg-mutedSoft">
-                {(myEmail || "?")[0]?.toUpperCase()}
-              </span>
-            )}
-            Mis tareas
-          </button>
-          {/* Filtro por persona: solo admin, y solo si hay a quién filtrar. */}
-          {isAdmin && members.length > 1 && (
-            <Select
-              value={member || "all"}
-              onChange={(v) => setMember(v === "all" ? "" : v)}
-              className="shrink-0 min-w-[150px]"
-              options={[
-                { value: "all", label: "Todo el equipo" },
-                ...members.map((m) => ({ value: m.email, label: `${m.name} (${m.count})` })),
-              ]}
-            />
-          )}
+          {/* Un solo control para "de quién": el admin elige a cualquiera; el
+              resto solo puede acotar a lo suyo. Son la misma función. */}
+          <PersonFilter
+            isAdmin={isAdmin && members.length > 1}
+            members={members}
+            value={member}
+            onChange={setMember}
+            myEmail={myEmail}
+            mine={scope === "mine"}
+            onToggleMine={() => setScope((sc) => (sc === "mine" ? "all" : "mine"))}
+          />
           <Switch checked={showClosed} onChange={setShowClosed} label="Cerradas" />
           {/* Filtro de Área oculto por ahora
           {areas.length > 1 && (
