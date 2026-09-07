@@ -2,11 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import { Surface, Select, Badge, Button, Field, Input, EmptyState, ScreenHeader, ProgressBar } from "@/components/ui";
 import { paletteColor, CLIENT_COLORS } from "@/lib/client-palette";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/cn";
-import { createSite, updateSite, deleteSite, fetchSiteMeta, analyzeSiteMeta, checkEmbeddable, fetchSiteTraffic } from "@/lib/actions/sites";
+import { createSite, updateSite, deleteSite, fetchSiteMeta, analyzeSiteMeta, checkEmbeddable, fetchSiteTraffic, refreshAllSitesMeta } from "@/lib/actions/sites";
+import TextosSeo from "@/components/sites/TextosSeo";
 
 const hostOf = (url) => { try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return url; } };
 // "https://github.com/org/repo/" → "org/repo" (o el host si no es reconocible).
@@ -559,6 +561,15 @@ function SiteDetail({ site, onClose }) {
   const [traffic, setTraffic] = useState(null);
   const [trafficState, setTrafficState] = useState("idle"); // idle | done | error
   const askedTraffic = useRef(false); // evita repetir la llamada a GA4
+  // Hoja de textos para copy. Si "Recargar meta" ya rastreó la web, se abre con
+  // lo guardado y no se sale a internet otra vez.
+  const [textos, setTextos] = useState(null); // null | "cargando" | meta
+  const verTextos = async () => {
+    if (site.meta) return setTextos(site.meta);
+    setTextos("cargando");
+    const r = await analyzeSiteMeta(site.url);
+    setTextos(r?.ok ? r : { error: r?.error || "No se pudo leer la web." });
+  };
 
   // ¿La web deja embeberse? Si sus cabeceras lo bloquean, en vez del iframe en
   // blanco mostramos un recuadro. Se comprueba una vez (el detalle se remonta por key).
@@ -706,7 +717,25 @@ function SiteDetail({ site, onClose }) {
           </div>
         )}
 
-        <a href={site.url} target="_blank" rel="noreferrer" className="btn-primary w-full mt-6">Abrir la web ↗</a>
+        {/* Los textos publicados, en limpio y con PDF: es lo que revisa copy
+            antes de que desarrollo los aplique. */}
+        <button
+          type="button"
+          onClick={verTextos}
+          disabled={textos === "cargando"}
+          className="btn-ghost w-full mt-6 disabled:opacity-60"
+        >
+          {textos === "cargando" ? "Leyendo la web…" : "Ver textos SEO / GEO"}
+        </button>
+        <a href={site.url} target="_blank" rel="noreferrer" className="btn-primary w-full mt-2">Abrir la web ↗</a>
+
+        {textos && textos !== "cargando" && (
+          textos.error ? (
+            <p className="text-micro text-danger mt-3">{textos.error}</p>
+          ) : (
+            <TextosSeo site={site} meta={textos} onClose={() => setTextos(null)} />
+          )
+        )}
       </aside>
     </div>
   );
@@ -888,6 +917,7 @@ function SiteForm({ site, clientNames, onClose, onSaved, onDeleted }) {
 
 // ── Pantalla ─────────────────────────────────────────────────────────────────
 export default function SitesClient({ sites: initial, isAdmin }) {
+  const router = useRouter();
   const [sites, setSites] = useState(initial);
   const [selId, setSelId] = useState(null);
   const [client, setClient] = useState(null);
@@ -916,6 +946,24 @@ export default function SitesClient({ sites: initial, isAdmin }) {
     setSites((list) => list.filter((s) => s.id !== id));
     setForm(null);
     if (selId === id) setSelId(null);
+  };
+
+  // "Recargar meta": rastrea todas las webs y guarda su SEO/GEO (y la miniatura
+  // de las que no tuvieran). Va de una en una en el servidor, así que puede
+  // tardar; el botón lo dice mientras tanto.
+  const [recargando, setRecargando] = useState(false);
+  const [avisoMeta, setAvisoMeta] = useState(null);
+  const recargarMeta = async () => {
+    setRecargando(true);
+    setAvisoMeta(null);
+    const r = await refreshAllSitesMeta();
+    setRecargando(false);
+    if (!r?.ok) return setAvisoMeta({ error: true, texto: r?.error || "No se pudo recargar." });
+    const fallos = r.fallos?.length
+      ? ` · ${r.fallos.length} sin respuesta (${r.fallos.map((f) => hostOf(f.url)).join(", ")})`
+      : "";
+    setAvisoMeta({ texto: `${r.actualizadas} de ${r.total} webs actualizadas${fallos}` });
+    router.refresh();
   };
 
   // Filtros minimal (ghost, sin borde) para colgar en la cabecera.
@@ -954,6 +1002,11 @@ export default function SitesClient({ sites: initial, isAdmin }) {
               )}
             </>
           )}
+          {isAdmin && !selected && (
+            <Button size="sm" variant="ghost" onClick={recargarMeta} disabled={recargando}>
+              {recargando ? "Rastreando…" : "Recargar meta"}
+            </Button>
+          )}
           {isAdmin && <Button size="sm" onClick={() => setForm(selected || {})}>{selected ? "Editar" : "Añadir web"}</Button>}
         </div>
       }
@@ -977,6 +1030,12 @@ export default function SitesClient({ sites: initial, isAdmin }) {
   return (
     <>
       {header}
+
+      {avisoMeta && (
+        <p className={cn("text-micro mb-4 -mt-2", avisoMeta.error ? "text-danger" : "text-mutedSoft")}>
+          {avisoMeta.texto}
+        </p>
+      )}
 
       {filtered.length === 0 ? (
         <EmptyState>{isAdmin ? "Aún no hay webs. Añade la primera con el botón de arriba." : "Administración todavía no ha publicado ninguna web."}</EmptyState>

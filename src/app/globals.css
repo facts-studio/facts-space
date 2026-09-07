@@ -364,3 +364,27 @@ html, body {
 @media (prefers-reduced-motion: reduce) {
   .fantasma, .fantasma-piensa { animation: none; }
 }
+
+/* ── Impresión ─────────────────────────────────────────────────────────────
+   "Descargar PDF" es el propio diálogo de impresión del navegador: no metemos
+   una librería de PDF para un documento de texto. Se imprime SOLO lo marcado
+   como `.imprimible` (la hoja de textos SEO), sin cabeceras, sin barra lateral
+   y sin los botones de la propia hoja. */
+@media print {
+  body { background: #fff; }
+  body * { visibility: hidden; }
+  .imprimible, .imprimible * { visibility: visible; }
+  .imprimible .sin-imprimir { display: none !important; }
+  .imprimible {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    box-shadow: none;
+    border-radius: 0;
+    background: #fff;
+  }
+  /* Que un campo no se parta entre dos páginas. */
+  .break-inside-avoid { break-inside: avoid; }
+}

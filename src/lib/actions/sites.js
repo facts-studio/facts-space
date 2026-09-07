@@ -128,6 +128,13 @@ export async function analyzeSiteMeta(url) {
     const canonical = linkHref(/canonical/i);
     const charset = (html.match(/<meta[^>]+charset=["']?([\w-]+)/i)?.[1] || "").toUpperCase();
     const h1Count = (html.match(/<h1[\s>]/gi) || []).length;
+    // Titulares visibles. No son "meta", pero es el texto que se lee en la web
+    // y quien revisa el copy lo necesita al lado de las descripciones.
+    const textoDe = (etiqueta) =>
+      [...html.matchAll(new RegExp(`<${etiqueta}[^>]*>([\\s\\S]*?)</${etiqueta}>`, "gi"))]
+        .map((m) => m[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim())
+        .filter(Boolean)
+        .slice(0, 12);
     let ogImage = meta("og:image") || meta("twitter:image");
     ogImage = ogImage ? abs(ogImage) : "";
     const favicon = linkHref(/(^|\s)(shortcut\s+)?icon($|\s)/i) || abs("/favicon.ico");
@@ -208,6 +215,7 @@ export async function analyzeSiteMeta(url) {
       hasJsonLd,
       jsonLdTypes: [...jsonLdTypes],
       h1Count,
+      titulares: { h1: textoDe("h1"), h2: textoDe("h2") },
       geo: {
         llms: llmsOk,
         robots: robotsInfo, // { present, blocked: [bots] }
@@ -318,4 +326,47 @@ export async function deleteSite(id) {
   if (dbErr) return { ok: false, error: dbErr.message };
   revalidatePath("/recursos/websites");
   return { ok: true };
+}
+
+
+/**
+ * Rastrea TODAS las webs activas y guarda su SEO/GEO en `sites.meta`, más la
+ * miniatura si no había ninguna.
+ *
+ * Es una caché a propósito: la ficha de cada web sigue pudiendo re-analizar en
+ * vivo, pero el escaparate no debería salir a internet doce veces cada vez que
+ * alguien abre la pantalla. Secuencial y no en paralelo: son webs de clientes,
+ * y doce peticiones simultáneas desde la misma IP se parecen demasiado a un
+ * escaneo.
+ */
+export async function refreshAllSitesMeta() {
+  const { db, error } = await adminDb();
+  if (error) return { ok: false, error };
+
+  const { data: sites, error: dbErr } = await db
+    .from("sites")
+    .select("id, url, image")
+    .eq("active", true)
+    .order("position");
+  if (dbErr) return { ok: false, error: dbErr.message };
+
+  let ok = 0;
+  const fallos = [];
+  for (const site of sites ?? []) {
+    const meta = await analyzeSiteMeta(site.url);
+    if (!meta?.ok) {
+      fallos.push({ url: site.url, error: meta?.error || "No respondió." });
+      continue;
+    }
+    const patch = { meta, meta_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+    // La miniatura solo se rellena si falta: si administración subió una
+    // captura a mano, un og:image no debe pisarla.
+    if (!site.image && meta.og?.image && meta.og?.imageStatus?.ok) patch.image = meta.og.image;
+    const { error: upErr } = await db.from("sites").update(patch).eq("id", site.id);
+    if (upErr) fallos.push({ url: site.url, error: upErr.message });
+    else ok++;
+  }
+
+  revalidatePath("/recursos/websites");
+  return { ok: true, total: (sites ?? []).length, actualizadas: ok, fallos };
 }
