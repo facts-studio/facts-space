@@ -8,6 +8,7 @@
 // un PDF para llevárselo o comentarlo con quien lo va a aplicar.
 
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/cn";
 
 // Límites recomendados. No son reglas del portal: son los cortes a partir de
@@ -76,19 +77,24 @@ export default function TextosSeo({ site, meta, onClose }) {
   const geo = meta?.geo || {};
   const titulares = meta?.titulares || {};
 
-  return (
-    // `imprimible` marca lo único que sale en el PDF (ver globals.css).
-    <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto p-0 sm:p-6">
-      <div className="fixed inset-0 bg-ink/25" onClick={onClose} aria-hidden />
+  if (typeof document === "undefined") return null;
 
-      <div className="imprimible relative w-full max-w-[760px] my-0 sm:my-6 rounded-none sm:rounded-3xl bg-paper shadow-float">
-        <header className="sticky top-0 z-10 flex items-start justify-between gap-4 bg-paper px-6 sm:px-8 pt-6 pb-4 border-b border-border/60 sm:rounded-t-3xl">
-          <div className="min-w-0">
-            <p className="section-eyebrow mb-1">Textos SEO / GEO</p>
-            <h2 className="font-display text-[20px] leading-tight text-ink truncate">
+  // Por portal al <body>: la ficha de la web se anima con transform, y un
+  // ancestro transformado convierte a `fixed` en relativo a él — el diálogo se
+  // quedaba encajonado en la columna en vez de centrarse en la pantalla.
+  return createPortal(
+    // `imprimible` marca lo único que sale en el PDF (ver globals.css).
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-8">
+      <div className="absolute inset-0 bg-ink/30 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
+
+      <div className="imprimible relative flex flex-col w-full max-w-[900px] h-full sm:h-auto sm:max-h-[88vh] rounded-none sm:rounded-3xl bg-paper shadow-float overflow-hidden">
+        <header className="shrink-0 flex items-start justify-between gap-4 bg-paper px-6 sm:px-8 pt-6 pb-4 border-b border-border/60">
+          <div className="min-w-0 flex-1">
+            <p className="section-eyebrow mb-1.5">Textos SEO / GEO</p>
+            <h2 className="font-display text-[22px] leading-tight text-ink truncate">
               {site.title || meta?.host || site.url}
             </h2>
-            <p className="text-micro text-mutedSoft mt-1">
+            <p className="text-micro text-mutedSoft mt-1 truncate">
               {meta?.host || site.url}
               {meta?.lang ? ` · idioma ${meta.lang}` : ""}
             </p>
@@ -108,7 +114,7 @@ export default function TextosSeo({ site, meta, onClose }) {
           </div>
         </header>
 
-        <div className="px-6 sm:px-8 py-6">
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 sm:px-8 py-6">
           <Bloque titulo="Buscador">
             <Campo
               etiqueta="Título de la página"
@@ -186,6 +192,7 @@ export default function TextosSeo({ site, meta, onClose }) {
           </p>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
