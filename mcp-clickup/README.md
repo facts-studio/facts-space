@@ -58,3 +58,20 @@ printf '%s\n' \
   '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"resumen_proyecto","arguments":{"proyecto":"Black Friday"}}}' \
   | node --env-file=.env.local mcp-clickup/index.js
 ```
+
+## Escritura
+
+Además de leer, el servidor escribe en ClickUp:
+
+- `crear_tarea` — crea en una lista, con descripción markdown, fechas
+  (`YYYY-MM-DD`, fijadas al mediodía de Madrid), personas, prioridad e hito.
+- `set_descripcion_tarea` — escribe la descripción. Reemplaza por defecto;
+  `modo: "anadir"` conserva lo anterior y añade debajo tras un separador.
+- `update_tarea` — nombre, fechas, prioridad y alta/baja de asignados.
+- `set_estado_tarea` — estado.
+- `list_personas` — grupos asignables. En este workspace cada persona es un
+  grupo y `Team` es toda la plantilla; `group_assignees` es lo que se usa,
+  no `assignees`.
+
+Todas tocan el ClickUp real. El criterio es enseñar el texto y esperar el OK
+antes de llamarlas.

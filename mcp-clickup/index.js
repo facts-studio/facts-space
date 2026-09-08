@@ -318,6 +318,162 @@ const tools = [
   },
 ];
 
+// ───── Escritura ─────
+
+// ClickUp habla en milisegundos. Aceptamos "YYYY-MM-DD" (y "DD/MM/YYYY", que es
+// lo que devuelven nuestras lecturas) y lo fijamos al mediodía de Madrid para
+// que ningún desfase horario mueva la tarea al día anterior.
+function aMillis(fecha) {
+  if (fecha === null || fecha === "") return null;
+  if (fecha === undefined) return undefined;
+  const s = String(fecha).trim();
+  let y, m, d;
+  let cap = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (cap) [, y, m, d] = cap;
+  else if ((cap = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/))) [, d, m, y] = cap;
+  else throw new Error(`Fecha no reconocida: "${fecha}". Usa YYYY-MM-DD.`);
+  const ms = Date.UTC(Number(y), Number(m) - 1, Number(d), 10, 0, 0);
+  if (Number.isNaN(ms)) throw new Error(`Fecha inválida: "${fecha}".`);
+  return ms;
+}
+
+// Los grupos de ClickUp son "una persona cada uno" (más "Team", que es toda la
+// plantilla). Aquí es donde se traduce el nombre que dice Alvaro al id.
+let cacheGrupos = null;
+async function grupos() {
+  if (!cacheGrupos) cacheGrupos = (await clickup(`/group?team_id=${TEAM}`))?.groups ?? [];
+  return cacheGrupos;
+}
+
+async function resolverPersonas(personas) {
+  if (!personas?.length) return { ids: [], nombres: [] };
+  const todos = await grupos();
+  const ids = [];
+  const nombres = [];
+  for (const p of personas) {
+    const q = norm(p);
+    const g = todos.find((x) => norm(x.name) === q) || todos.find((x) => norm(x.name).includes(q));
+    if (!g) throw new Error(`No hay ningún grupo que se parezca a "${p}". Disponibles: ${todos.map((x) => x.name).join(", ")}.`);
+    ids.push(g.id);
+    nombres.push(g.name);
+  }
+  return { ids, nombres };
+}
+
+async function detalle(taskId) {
+  const t = await clickup(`/task/${encodeURIComponent(taskId)}`);
+  return { ...tareaResumen(t), descripcion: (t.text_content || t.description || "").trim() || null };
+}
+
+const HERRAMIENTAS_ESCRITURA = [
+  {
+    name: "list_personas",
+    description:
+      "Personas a las que se puede asignar una tarea. En ClickUp cada una es un grupo; «Team» es toda la plantilla. Consúltalo si dudas del nombre exacto antes de crear o asignar.",
+    inputSchema: { type: "object", properties: {} },
+    run: async () => (await grupos()).map((g) => ({ persona: g.name, group_id: g.id })),
+  },
+  {
+    name: "crear_tarea",
+    description:
+      "Crea una tarea nueva en ClickUp. Escribe de verdad: enséñale a la persona el nombre, el proyecto y la descripción, y espera su OK antes de llamar. Si son varias tareas, confírmalas todas de una y créalas después.",
+    inputSchema: {
+      type: "object",
+      required: ["proyecto", "nombre"],
+      properties: {
+        proyecto: { type: "string", description: "Nombre de la lista, del cliente, o list_id." },
+        nombre: { type: "string", description: "Título de la tarea." },
+        descripcion: { type: "string", description: "Descripción en markdown. Escríbela: una tarea sin contexto no sirve." },
+        estado: { type: "string", description: "Estado inicial. Si se omite, el primero de la lista." },
+        inicio: { type: "string", description: "Fecha de inicio, YYYY-MM-DD." },
+        entrega: { type: "string", description: "Fecha de vencimiento, YYYY-MM-DD." },
+        personas: { type: "array", items: { type: "string" }, description: "Nombres de grupo (Carles, Alba, Mariola, Blanca, Lucas, Team)." },
+        prioridad: { type: "string", enum: ["urgente", "alta", "normal", "baja"] },
+        hito: { type: "boolean", description: "Marcarla como milestone." },
+      },
+    },
+    run: async ({ proyecto, nombre, descripcion, estado, inicio, entrega, personas, prioridad, hito }) => {
+      const l = await buscarLista(proyecto);
+      if (!l) return { error: `No encuentro ningún proyecto visible que se parezca a "${proyecto}".` };
+      const { ids, nombres } = await resolverPersonas(personas);
+      const body = { name: nombre };
+      if (descripcion) body.markdown_description = descripcion;
+      if (estado) body.status = estado;
+      const ini = aMillis(inicio);
+      if (ini != null) { body.start_date = ini; body.start_date_time = false; }
+      const fin = aMillis(entrega);
+      if (fin != null) { body.due_date = fin; body.due_date_time = false; }
+      if (ids.length) body.group_assignees = ids;
+      if (prioridad) body.priority = { urgente: 1, alta: 2, normal: 3, baja: 4 }[prioridad];
+      if (hito) body.custom_item_id = 1;
+      const t = await clickup(`/list/${l.list_id}/task`, { method: "POST", body });
+      return { ok: true, creada_en: `${l.folder_name} / ${l.list_name}`, asignada_a: nombres, ...tareaResumen(t) };
+    },
+  },
+  {
+    name: "set_descripcion_tarea",
+    description:
+      "Escribe la descripción de una tarea (markdown). Por defecto REEMPLAZA lo que hubiera: si la tarea ya tenía texto, léelo antes con get_tarea y decide, o usa modo «añadir». Confírmalo con la persona antes de llamar.",
+    inputSchema: {
+      type: "object",
+      required: ["task_id", "descripcion"],
+      properties: {
+        task_id: { type: "string", description: "id de ClickUp (el que devuelve get_tarea)." },
+        descripcion: { type: "string", description: "Texto en markdown." },
+        modo: { type: "string", enum: ["reemplazar", "anadir"], description: "«anadir» conserva lo que hubiera y añade debajo. Por defecto reemplaza." },
+      },
+    },
+    run: async ({ task_id, descripcion, modo }) => {
+      let texto = descripcion;
+      if (modo === "anadir") {
+        const previo = await clickup(`/task/${encodeURIComponent(task_id)}`);
+        const antes = (previo.description || previo.text_content || "").trim();
+        if (antes) texto = `${antes}\n\n---\n\n${descripcion}`;
+      }
+      await clickup(`/task/${encodeURIComponent(task_id)}`, {
+        method: "PUT",
+        body: { markdown_description: texto },
+      });
+      return { ok: true, ...(await detalle(task_id)) };
+    },
+  },
+  {
+    name: "update_tarea",
+    description:
+      "Cambia nombre, fechas, prioridad o asignados de una tarea existente. Solo toca los campos que pases. Para el estado usa set_estado_tarea; para la descripción, set_descripcion_tarea. Escribe de verdad: confírmalo antes.",
+    inputSchema: {
+      type: "object",
+      required: ["task_id"],
+      properties: {
+        task_id: { type: "string", description: "id de ClickUp." },
+        nombre: { type: "string" },
+        inicio: { type: "string", description: "YYYY-MM-DD, o null para quitarla." },
+        entrega: { type: "string", description: "YYYY-MM-DD, o null para quitarla." },
+        prioridad: { type: "string", enum: ["urgente", "alta", "normal", "baja", "ninguna"] },
+        anadir_personas: { type: "array", items: { type: "string" }, description: "Nombres de grupo a añadir." },
+        quitar_personas: { type: "array", items: { type: "string" }, description: "Nombres de grupo a quitar." },
+      },
+    },
+    run: async ({ task_id, nombre, inicio, entrega, prioridad, anadir_personas, quitar_personas }) => {
+      const body = {};
+      if (nombre) body.name = nombre;
+      const ini = aMillis(inicio);
+      if (ini !== undefined) { body.start_date = ini; body.start_date_time = false; }
+      const fin = aMillis(entrega);
+      if (fin !== undefined) { body.due_date = fin; body.due_date_time = false; }
+      if (prioridad) body.priority = prioridad === "ninguna" ? null : { urgente: 1, alta: 2, normal: 3, baja: 4 }[prioridad];
+      const add = await resolverPersonas(anadir_personas);
+      const rem = await resolverPersonas(quitar_personas);
+      if (add.ids.length || rem.ids.length) body.group_assignees = { add: add.ids, rem: rem.ids };
+      if (!Object.keys(body).length) return { error: "No has pasado ningún campo que cambiar." };
+      await clickup(`/task/${encodeURIComponent(task_id)}`, { method: "PUT", body });
+      return { ok: true, ...(await detalle(task_id)) };
+    },
+  },
+];
+
+tools.push(...HERRAMIENTAS_ESCRITURA);
+
 // ───── Servidor MCP (JSON-RPC por stdio, mensajes separados por salto) ─────
 
 const PROTOCOLO = "2024-11-05";
