@@ -212,6 +212,9 @@ export function TaskRow({ t, eff, open, statuses, onPickStatus, onOpen, active, 
             <span>{t.name}</span>
           </a>
         )}
+        {t.description && (
+          <svg className="h-3.5 w-3.5 shrink-0 text-mutedSoft/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-label="Tiene descripción"><title>Tiene descripción</title><path d="M4 6h16" /><path d="M4 12h16" /><path d="M4 18h10" /></svg>
+        )}
         {t.resources?.length > 0 && (
           <svg className="h-3.5 w-3.5 shrink-0 text-mutedSoft/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-label="Tiene recursos"><title>Tiene recursos</title><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
         )}
