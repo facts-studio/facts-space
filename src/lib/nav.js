@@ -34,12 +34,10 @@ export const NAV_GROUPS = [
   ],
 ];
 
-// Filtra la navegación por el acceso de quien mira.
-export function navFor({ isExternal = false, isColaborador = false } = {}) {
+// Filtra la navegación por el acceso de quien mira. Un colaborador no llega
+// aquí: no tiene barra lateral (ver ColabChrome.jsx), solo Inicio.
+export function navFor({ isExternal = false } = {}) {
   return NAV_GROUPS
-    .map((group) => group.filter((item) => {
-      if (isColaborador) return item.colab;
-      return !item.team || !isExternal;
-    }))
+    .map((group) => group.filter((item) => !item.team || !isExternal))
     .filter((group) => group.length);
 }

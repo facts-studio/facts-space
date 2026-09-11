@@ -10,6 +10,7 @@ import AsistenteDock from "@/components/asistente/AsistenteDock";
 import { AsistenteProvider } from "@/lib/asistente";
 import { getEmployees } from "@/lib/data/employees";
 import PreviewBanner from "@/components/PreviewBanner";
+import ColabChrome from "@/components/ColabChrome";
 import { PREVIEW_ROLES } from "@/lib/preview";
 
 const PREVIEW = process.env.NEXT_PUBLIC_AUTH_DISABLED === "true";
@@ -43,26 +44,41 @@ export default async function PortalLayout({ children }) {
     <div className="flex min-h-screen">
       {/* Fotos del equipo real, para los avatares que solo tienen el email. */}
       <TeamPhotos people={team.map((e) => ({ email: e.email, photo: e.photo }))} />
-      <Sidebar
-        user={user}
-        isAdmin={Boolean(emp?.is_admin)}
-        isExternal={externo}
-        isColaborador={colaborador}
-        serverTheme={emp?.theme ?? null}
-        initialCollapsed={Boolean(emp?.nav_collapsed)}
-      />
+      {/* Un colaborador no tiene secciones entre las que moverse: en vez de una
+          barra lateral vacía, solo el logo, el tema y el cerrar sesión. */}
+      {colaborador ? (
+        <ColabChrome serverTheme={emp?.theme ?? null} />
+      ) : (
+        <Sidebar
+          user={user}
+          isAdmin={Boolean(emp?.is_admin)}
+          isExternal={externo}
+          serverTheme={emp?.theme ?? null}
+          initialCollapsed={Boolean(emp?.nav_collapsed)}
+        />
+      )}
       {/* Aire para la barra inferior en móvil (56px + safe-area); en desktop, el
           padding normal. La cabecera respeta el notch con pt-safe. */}
-      <main className="flex-1 min-w-0 px-5 md:px-10 pt-safe md:pt-10 pb-[calc(58px+env(safe-area-inset-bottom)+1.75rem)] md:pb-10">
+      {/* Sin barra lateral el contenido baja para dejar sitio al logo flotante,
+          y no hace falta el hueco de la barra inferior de móvil. */}
+      <main
+        className={
+          colaborador
+            ? "flex-1 min-w-0 px-5 md:px-10 pt-20 md:pt-24 pb-16"
+            : "flex-1 min-w-0 px-5 md:px-10 pt-safe md:pt-10 pb-[calc(58px+env(safe-area-inset-bottom)+1.75rem)] md:pb-10"
+        }
+      >
         {previewRole && (
-          <div className="-mx-5 md:-mx-10 -mt-safe md:-mt-10 mb-6 md:mb-8">
+          <div className={colaborador ? "-mx-5 md:-mx-10 -mt-20 md:-mt-24 mb-6 md:mb-8" : "-mx-5 md:-mx-10 -mt-safe md:-mt-10 mb-6 md:mb-8"}>
             <PreviewBanner label={PREVIEW_ROLES[previewRole].label} />
           </div>
         )}
         <ContentWidth>{children}</ContentWidth>
       </main>
 
-      <MobileNav isAdmin={Boolean(emp?.is_admin)} isExternal={externo} isColaborador={colaborador} serverTheme={emp?.theme ?? null} />
+      {!colaborador && (
+        <MobileNav isAdmin={Boolean(emp?.is_admin)} isExternal={externo} serverTheme={emp?.theme ?? null} />
+      )}
 
       {/* F*ctito. Solo se pinta donde el portal lo sirve tu máquina: en
           producción la ruta ni existe (ver src/lib/lineasRojas.js). */}

@@ -88,7 +88,7 @@ function SubLink({ href, label, active }) {
   );
 }
 
-export default function Sidebar({ user, isAdmin = false, isExternal = false, isColaborador = false, serverTheme = null, initialCollapsed = false }) {
+export default function Sidebar({ user, isAdmin = false, isExternal = false, serverTheme = null, initialCollapsed = false }) {
   const pathname = usePathname();
   // Estado recordado EN EL USUARIO (employees.nav_collapsed): el SSR ya llega
   // con el valor correcto (prop), así que no hay parpadeo de ancho.
@@ -173,7 +173,7 @@ export default function Sidebar({ user, isAdmin = false, isExternal = false, isC
       )}
 
       <nav className="flex flex-col gap-1">
-        {navFor({ isExternal, isColaborador }).map((group, gi) => (
+        {navFor({ isExternal }).map((group, gi) => (
           <div
             key={gi}
             className={`flex flex-col gap-1 ${gi > 0 ? "mt-3 pt-3 border-t border-border/70" : ""}`}
