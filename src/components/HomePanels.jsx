@@ -47,16 +47,18 @@ export default function HomePanels({
   tickets = [],
   meSlackId = null,
   isAdmin = false,
+  isColaborador = false,
   initialNotes = [],
   canUseNotes = false,
   className = "",
 }) {
   const [mode, setMode] = useState("inicio"); // inicio | status | notas
-  const presence = useMemo(() => presenceNow(events), [events]);
+  // Quién está fuera hoy es información del equipo: un colaborador no la ve.
+  const presence = useMemo(() => (isColaborador ? [] : presenceNow(events)), [events, isColaborador]);
 
   return (
     <div className={className}>
-      <QuickLinks className="mt-10" mode={mode} onSelect={setMode} presence={presence} />
+      <QuickLinks className="mt-10" mode={mode} onSelect={setMode} presence={presence} showStatus={!isColaborador} />
 
       <div className="mt-8">
         {mode === "notas" ? (
@@ -71,11 +73,13 @@ export default function HomePanels({
           <>
             {/* "Lo más cercano" es la agenda personal: en Status estorba, que
                 va del estado del equipo. */}
-            {mode !== "status" && <LoMasCercano events={events} />}
+            {/* "Lo más cercano" es la agenda del equipo: a un colaborador no le
+                dice nada (ni cumpleaños ni festivos ni vacaciones ajenas). */}
+            {mode !== "status" && !isColaborador && <LoMasCercano events={events} />}
             <SprintsActivos sprints={sprints} className={mode === "status" ? "" : "mt-8"} />
             {/* Los tickets de los canales compartidos van tras los sprints: son
                 trabajo entrante, antes de bajar a las tareas del día. */}
-            <TicketsPanel tickets={tickets} meSlackId={meSlackId} className="mt-8" />
+            {!isColaborador && <TicketsPanel tickets={tickets} meSlackId={meSlackId} className="mt-8" />}
             {mode === "status" ? (
               <TareasEquipoSemana tasks={teamTasks} campaigns={campaigns} statusesByList={statusesByList} sprintMeta={sprintMeta} className="mt-8" />
             ) : (

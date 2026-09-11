@@ -11,8 +11,9 @@ import { cookies } from "next/headers";
 // se ve son las propias ausencias y fichajes, con el acceso del rol elegido.
 export const PREVIEW_COOKIE = "fcts-ver-como";
 export const PREVIEW_ROLES = {
-  interno: { label: "compañero de plantilla", isExternal: false },
-  externo: { label: "colaborador externo", isExternal: true },
+  interno: { label: "alguien de la plantilla" },
+  externo: { label: "un externo" },
+  colaborador: { label: "un colaborador" },
 };
 
 export async function getPreviewRole() {
@@ -29,7 +30,8 @@ export function applyPreview(employee, role) {
   return {
     ...employee,
     is_admin: false,
-    is_external: PREVIEW_ROLES[role].isExternal,
+    access_role: role,
+    is_external: role !== "interno", // espejo, igual que al guardar en admin
     _previewRole: role,
   };
 }

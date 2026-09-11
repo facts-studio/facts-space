@@ -6,7 +6,7 @@ import { syncClickUpLists } from "@/lib/actions/clickup";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentEmployee } from "@/lib/data/helpers";
 import { monthEndISO } from "@/lib/dates";
-import { TEAM_DOMAIN } from "@/lib/team";
+import { TEAM_DOMAIN, ACCESS_ROLES } from "@/lib/team";
 
 async function requireAdmin() {
   const me = await getCurrentEmployee();
@@ -26,8 +26,12 @@ export async function updateEmployee({ id, patch }) {
   if ("is_admin" in patch) allowed.is_admin = Boolean(patch.is_admin);
   // Colaborador externo: sin fichaje ni ficha laboral (ver src/lib/team.js).
   if ("is_external" in patch) allowed.is_external = Boolean(patch.is_external);
-  // Vacaciones: se pueden apagar a quien las gestione fuera del portal.
-  if ("vacations_enabled" in patch) allowed.vacations_enabled = Boolean(patch.vacations_enabled);
+  // Rol de acceso (interno | externo | colaborador). is_external se mantiene
+  // en espejo: hay consultas que aún lo leen y así no se desincronizan.
+  if ("access_role" in patch && ACCESS_ROLES[patch.access_role]) {
+    allowed.access_role = patch.access_role;
+    allowed.is_external = patch.access_role !== "interno";
+  }
   if ("active" in patch) allowed.active = Boolean(patch.active);
   if ("clickup_group_id" in patch) allowed.clickup_group_id = patch.clickup_group_id || null;
   if ("role" in patch) allowed.role = String(patch.role);
@@ -211,7 +215,7 @@ export async function createEmployee({
   name,
   email,
   role = "",
-  isExternal = null,
+  accessRole = null,
   lastName = "",
   birthday = "",
   managerId = "",
@@ -237,8 +241,10 @@ export async function createEmployee({
       color: colorFor(em),
       active: true,
       is_admin: false,
-      // is_external: si no se indica, se deduce del dominio (igual que team.js).
-      is_external: typeof isExternal === "boolean" ? isExternal : !em.endsWith(`@${TEAM_DOMAIN}`),
+      // Si no se indica, se deduce del dominio (igual que team.js). is_external
+      // se guarda en espejo: queda código que aún lo lee.
+      access_role: ACCESS_ROLES[accessRole] ? accessRole : (em.endsWith(`@${TEAM_DOMAIN}`) ? "interno" : "externo"),
+      is_external: ACCESS_ROLES[accessRole] ? accessRole !== "interno" : !em.endsWith(`@${TEAM_DOMAIN}`),
       birthday: birthday || null,
       manager_id: managerId || null,
       // Vínculos con las herramientas: sin ellos no salen sus cumpleaños ni se

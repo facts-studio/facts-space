@@ -4,7 +4,7 @@ import { getCurrentEmployee } from "@/lib/data/helpers";
 import Sidebar from "@/components/Sidebar";
 import MobileNav from "@/components/MobileNav";
 import ContentWidth from "@/components/ContentWidth";
-import { isExternal } from "@/lib/team";
+import { isExternal, isColaborador } from "@/lib/team";
 import TeamPhotos from "@/components/tasks/TeamPhotos";
 import AsistenteDock from "@/components/asistente/AsistenteDock";
 import { AsistenteProvider } from "@/lib/asistente";
@@ -32,6 +32,8 @@ export default async function PortalLayout({ children }) {
   const [emp, team] = await Promise.all([getCurrentEmployee(), getEmployees()]);
   // Los colaboradores externos no ven las secciones de plantilla.
   const externo = isExternal(emp);
+  // Un colaborador entra solo por sus proyectos: su portal es Inicio y poco más.
+  const colaborador = isColaborador(emp);
   // "Ver como": emp ya viene con los permisos del rol elegido, así que el resto
   // del layout no se enrera; solo hace falta avisar de que se está dentro.
   const previewRole = emp?._previewRole ? emp._previewRole : null;
@@ -45,6 +47,7 @@ export default async function PortalLayout({ children }) {
         user={user}
         isAdmin={Boolean(emp?.is_admin)}
         isExternal={externo}
+        isColaborador={colaborador}
         serverTheme={emp?.theme ?? null}
         initialCollapsed={Boolean(emp?.nav_collapsed)}
       />
@@ -59,7 +62,7 @@ export default async function PortalLayout({ children }) {
         <ContentWidth>{children}</ContentWidth>
       </main>
 
-      <MobileNav isAdmin={Boolean(emp?.is_admin)} isExternal={externo} serverTheme={emp?.theme ?? null} />
+      <MobileNav isAdmin={Boolean(emp?.is_admin)} isExternal={externo} isColaborador={colaborador} serverTheme={emp?.theme ?? null} />
 
       {/* F*ctito. Solo se pinta donde el portal lo sirve tu máquina: en
           producción la ruta ni existe (ver src/lib/lineasRojas.js). */}

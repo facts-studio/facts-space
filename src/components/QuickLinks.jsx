@@ -38,12 +38,13 @@ function PresencePill({ p }) {
   );
 }
 
-export default function QuickLinks({ mode = "inicio", onSelect, presence = [], className = "" }) {
+export default function QuickLinks({ mode = "inicio", onSelect, presence = [], showStatus = true, className = "" }) {
   const toggle = (m) => onSelect?.(mode === m ? "inicio" : m);
   return (
     <nav aria-label="Accesos directos" className={cn("flex flex-wrap items-center gap-2", className)}>
       <Pill active={mode === "notas"} onClick={() => toggle("notas")} icon="note">Notas</Pill>
-      <Pill active={mode === "status"} onClick={() => toggle("status")} icon="eye">Status</Pill>
+      {/* Status es el estado del equipo entero: no es de un colaborador. */}
+      {showStatus && <Pill active={mode === "status"} onClick={() => toggle("status")} icon="eye">Status</Pill>}
 
       {presence.length > 0 && <span className="w-px h-6 bg-border/70 mx-1 shrink-0" />}
       {presence.map((p) => <PresencePill key={p.key} p={p} />)}

@@ -10,7 +10,7 @@ import { fmtRange, fmtDate } from "@/lib/mock";
 import { formatDuration, madridTime } from "@/lib/dates";
 import { absenceLabel } from "@/lib/absences";
 import { Badge } from "@/components/ui";
-import { isExternal, hasVacations } from "@/lib/team";
+import { roleOf, ACCESS_ROLES } from "@/lib/team";
 
 const durMs = (e) => (e.clock_out ? new Date(e.clock_out) - new Date(e.clock_in) : 0);
 const TABS = [["resumen", "Resumen"], ["nominas", "Nóminas"], ["ausencias", "Ausencias"], ["horario", "Control horario"], ["documentos", "Documentos"]];
@@ -145,8 +145,7 @@ function FichaCard({ e, employees, onEdit }) {
       <dl className="flex flex-col gap-2.5">
         <Row k="Responsable" v={employees.find((m) => m.id === e.manager_id)?.name || "—"} />
         <Row k="Admin" v={e.is_admin ? "Sí" : "No"} />
-        <Row k="Vínculo" v={isExternal(e) ? "Externo" : "Plantilla"} />
-        <Row k="Vacaciones" v={hasVacations(e) ? "En el portal" : "Fuera del portal"} />
+        <Row k="Acceso" v={ACCESS_ROLES[roleOf(e)].label} />
       </dl>
       <div className="mt-4 pt-4 border-t border-border/50 flex items-center justify-between gap-2">
         <Badge kind={e.active ? "success" : "neutral"}>{e.active ? "Activo" : "Inactivo"}</Badge>
@@ -205,8 +204,7 @@ function FichaForm({ e, employees, onCancel, onSaved, isSelf = false }) {
     const f = {};
     for (const [, fields] of FICHA_GROUPS) for (const [k] of fields) f[k] = e[k] ?? "";
     f.manager_id = e.manager_id || ""; f.is_admin = e.is_admin; f.active = e.active;
-    f.is_external = Boolean(e.is_external);
-    f.vacations_enabled = e.vacations_enabled !== false;
+    f.access_role = roleOf(e);
     return f;
   });
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
@@ -244,15 +242,17 @@ function FichaForm({ e, employees, onCancel, onSaved, isSelf = false }) {
           </Fld>
           <div className="flex items-end gap-5">
             <label className="flex items-center gap-2 text-small text-ink"><input type="checkbox" checked={form.is_admin} onChange={(ev) => set("is_admin", ev.target.checked)} /> Admin</label>
-            {/* Externo = colabora desde fuera: sin fichaje ni ficha laboral. */}
-            <label className="flex items-center gap-2 text-small text-ink" title="Colabora desde fuera: sin fichaje, nómina, contrato ni datos bancarios">
-              <input type="checkbox" checked={form.is_external} onChange={(ev) => set("is_external", ev.target.checked)} /> Externo
-            </label>
-            {/* Apagarlo hace desaparecer TODO el sistema de ausencias para esa
-                persona: solicitar, saldo, histórico y avisos. */}
-            <label className="flex items-center gap-2 text-small text-ink" title="Si se apaga, no puede solicitar ausencias ni ve su saldo, su histórico o los avisos">
-              <input type="checkbox" checked={form.vacations_enabled} onChange={(ev) => set("vacations_enabled", ev.target.checked)} /> Vacaciones
-            </label>
+            {/* Interno / externo / colaborador — ver src/lib/team.js. */}
+            <Fld label="Acceso">
+              <select
+                value={form.access_role}
+                onChange={(ev) => set("access_role", ev.target.value)}
+                title={ACCESS_ROLES[form.access_role]?.hint}
+                className="h-9 rounded-lg bg-surface px-2 text-[13px] text-ink"
+              >
+                {Object.entries(ACCESS_ROLES).map(([v, { label }]) => <option key={v} value={v}>{label}</option>)}
+              </select>
+            </Fld>
           </div>
         </div>
       </div>

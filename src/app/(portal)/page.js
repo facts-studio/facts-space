@@ -14,7 +14,7 @@ import { getCurrentEmployee } from "@/lib/data/helpers";
 import { getMyNotes } from "@/lib/data/notes";
 import { getSlackTickets } from "@/lib/data/slack";
 import { getLastWorkedDate } from "@/lib/data/time";
-import { hasVacations } from "@/lib/team";
+import { isColaborador } from "@/lib/team";
 import { madridDateISO } from "@/lib/dates";
 import { getClickUpTasks, getVisibleLists, weekTasks, teamWeekTasks, activeSprints } from "@/lib/data/clickup";
 
@@ -30,12 +30,16 @@ export default async function HomePage() {
     getSlackTickets(),     // tickets de los canales compartidos (Slack Lists)
   ]);
   const nombre = me?.name?.split(" ")[0] || "equipo";
+  // Un colaborador entra solo por sus proyectos: nada de cumpleaños, vacaciones
+  // ni agenda del equipo. Su Inicio es sus tareas y los sprints donde está.
+  const colaborador = isColaborador(me);
+  const eventosVisibles = colaborador ? events.filter((e) => e.type === "hito") : events;
   // Cumpleaños de HOY (Madrid) desde el calendario ya filtrado: solo perfiles de
   // ClickUp vinculados a un empleado activo → alimenta el confeti de Inicio.
   const todayISO = madridDateISO();
-  const birthdayPeople = events
-    .filter((e) => e.type === "cumple" && e.start === todayISO && e.who)
-    .map((e) => e.who);
+  const birthdayPeople = colaborador
+    ? []
+    : events.filter((e) => e.type === "cumple" && e.start === todayISO && e.who).map((e) => e.who);
   // Aviso admin: tareas asignadas a alguien en un día que tiene ausencia aprobada.
   const conflicts = me?.is_admin ? taskVacationConflicts(events, tasks) : [];
   const mine = weekTasks(tasks, me?.email);
@@ -57,9 +61,9 @@ export default async function HomePage() {
 
   // Días sin fichar (para el aviso en Inicio). null = nunca ha fichado.
   const lastWorked = me ? await getLastWorkedDate(me.id) : null;
-  // Ritmo de vacaciones (aviso recurrente si no vas al día). A quien no las
-  // gestiona aquí no se le avisa de nada: no son sus vacaciones.
-  const vacationPace = me && hasVacations(me) ? await getVacationPace(me) : null;
+  // Ritmo de vacaciones (aviso recurrente si no vas al día). Un colaborador no
+  // las lleva con nosotros, así que no se le avisa de nada.
+  const vacationPace = me && !colaborador ? await getVacationPace(me) : null;
   const daysSinceFichaje = lastWorked
     ? Math.round((new Date(madridDateISO() + "T00:00:00") - new Date(lastWorked + "T00:00:00")) / 86400000)
     : null;
@@ -73,7 +77,7 @@ export default async function HomePage() {
         <TodayHero
           nombre={nombre}
           meName={me?.name || ""}
-          events={events}
+          events={eventosVisibles}
           taskCount={mine.length}
           overdueCount={overdueCount}
           avisos={
@@ -89,7 +93,7 @@ export default async function HomePage() {
         />
 
         <HomePanels
-          events={events}
+          events={eventosVisibles}
           tasks={mine}
           teamTasks={teamWeek}
           campaigns={campaigns}
@@ -99,6 +103,7 @@ export default async function HomePage() {
           tickets={tickets}
           meSlackId={me?.slack_user_id ?? null}
           isAdmin={Boolean(me?.is_admin)}
+          isColaborador={colaborador}
           initialNotes={notes}
           canUseNotes={Boolean(me)}
         />

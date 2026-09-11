@@ -1,8 +1,17 @@
 import TareasClient from "./tareas-client";
 import { getCurrentEmployee } from "@/lib/data/helpers";
 import { getClickUpTasks, getVisibleLists, getSprintEvents } from "@/lib/data/clickup";
+import SinAcceso from "@/components/SinAcceso";
+import { isColaborador } from "@/lib/team";
 
 export default async function TareasPage() {
+  if (isColaborador(await getCurrentEmployee())) {
+    return (
+      <SinAcceso kicker="Trabajo" title="Tareas">
+        El tablero completo del estudio es interno. En Inicio tienes lo que te toca de tus proyectos.
+      </SinAcceso>
+    );
+  }
   const [me, tasks, lists, milestones] = await Promise.all([
     getCurrentEmployee(),
     getClickUpTasks(),

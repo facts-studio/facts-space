@@ -5,13 +5,15 @@ import { monthEndISO } from "@/lib/dates";
 import { withClickUpAvatars } from "./avatars";
 
 // Todos los empleados (incluidos inactivos) para el panel de RR.HH.
+const CAMPOS_ADMIN = "id, name, last_name, email, role, photo, color, birthday, manager_id, is_admin, is_external, vacation_allowance, vacation_adjustment, active, clickup_group_id, slack_user_id";
+
 export async function getAllEmployees() {
   if (!isConfigured()) return [];
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("employees")
-    .select("id, name, last_name, email, role, photo, color, birthday, manager_id, is_admin, is_external, vacation_allowance, vacation_adjustment, active, clickup_group_id, slack_user_id")
-    .order("name");
+  // Ver la nota de getEmployees(): access_role llega con la migración 0035 y
+  // hasta entonces la consulta se reintenta sin esa columna.
+  let { data } = await supabase.from("employees").select(`${CAMPOS_ADMIN}, access_role`).order("name");
+  if (!data) ({ data } = await supabase.from("employees").select(CAMPOS_ADMIN).order("name"));
   return withClickUpAvatars(data ?? []);
 }
 

@@ -11,7 +11,7 @@ import { createClient } from "@/lib/supabase/client";
 import { fmtRange, fmtDate } from "@/lib/mock";
 import { formatDuration } from "@/lib/dates";
 import { absenceLabel } from "@/lib/absences";
-import { isExternal, TEAM_DOMAIN } from "@/lib/team";
+import { roleOf, ACCESS_ROLES, TEAM_DOMAIN } from "@/lib/team";
 import { evaluateVacation } from "@/lib/vacation-policy";
 import { Avatar, Badge, Button, Field, Input, Select } from "@/components/ui";
 import { cn } from "@/lib/cn";
@@ -438,7 +438,7 @@ function Equipo({ employees, vacUsed, year, clickupGroups = [], slackUsers = [],
           <span className="flex-1">Persona</span>
           <span className="w-[150px] hidden lg:block">ClickUp</span>
           <span className="w-[150px] hidden xl:block">Slack</span>
-          <span className="w-[76px] hidden md:block" title="Plantilla del estudio o colaborador externo">Vínculo</span>
+          <span className="w-[92px] hidden md:block" title="Interno, externo o colaborador">Acceso</span>
           <span className="w-[76px] text-right" title={`Días de vacaciones disponibles en ${year}`}>Vacaciones</span>
         </div>
         {list.length === 0 ? (
@@ -465,21 +465,21 @@ function AddEmployee({ onDone, onCancel, employees = [], clickupGroups = [], sla
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
   // Se propone por el dominio del email (igual que team.js) pero se puede
   // cambiar antes de crear: hay externos con cuenta propia.
-  const [externo, setExterno] = useState(false);
-  const [externoTocado, setExternoTocado] = useState(false);
+  const [rol, setRol] = useState("interno");
+  const [rolTocado, setRolTocado] = useState(false);
   const [msg, setMsg] = useState(null);
   const [pending, run] = useTransition();
 
   const onEmail = (v) => {
     set("email", v);
-    if (!externoTocado && v.includes("@")) setExterno(!v.trim().toLowerCase().endsWith(`@${TEAM_DOMAIN}`));
+    if (!rolTocado && v.includes("@")) setRol(v.trim().toLowerCase().endsWith(`@${TEAM_DOMAIN}`) ? "interno" : "externo");
   };
   const listo = f.name.trim().length > 1 && /.+@.+\..+/.test(f.email.trim());
   const submit = () => {
     if (!listo) return;
     setMsg(null);
     run(async () => {
-      const res = await createEmployee({ ...f, isExternal: externo });
+      const res = await createEmployee({ ...f, accessRole: rol });
       if (res.ok) { onDone?.(); router.push(`/admin/${res.id}`); } else setMsg(res.error);
     });
   };
@@ -504,21 +504,21 @@ function AddEmployee({ onDone, onCancel, employees = [], clickupGroups = [], sla
           <Input value={f.role} onChange={(e) => set("role", e.target.value)} onKeyDown={onKeyDown} placeholder="Product Designer" />
         </Field>
 
-        {/* Dos opciones con nombre propio se leen mejor que un interruptor
-            etiquetado "Externo", que obliga a deducir qué significa apagado. */}
-        <Field label="Vínculo">
+        {/* Opciones con nombre propio: un interruptor obligaba a deducir qué
+            significaba apagado, y ahora además son tres. */}
+        <Field label="Acceso" className="sm:col-span-2" hint={ACCESS_ROLES[rol].hint}>
           <div className="flex items-center h-9 bg-surface rounded-lg border border-border p-0.5 w-fit">
-            {[[false, "Plantilla"], [true, "Externo"]].map(([v, l]) => (
+            {Object.entries(ACCESS_ROLES).map(([v, { label }]) => (
               <button
-                key={l}
+                key={v}
                 type="button"
-                onClick={() => { setExterno(v); setExternoTocado(true); }}
+                onClick={() => { setRol(v); setRolTocado(true); }}
                 className={cn(
                   "px-3 h-full rounded-[7px] text-[12.5px] transition whitespace-nowrap",
-                  externo === v ? "bg-ink text-bg font-medium" : "text-muted hover:text-ink"
+                  rol === v ? "bg-ink text-bg font-medium" : "text-muted hover:text-ink"
                 )}
               >
-                {l}
+                {label}
               </button>
             ))}
           </div>
@@ -558,10 +558,8 @@ function AddEmployee({ onDone, onCancel, employees = [], clickupGroups = [], sla
 
       <div className="mt-4 pt-3.5 border-t border-border/50 flex flex-wrap items-center justify-between gap-3">
         <p className="text-micro text-mutedSoft leading-snug max-w-[58ch]">
-          Se vincula al entrar con Google con ese mismo email.{" "}
-          {externo
-            ? "Como externo no ficha, ni tiene nómina, contrato o datos bancarios."
-            : "Como plantilla tendrá fichaje y ficha laboral completa."}
+          Se vincula al entrar con Google con ese mismo email. El resto de su ficha se completa
+          después.
         </p>
         <div className="flex items-center gap-2 shrink-0 ml-auto">
           {msg && <p className="text-micro text-danger mr-1">{msg}</p>}
@@ -609,26 +607,29 @@ function LinkSelect({ value, onChange, disabled, options, placeholder, title, fa
   );
 }
 
-// Vínculo con el estudio, en una píldora que se pulsa para cambiarlo. Un icono
-// solo no distinguía nada: con ocho filas seguidas eran ocho manchas iguales.
-function VinculoPill({ externo, onClick, disabled }) {
+// Rol de acceso, en una píldora que cicla interno → externo → colaborador. Un
+// icono no bastaba: con ocho filas seguidas eran ocho manchas iguales.
+const ROL_ORDEN = ["interno", "externo", "colaborador"];
+const ROL_ESTILO = {
+  interno: "bg-surface2 text-muted hover:text-ink",
+  externo: "bg-warnSoft/50 text-warn hover:bg-warnSoft",
+  colaborador: "bg-violetSoft/50 text-violet hover:bg-violetSoft",
+};
+
+function RolPill({ role, onChange, disabled }) {
+  const siguiente = ROL_ORDEN[(ROL_ORDEN.indexOf(role) + 1) % ROL_ORDEN.length];
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={() => onChange(siguiente)}
       disabled={disabled}
-      title={externo
-        ? "Colabora desde fuera: sin fichaje, nómina, contrato ni datos bancarios. Pulsa para pasar a plantilla"
-        : "Plantilla de F*cts Studio: con fichaje y ficha laboral. Pulsa para pasar a externo"}
-      aria-pressed={externo}
+      title={`${ACCESS_ROLES[role].hint} Pulsa para pasar a ${ACCESS_ROLES[siguiente].label.toLowerCase()}.`}
       className={cn(
         "inline-flex items-center px-2 py-0.5 rounded-full text-[11.5px] transition disabled:opacity-40",
-        externo
-          ? "bg-warnSoft/50 text-warn hover:bg-warnSoft"
-          : "bg-surface2 text-muted hover:text-ink hover:bg-surface2/80"
+        ROL_ESTILO[role]
       )}
     >
-      {externo ? "Externo" : "Interno"}
+      {ACCESS_ROLES[role].label}
     </button>
   );
 }
@@ -637,7 +638,7 @@ function EmployeeRow({ e, used, clickupGroups = [], slackUsers = [], onDone }) {
   const [pending, run] = useTransition();
   const allowance = Number(e.vacation_allowance) + Number(e.vacation_adjustment || 0);
   const remaining = allowance - used;
-  const externo = isExternal(e);
+  const rol = roleOf(e);
 
   const linkGroup = (groupId) => run(async () => {
     const r = await setEmployeeClickupGroup({ id: e.id, groupId });
@@ -647,8 +648,8 @@ function EmployeeRow({ e, used, clickupGroups = [], slackUsers = [], onDone }) {
     const r = await setEmployeeSlackUser({ id: e.id, userId });
     if (r.ok) onDone?.(); else alert(r.error);
   });
-  const toggleExterno = () => run(async () => {
-    const r = await updateEmployee({ id: e.id, patch: { is_external: !externo } });
+  const cambiarRol = (role) => run(async () => {
+    const r = await updateEmployee({ id: e.id, patch: { access_role: role } });
     if (r.ok) onDone?.(); else alert(r.error);
   });
 
@@ -689,8 +690,8 @@ function EmployeeRow({ e, used, clickupGroups = [], slackUsers = [], onDone }) {
           title={e.slack_user_id ? "Perfil de Slack vinculado" : "Sin vincular — sus tickets no se marcan como suyos"}
         />
       </span>
-      <span className="w-[76px] hidden md:block">
-        <VinculoPill externo={externo} onClick={toggleExterno} disabled={pending} />
+      <span className="w-[92px] hidden md:block">
+        <RolPill role={rol} onChange={cambiarRol} disabled={pending} />
       </span>
       <span className="w-[76px] text-right text-small tabular-nums text-ink">
         {remaining}<span className="text-mutedSoft">/{allowance}</span>

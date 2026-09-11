@@ -6,9 +6,20 @@ import { getMyRequests } from "@/lib/actions/vacations";
 import { getMyDocuments } from "@/lib/data/documents";
 import { getMissingWorkdays } from "@/lib/data/time";
 import { madridDateISO } from "@/lib/dates";
+import SinAcceso from "@/components/SinAcceso";
+import { isColaborador } from "@/lib/team";
 
 export default async function MiEspacioPage() {
   const me = await getCurrentEmployee();
+  // Esconder el enlace no cierra la ruta.
+  if (isColaborador(me)) {
+    return (
+      <SinAcceso kicker="Personal" title="Mi espacio">
+        Tu espacio personal es de la plantilla del estudio. Como colaborador entras solo para los
+        proyectos que se te adjudican, así que aquí no hay nada tuyo que guardar.
+      </SinAcceso>
+    );
+  }
 
   if (!me) {
     return (

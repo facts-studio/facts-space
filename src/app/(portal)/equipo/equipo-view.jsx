@@ -5,7 +5,7 @@ import { ScreenHeader } from "@/components/ui";
 import { EventPill } from "@/components/EventBadge";
 import { EVENT_TYPES, fmtRange, fmtDate } from "@/lib/mock";
 import { cn } from "@/lib/cn";
-import { isExternal, companyOf } from "@/lib/team";
+import { isExternal, companyOf, roleOf, ACCESS_ROLES } from "@/lib/team";
 
 function memberEvents(events, name) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -67,7 +67,7 @@ export default function EquipoView({ team, events, vacUsed = {} }) {
                       title={companyOf(p) ? `Colabora desde fuera · ${companyOf(p)}` : "Colabora desde fuera"}
                       className="absolute top-2 right-2 rounded-full bg-bg/85 backdrop-blur-[2px] px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted"
                     >
-                      Externo
+                      {ACCESS_ROLES[roleOf(p)].label}
                     </span>
                   )}
                 </div>

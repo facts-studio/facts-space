@@ -4,7 +4,8 @@ import { getCurrentEmployee } from "@/lib/data/helpers";
 import { getClickUpTasks, getVisibleLists } from "@/lib/data/clickup";
 import { getEmployees } from "@/lib/data/employees";
 import { paletteColor } from "@/lib/client-palette";
-import { hasVacations } from "@/lib/team";
+import SinAcceso from "@/components/SinAcceso";
+import { isColaborador } from "@/lib/team";
 
 // Tarea de ClickUp → evento del calendario (tipo "tarea", en su fecha límite).
 // `tint` lleva el color del CLIENTE al que pertenece (mismo criterio que el
@@ -32,6 +33,15 @@ function toEvent(t, colorsByClient) {
 }
 
 export default async function CalendarioPage() {
+  // El calendario del equipo es interno: se comprueba antes de pedir datos.
+  if (isColaborador(await getCurrentEmployee())) {
+    return (
+      <SinAcceso kicker="Agenda" title="Calendario">
+        El calendario del equipo —vacaciones, festivos y cumpleaños— es interno. Las fechas de tus
+        proyectos las tienes en Inicio.
+      </SinAcceso>
+    );
+  }
   const [events, pending, me, tasks, lists, team] = await Promise.all([
     getCalendarEvents(),
     getPendingAbsenceEvents(), // solicitadas sin aprobar → pastilla discontinua
@@ -51,7 +61,7 @@ export default async function CalendarioPage() {
       events={events.concat(pending).map(withTint)}
       tasks={taskEvents}
       team={(team || []).map((e) => ({ id: e.id, name: e.name, photo: e.photo }))}
-      canRequest={Boolean(me) && hasVacations(me)}
+      canRequest={Boolean(me)}
     />
   );
 }

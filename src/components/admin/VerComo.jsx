@@ -10,8 +10,9 @@ import { cn } from "@/lib/cn";
 // qué ve cada uno —qué secciones, qué pestañas de Mi espacio— sin pedirle la
 // pantalla a nadie ni inventarse cuentas de prueba.
 const OPCIONES = [
-  ["interno", "Compañero de plantilla", "Todo menos Administrar: con fichaje, nóminas y ficha laboral."],
-  ["externo", "Colaborador externo", "Sin fichaje ni datos laborales; solo lo compartido."],
+  ["interno", "Interno", "Todo menos Administrar: con fichaje, nóminas y ficha laboral."],
+  ["externo", "Externo", "Como un interno, pero sin fichaje ni datos laborales."],
+  ["colaborador", "Colaborador", "Portal mínimo: solo Inicio con sus proyectos."],
 ];
 
 export default function VerComo({ className }) {
@@ -28,7 +29,7 @@ export default function VerComo({ className }) {
   return (
     <div className={cn("rounded-3xl bg-surface2/40 p-3", className)}>
       <p className="section-eyebrow px-2 pt-2 pb-3">Ver el portal como…</p>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-3">
         {OPCIONES.map(([role, label, hint]) => (
           <div key={role} className="rounded-xl bg-surface p-4 flex flex-col gap-2">
             <p className="text-small text-ink">{label}</p>

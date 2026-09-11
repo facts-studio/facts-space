@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { NAV_GROUPS } from "@/lib/nav";
+import { NAV_GROUPS, navFor } from "@/lib/nav";
 import NavIcon from "@/components/NavIcon";
 import ThemeToggle from "@/components/ThemeToggle";
 import { cn } from "@/lib/cn";
@@ -36,12 +36,11 @@ function TabLink({ href, label, icon, active }) {
 }
 
 // Hoja inferior con el resto de secciones + tema + logout.
-function MoreSheet({ open, onClose, isAdmin, isExternal, serverTheme }) {
+function MoreSheet({ open, onClose, isAdmin, isExternal, isColaborador, serverTheme }) {
   const pathname = usePathname();
   // Los items con `children` no navegan (son solo contenedores): en la hoja se
   // sustituyen por lo que contienen, que sí son destinos reales.
-  const items = NAV_GROUPS.flat()
-    .filter((i) => !i.team || !isExternal)
+  const items = navFor({ isExternal, isColaborador }).flat()
     .flatMap((i) => i.children ?? [i])
     .filter((i) => !TAB_HREFS.has(i.href));
 
@@ -121,12 +120,14 @@ function MoreSheet({ open, onClose, isAdmin, isExternal, serverTheme }) {
   );
 }
 
-export default function MobileNav({ isAdmin = false, isExternal = false, serverTheme = null }) {
+export default function MobileNav({ isAdmin = false, isExternal = false, isColaborador = false, serverTheme = null }) {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
   const isActive = (href) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
+  // Un colaborador solo tiene Inicio: la barra se queda con lo que puede ver.
+  const tabs = isColaborador ? TABS.filter((t) => t.href === "/") : TABS;
   // "Más" resalta cuando estás en una sección que no es de la barra.
-  const inMore = !TABS.some((t) => isActive(t.href));
+  const inMore = !tabs.some((t) => isActive(t.href));
 
   return (
     <>
@@ -136,7 +137,7 @@ export default function MobileNav({ isAdmin = false, isExternal = false, serverT
         style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
       >
         <div className="flex items-stretch h-[58px] px-1.5 rounded-[26px] bg-surface/85 backdrop-blur-xl shadow-float">
-          {TABS.map((t) => (
+          {tabs.map((t) => (
             <TabLink key={t.href} {...t} active={isActive(t.href)} />
           ))}
           <button
@@ -153,7 +154,7 @@ export default function MobileNav({ isAdmin = false, isExternal = false, serverT
         </div>
       </nav>
 
-      <MoreSheet open={moreOpen} onClose={() => setMoreOpen(false)} isAdmin={isAdmin} isExternal={isExternal} serverTheme={serverTheme} />
+      <MoreSheet open={moreOpen} onClose={() => setMoreOpen(false)} isAdmin={isAdmin} isExternal={isExternal} isColaborador={isColaborador} serverTheme={serverTheme} />
     </>
   );
 }

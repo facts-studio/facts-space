@@ -2,8 +2,18 @@ import Link from "next/link";
 import { ScreenHeader } from "@/components/ui";
 import { POLICY_ICONS } from "@/components/PolicyIcons";
 import { POLICIES } from "@/lib/content";
+import { getCurrentEmployee } from "@/lib/data/helpers";
+import SinAcceso from "@/components/SinAcceso";
+import { isColaborador } from "@/lib/team";
 
-export default function PoliticasPage() {
+export default async function PoliticasPage() {
+  if (isColaborador(await getCurrentEmployee())) {
+    return (
+      <SinAcceso kicker="Cómo trabajamos" title="Políticas">
+        Las políticas internas aplican a la plantilla del estudio.
+      </SinAcceso>
+    );
+  }
   return (
     <div>
       <ScreenHeader kicker="Cómo trabajamos" title="Políticas" />
