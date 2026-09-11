@@ -5,6 +5,7 @@ import { ScreenHeader } from "@/components/ui";
 import { EventPill } from "@/components/EventBadge";
 import { EVENT_TYPES, fmtRange, fmtDate } from "@/lib/mock";
 import { cn } from "@/lib/cn";
+import { isExternal, companyOf } from "@/lib/team";
 
 function memberEvents(events, name) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -52,12 +53,22 @@ export default function EquipoView({ team, events, vacUsed = {} }) {
                   active && "bg-surface ring-1 ring-borderStrong"
                 )}
               >
-                <div className="aspect-[4/5] overflow-hidden bg-surface2">
+                <div className="relative aspect-[4/5] overflow-hidden bg-surface2">
                   {p.photo ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={p.photo} alt={p.name} className="w-full h-full object-cover group-hover:scale-[1.04] transition duration-500" />
                   ) : (
                     <span className="w-full h-full grid place-items-center font-display text-[40px] text-mutedSoft">{initial(p.name)}</span>
+                  )}
+                  {/* Quien colabora desde fuera se marca sobre la foto: al ver
+                      la retícula se sabe quién es plantilla sin abrir la ficha. */}
+                  {isExternal(p) && (
+                    <span
+                      title={companyOf(p) ? `Colabora desde fuera · ${companyOf(p)}` : "Colabora desde fuera"}
+                      className="absolute top-2 right-2 rounded-full bg-bg/85 backdrop-blur-[2px] px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted"
+                    >
+                      Externo
+                    </span>
                   )}
                 </div>
                 <div className="p-4">

@@ -11,7 +11,7 @@ export async function getEmployees() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("employees")
-    .select("id, name, last_name, role, email, birthday, color, photo, manager_id, is_admin, vacation_allowance, vacation_adjustment, active, clickup_group_id")
+    .select("id, name, last_name, role, email, birthday, color, photo, manager_id, is_admin, is_external, company, vacation_allowance, vacation_adjustment, active, clickup_group_id")
     .eq("active", true)
     .order("name");
   return withClickUpAvatars(data ?? []);
