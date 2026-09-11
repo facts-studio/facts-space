@@ -51,7 +51,7 @@ function InfoBubble({ text }) {
   );
 }
 
-function SprintCard({ s }) {
+function SprintCard({ s, soloSprint = false }) {
   const p = plazo(s);
   const pct = Math.round(s.pct);
   const fechas = rango(s);
@@ -66,15 +66,20 @@ function SprintCard({ s }) {
           temporales no, así que esos se filtran por su lista. */}
       <Link
         href={
-          s.kind === "sprint"
-            ? `/tareas?sprint=${encodeURIComponent(s.name)}`
-            : `/tareas?list=${encodeURIComponent(s.name)}`
+          // Un colaborador no tiene el tablero del estudio: su tarjeta abre el
+          // sprint suelto, con solo las tareas de ese proyecto.
+          soloSprint
+            ? `/sprint/${s.id}`
+            : s.kind === "sprint"
+              ? `/tareas?sprint=${encodeURIComponent(s.name)}`
+              : `/tareas?list=${encodeURIComponent(s.name)}`
         }
         aria-label={`Ver tareas de ${s.name}`}
         className="absolute inset-0 rounded-2xl"
       />
       <div className="relative flex items-center gap-0.5">
         <p className="min-w-0 flex-1 text-[14px] font-medium text-ink leading-snug truncate">{s.name}</p>
+        {!soloSprint && (
         <Link
           href={`/cronograma/${s.id}`}
           title="Ver cronograma"
@@ -86,6 +91,7 @@ function SprintCard({ s }) {
             <path d="M4 7h9M8 12h11M4 17h7" />
           </svg>
         </Link>
+        )}
         {s.note && <InfoBubble text={s.note} />}
       </div>
 
@@ -137,7 +143,7 @@ function SprintCard({ s }) {
  * con fechas, tareas activas y barra de progreso. Datos de `activeSprints()`
  * (src/lib/data/clickup.js).
  */
-export default function SprintsActivos({ sprints = [], className = "" }) {
+export default function SprintsActivos({ sprints = [], soloSprint = false, className = "" }) {
   return (
     <section className={className}>
       <SectionHeader label="Sprints activos" />
@@ -151,7 +157,7 @@ export default function SprintsActivos({ sprints = [], className = "" }) {
         <Surface pad="none" className="p-3 !rounded-4xl">
           <div className="grid gap-3 sm:grid-cols-2">
             {sprints.map((s) => (
-              <SprintCard key={s.id} s={s} />
+              <SprintCard key={s.id} s={s} soloSprint={soloSprint} />
             ))}
           </div>
         </Surface>

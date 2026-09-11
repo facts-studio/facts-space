@@ -16,7 +16,7 @@ import { getSlackTickets } from "@/lib/data/slack";
 import { getLastWorkedDate } from "@/lib/data/time";
 import { isColaborador } from "@/lib/team";
 import { madridDateISO } from "@/lib/dates";
-import { getClickUpTasks, getVisibleLists, weekTasks, teamWeekTasks, activeSprints } from "@/lib/data/clickup";
+import { getClickUpTasks, getVisibleLists, weekTasks, teamWeekTasks, activeSprints, flattenTasks, isMine } from "@/lib/data/clickup";
 
 export default async function HomePage() {
   const [events, me, tasks, notes, lists, approvals, decisions, tickets] = await Promise.all([
@@ -56,6 +56,12 @@ export default async function HomePage() {
   );
   // Sprints y proyectos temporales en curso (fechas + progreso) para Inicio.
   const sprints = activeSprints(lists, tasks);
+  // Un colaborador solo ve los proyectos donde tiene trabajo: "asignado" es
+  // tener al menos una tarea suya dentro (misma regla que /sprint/[id]).
+  const misListas = new Set(
+    flattenTasks(tasks).filter((t) => isMine(t, me?.email)).map((t) => String(t.listId))
+  );
+  const sprintsVisibles = colaborador ? sprints.filter((s) => misListas.has(String(s.id))) : sprints;
   // Estados por lista: alimentan el menú del punto de estado en las filas.
   const statusesByList = Object.fromEntries(lists.filter((l) => (l.statuses || []).length).map((l) => [l.list_id, l.statuses]));
 
@@ -99,7 +105,7 @@ export default async function HomePage() {
           campaigns={campaigns}
           statusesByList={statusesByList}
           sprintMeta={sprintMeta}
-          sprints={sprints}
+          sprints={sprintsVisibles}
           tickets={tickets}
           meSlackId={me?.slack_user_id ?? null}
           isAdmin={Boolean(me?.is_admin)}

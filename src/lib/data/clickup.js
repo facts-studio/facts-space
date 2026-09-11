@@ -648,6 +648,26 @@ export function myTasks(tasks, email, now = Date.now()) {
     .sort((a, b) => rank(a) - rank(b) || (a.dueDate ?? Infinity) - (b.dueDate ?? Infinity));
 }
 
+// Tareas y subtareas en una sola lista. Hace falta para preguntar "¿tiene algo
+// suyo aquí?": el trabajo de alguien puede estar en una subtarea, que va
+// anidada dentro de su padre y no se ve recorriendo el array de arriba.
+export function flattenTasks(tasks = []) {
+  const out = [];
+  const visit = (t) => {
+    out.push(t);
+    for (const s of t.subtasks ?? []) visit(s);
+  };
+  for (const t of tasks) visit(t);
+  return out;
+}
+
+// ¿Hay trabajo de esta persona en esa tarea (o en alguna de sus subtareas)?
+export function isMine(task, email) {
+  if (!email) return false;
+  const own = task.ownAssignees ?? task.assignees ?? [];
+  return Boolean(task.everyone) || own.some((a) => a.email === email);
+}
+
 // Tareas de LA SEMANA para el inicio: abiertas, con fecha, vencidas o que vencen
 // en los próximos 7 días, y que sean TUYAS o SIN DUEÑO (sin asignar).
 // A NIVEL DE ASIGNACIÓN REAL: si estás en una subtarea (y no en el padre), se

@@ -76,7 +76,7 @@ export default function HomePanels({
             {/* "Lo más cercano" es la agenda del equipo: a un colaborador no le
                 dice nada (ni cumpleaños ni festivos ni vacaciones ajenas). */}
             {mode !== "status" && !isColaborador && <LoMasCercano events={events} />}
-            <SprintsActivos sprints={sprints} className={mode === "status" ? "" : "mt-8"} />
+            <SprintsActivos sprints={sprints} soloSprint={isColaborador} className={mode === "status" ? "" : "mt-8"} />
             {/* Los tickets de los canales compartidos van tras los sprints: son
                 trabajo entrante, antes de bajar a las tareas del día. */}
             {!isColaborador && <TicketsPanel tickets={tickets} meSlackId={meSlackId} className="mt-8" />}
