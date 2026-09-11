@@ -13,7 +13,7 @@ import { formatDuration } from "@/lib/dates";
 import { absenceLabel } from "@/lib/absences";
 import { isExternal, TEAM_DOMAIN } from "@/lib/team";
 import { evaluateVacation } from "@/lib/vacation-policy";
-import { Avatar, Badge, Switch } from "@/components/ui";
+import { Avatar, Badge, Button, Field, Input, Select } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import ClickUpSources from "@/components/admin/ClickUpSources";
 
@@ -260,15 +260,6 @@ function Informes({ employees, vacUsed, timeHours, month, year }) {
   );
 }
 
-function Field({ label, children }) {
-  return (
-    <label className="flex flex-col gap-1">
-      <span className="text-micro text-mutedSoft">{label}</span>
-      {children}
-    </label>
-  );
-}
-
 // ── Solicitudes de vacaciones ────────────────────────────────────────────────
 function Solicitudes({ pending, recent, nameById, events = [], onDone }) {
   return (
@@ -397,9 +388,11 @@ function Equipo({ employees, vacUsed, year, clickupGroups = [], slackUsers = [],
     <div className="rounded-2xl bg-surface/55 p-6">
       <div className="flex items-center justify-between gap-3 mb-4">
         <p className="section-eyebrow">Empleados · {activos} activos{inactivos ? ` · ${inactivos} inactivos` : ""}</p>
-        <button onClick={() => setAdding((o) => !o)} className="btn-primary h-8 text-[12.5px]">{adding ? "Cancelar" : "+ Añadir empleado"}</button>
+        {!adding && (
+          <Button size="sm" onClick={() => setAdding(true)}>+ Añadir persona</Button>
+        )}
       </div>
-      {adding && <AddEmployee onDone={() => { setAdding(false); onDone?.(); }} />}
+      {adding && <AddEmployee employees={employees} clickupGroups={clickupGroups} slackUsers={slackUsers} onCancel={() => setAdding(false)} onDone={() => { setAdding(false); onDone?.(); }} />}
 
       <div className="flex items-center bg-surface2/60 rounded-lg p-0.5 w-fit mb-3">
         {EMP_FILTERS.map(([v, l]) => (
@@ -425,53 +418,126 @@ function Equipo({ employees, vacUsed, year, clickupGroups = [], slackUsers = [],
   );
 }
 
-function AddEmployee({ onDone }) {
+// Alta de una persona. Pide lo que hace falta para que arranque de verdad: sus
+// datos, el vínculo con el estudio (decide si tendrá fichaje y ficha laboral) y
+// los enlaces con ClickUp y Slack, que si se dejan para luego se olvidan y
+// entonces no salen sus cumpleaños ni se le atribuyen tareas ni tickets. El
+// resto de la ficha (contrato, banco, jornada) se completa después.
+function AddEmployee({ onDone, onCancel, employees = [], clickupGroups = [], slackUsers = [] }) {
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [role, setRole] = useState("");
+  const [f, setF] = useState({
+    name: "", lastName: "", email: "", role: "", birthday: "",
+    managerId: "", clickupGroupId: "", slackUserId: "", vacationAllowance: 22,
+  });
+  const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
   // Se propone por el dominio del email (igual que team.js) pero se puede
   // cambiar antes de crear: hay externos con cuenta propia.
   const [externo, setExterno] = useState(false);
   const [externoTocado, setExternoTocado] = useState(false);
   const [msg, setMsg] = useState(null);
   const [pending, run] = useTransition();
+
   const onEmail = (v) => {
-    setEmail(v);
+    set("email", v);
     if (!externoTocado && v.includes("@")) setExterno(!v.trim().toLowerCase().endsWith(`@${TEAM_DOMAIN}`));
   };
+  const listo = f.name.trim().length > 1 && /.+@.+\..+/.test(f.email.trim());
   const submit = () => {
+    if (!listo) return;
     setMsg(null);
     run(async () => {
-      const res = await createEmployee({ name, email, role, isExternal: externo });
+      const res = await createEmployee({ ...f, isExternal: externo });
       if (res.ok) { onDone?.(); router.push(`/admin/${res.id}`); } else setMsg(res.error);
     });
   };
+  // Enter crea desde cualquier campo; los selects se dejan en paz.
+  const onKeyDown = (ev) => { if (ev.key === "Enter") { ev.preventDefault(); submit(); } };
+
   return (
-    <div className="rounded-xl bg-surface2/40 p-4 mb-4">
-      <div className="flex flex-wrap items-end gap-2">
-        <Field label="Nombre"><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre y apellido" className="h-9 rounded-lg bg-surface px-2.5 text-[13px] text-ink min-w-[180px]" /></Field>
-        <Field label="Email"><input type="email" value={email} onChange={(e) => onEmail(e.target.value)} placeholder="nombre@dominio.com" className="h-9 rounded-lg bg-surface px-2.5 text-[13px] text-ink min-w-[200px]" /></Field>
-        <Field label="Puesto"><input value={role} onChange={(e) => setRole(e.target.value)} placeholder="Opcional" className="h-9 rounded-lg bg-surface px-2.5 text-[13px] text-ink min-w-[150px]" /></Field>
-        <Field label="Vínculo">
-          <span className="h-9 flex items-center">
-            <Switch
-              checked={!externo}
-              onChange={(v) => { setExterno(!v); setExternoTocado(true); }}
-              label={externo ? "Externo" : "Plantilla"}
-              className="text-[13px] text-ink"
-            />
-          </span>
+    <div className="rounded-2xl bg-surface2/40 p-5 mb-4">
+      <p className="section-eyebrow mb-4">Nueva persona</p>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Field label="Nombre">
+          <Input value={f.name} onChange={(e) => set("name", e.target.value)} onKeyDown={onKeyDown} placeholder="Nombre" autoFocus />
         </Field>
-        <button onClick={submit} disabled={pending} className="btn-primary h-9 text-[13px] disabled:opacity-50">{pending ? "Creando…" : "Crear"}</button>
+        <Field label="Apellidos" hint="Opcional">
+          <Input value={f.lastName} onChange={(e) => set("lastName", e.target.value)} onKeyDown={onKeyDown} placeholder="Apellidos" />
+        </Field>
+        <Field label="Email" className="sm:col-span-2 lg:col-span-1">
+          <Input type="email" value={f.email} onChange={(e) => onEmail(e.target.value)} onKeyDown={onKeyDown} placeholder="nombre@dominio.com" />
+        </Field>
+        <Field label="Puesto" hint="Opcional">
+          <Input value={f.role} onChange={(e) => set("role", e.target.value)} onKeyDown={onKeyDown} placeholder="Product Designer" />
+        </Field>
+
+        {/* Dos opciones con nombre propio se leen mejor que un interruptor
+            etiquetado "Externo", que obliga a deducir qué significa apagado. */}
+        <Field label="Vínculo">
+          <div className="flex items-center h-9 bg-surface rounded-lg border border-border p-0.5 w-fit">
+            {[[false, "Plantilla"], [true, "Externo"]].map(([v, l]) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => { setExterno(v); setExternoTocado(true); }}
+                className={cn(
+                  "px-3 h-full rounded-[7px] text-[12.5px] transition whitespace-nowrap",
+                  externo === v ? "bg-ink text-bg font-medium" : "text-muted hover:text-ink"
+                )}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
+        </Field>
+        <Field label="Cumpleaños" hint="Sale en el calendario del equipo">
+          <Input type="date" value={f.birthday} onChange={(e) => set("birthday", e.target.value)} />
+        </Field>
+        <Field label="Responsable" hint="Quién aprueba sus ausencias">
+          <Select
+            value={f.managerId}
+            onChange={(v) => set("managerId", v)}
+            placeholder="Sin responsable"
+            options={employees.filter((m) => m.active).map((m) => ({ value: m.id, label: m.name }))}
+          />
+        </Field>
+        <Field label="Vacaciones al año" hint="Días base, ajustable luego">
+          <Input type="number" min="0" max="60" value={f.vacationAllowance} onChange={(e) => set("vacationAllowance", e.target.value)} onKeyDown={onKeyDown} />
+        </Field>
+
+        <Field label="Perfil de ClickUp" hint="Para ver sus tareas y su cumpleaños">
+          <Select
+            value={f.clickupGroupId}
+            onChange={(v) => set("clickupGroupId", v)}
+            placeholder="Sin vincular"
+            options={clickupGroups.map((g) => ({ value: g.id, label: g.name }))}
+          />
+        </Field>
+        <Field label="Perfil de Slack" hint="Para atribuirle sus tickets">
+          <Select
+            value={f.slackUserId}
+            onChange={(v) => set("slackUserId", v)}
+            placeholder="Sin vincular"
+            options={slackUsers.map((u) => ({ value: u.id, label: u.name + (u.guest ? " (invitado)" : "") }))}
+          />
+        </Field>
       </div>
-      <p className="text-micro text-mutedSoft mt-2">
-        Se vincula al entrar con Google usando ese mismo email. Después completa su ficha.
-        {externo
-          ? " Como externo, no ficha ni tiene nómina, contrato ni datos bancarios."
-          : " Como plantilla, tendrá fichaje y ficha laboral completa."}
-      </p>
-      {msg && <p className="text-micro text-danger mt-1.5">{msg}</p>}
+
+      <div className="mt-4 pt-3.5 border-t border-border/50 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-micro text-mutedSoft leading-snug max-w-[58ch]">
+          Se vincula al entrar con Google con ese mismo email.{" "}
+          {externo
+            ? "Como externo no ficha, ni tiene nómina, contrato o datos bancarios."
+            : "Como plantilla tendrá fichaje y ficha laboral completa."}
+        </p>
+        <div className="flex items-center gap-2 shrink-0 ml-auto">
+          {msg && <p className="text-micro text-danger mr-1">{msg}</p>}
+          <Button variant="ghost" size="sm" onClick={onCancel}>Cancelar</Button>
+          <Button size="sm" onClick={submit} disabled={pending || !listo} title={listo ? undefined : "Faltan el nombre y un email válido"}>
+            {pending ? "Creando…" : "Crear persona"}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

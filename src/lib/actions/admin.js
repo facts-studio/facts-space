@@ -177,7 +177,18 @@ function colorFor(email) {
   return AVATAR_COLORS[h % AVATAR_COLORS.length];
 }
 
-export async function createEmployee({ name, email, role = "", isExternal = null }) {
+export async function createEmployee({
+  name,
+  email,
+  role = "",
+  isExternal = null,
+  lastName = "",
+  birthday = "",
+  managerId = "",
+  clickupGroupId = "",
+  slackUserId = "",
+  vacationAllowance = 22,
+}) {
   const me = await requireAdmin();
   if (!me) return { ok: false, error: "Solo administración." };
   const n = String(name ?? "").trim();
@@ -188,16 +199,23 @@ export async function createEmployee({ name, email, role = "", isExternal = null
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("employees")
-    // is_external: si no se indica, se deduce del dominio (igual que team.js).
     .insert({
       name: n,
+      last_name: String(lastName ?? "").trim() || null,
       email: em,
       role: String(role ?? ""),
       color: colorFor(em),
       active: true,
       is_admin: false,
+      // is_external: si no se indica, se deduce del dominio (igual que team.js).
       is_external: typeof isExternal === "boolean" ? isExternal : !em.endsWith(`@${TEAM_DOMAIN}`),
-      vacation_allowance: 22,
+      birthday: birthday || null,
+      manager_id: managerId || null,
+      // Vínculos con las herramientas: sin ellos no salen sus cumpleaños ni se
+      // le atribuyen tareas ni tickets, así que mejor dejarlos puestos ya.
+      clickup_group_id: clickupGroupId || null,
+      slack_user_id: slackUserId || null,
+      vacation_allowance: Number(vacationAllowance) || 0,
     })
     .select("id")
     .single();
