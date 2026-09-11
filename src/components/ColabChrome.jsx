@@ -5,10 +5,10 @@ import FctsMark from "@/components/FctsMark";
 import ThemeToggle from "@/components/ThemeToggle";
 import { createClient } from "@/lib/supabase/client";
 
-// Barra lateral para un colaborador: la misma de siempre en su versión
-// recogida, pero sin navegación —su portal es una sola pantalla, así que una
-// lista de un solo destino sería un mueble vacío—. Quedan el logo arriba y el
-// tema y el cerrar sesión abajo.
+// Raíl de un colaborador: los sitios del Sidebar recogido —logo arriba, tema y
+// cerrar sesión abajo— pero flotando. Sin barra no hay navegación que dar (su
+// portal es una sola pantalla), así que tampoco tiene sentido que un mueble
+// vacío se quede con 76px de ancho ni que una línea divida nada.
 function LogoutButton({ className = "" }) {
   async function signOut() {
     const supabase = createClient();
@@ -35,20 +35,25 @@ function LogoutButton({ className = "" }) {
 export default function ColabChrome({ serverTheme = null }) {
   return (
     <>
-      {/* Mismas medidas y borde que el Sidebar recogido (w-76 / px-3 / py-6). */}
-      <aside className="shrink-0 h-screen sticky top-0 z-30 hidden md:flex flex-col items-center w-[76px] px-3 py-6 border-r border-border">
-        <Link href="/" aria-label="F*cts Studio" className="h-9 w-9 grid place-items-center rounded-lg hover:bg-surface2/60 transition">
+      {/* fixed, no sticky: no entra en el flujo, así que el contenido usa todo
+          el ancho. Alineado a la misma columna que el Sidebar recogido. */}
+      <div className="fixed left-0 top-0 z-30 hidden md:flex flex-col items-center w-[76px] h-screen px-3 py-6 pointer-events-none">
+        <Link
+          href="/"
+          aria-label="F*cts Studio"
+          className="pointer-events-auto h-9 w-9 grid place-items-center rounded-lg hover:bg-surface2/60 transition"
+        >
           <FctsMark className="h-5 w-auto text-brand" />
         </Link>
 
-        <div className="mt-auto flex flex-col items-center gap-2">
-          <ThemeToggle serverTheme={serverTheme} />
+        <div className="mt-auto pointer-events-auto flex flex-col items-center gap-2">
+          <ThemeToggle serverTheme={serverTheme} vertical />
           <LogoutButton />
         </div>
-      </aside>
+      </div>
 
-      {/* En móvil no hay barra lateral: el mismo par, flotando arriba. */}
-      <div className="md:hidden fixed top-4 right-4 z-40 flex items-center gap-1 p-1 rounded-full bg-surface/85 backdrop-blur-xl shadow-float">
+      {/* En móvil el raíl no cabe: el mismo par, en horizontal, arriba. */}
+      <div className="md:hidden fixed top-4 right-4 z-40 flex items-center gap-1">
         <ThemeToggle serverTheme={serverTheme} />
         <LogoutButton />
       </div>

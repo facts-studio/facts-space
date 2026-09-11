@@ -44,8 +44,8 @@ export default async function PortalLayout({ children }) {
     <div className="flex min-h-screen">
       {/* Fotos del equipo real, para los avatares que solo tienen el email. */}
       <TeamPhotos people={team.map((e) => ({ email: e.email, photo: e.photo }))} />
-      {/* Un colaborador no tiene secciones entre las que moverse: su barra es la
-          de siempre en versión recogida, sin navegación. */}
+      {/* Un colaborador no tiene secciones entre las que moverse: en vez de
+          barra lateral, un raíl flotante con el logo, el tema y el salir. */}
       {colaborador ? (
         <ColabChrome serverTheme={emp?.theme ?? null} />
       ) : (
@@ -64,7 +64,7 @@ export default async function PortalLayout({ children }) {
       <main
         className={
           colaborador
-            ? "flex-1 min-w-0 px-5 md:px-10 pt-16 md:pt-10 pb-10"
+            ? "flex-1 min-w-0 px-5 md:pl-[76px] md:pr-10 pt-16 md:pt-10 pb-10"
             : "flex-1 min-w-0 px-5 md:px-10 pt-safe md:pt-10 pb-[calc(58px+env(safe-area-inset-bottom)+1.75rem)] md:pb-10"
         }
       >

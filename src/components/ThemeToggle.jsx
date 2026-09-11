@@ -13,7 +13,7 @@ const syncBar = (d) => {
   if (m) m.setAttribute("content", d ? "#1c1c1a" : "#EFEEEB");
 };
 
-export default function ThemeToggle({ serverTheme = null }) {
+export default function ThemeToggle({ serverTheme = null, vertical = false }) {
   const [dark, setDark] = useState(false);
 
   useEffect(() => {
@@ -46,7 +46,10 @@ export default function ThemeToggle({ serverTheme = null }) {
       aria-checked={dark}
       aria-label="Cambiar tema"
       title={dark ? "Modo claro" : "Modo oscuro"}
-      className="group inline-flex items-center gap-1 p-1 rounded-full bg-surface2/70 border border-border hover:border-borderStrong transition w-[58px]"
+      // vertical: para raíles estrechos, donde 58px de ancho no caben.
+      className={`group inline-flex items-center gap-1 p-1 rounded-full bg-surface2/70 border border-border hover:border-borderStrong transition ${
+        vertical ? "flex-col h-[58px] w-9" : "w-[58px]"
+      }`}
     >
       <span className={`flex items-center justify-center h-6 w-6 rounded-full transition ${!dark ? "bg-paper shadow-card text-ink" : "text-mutedSoft"}`}>
         {/* sol */}
