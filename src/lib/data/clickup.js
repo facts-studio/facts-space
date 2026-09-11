@@ -253,7 +253,9 @@ function rollUpSubtasks(tasks) {
 
 const authOpts = () => ({
   headers: { Authorization: process.env.CLICKUP_API_TOKEN },
-  next: { revalidate: 60 }, // lo nuevo de ClickUp aparece en ≤1 min
+  // Lo nuevo de ClickUp aparece en ≤1 min por su cuenta; la etiqueta permite
+  // además forzarlo desde el botón de sincronizar de Administrar.
+  next: { revalidate: 60, tags: ["clickup"] },
 });
 
 // Config del portal: filas de clickup_lists (jerarquía + flag visible). Vacío si

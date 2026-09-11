@@ -10,6 +10,7 @@ import { fmtRange, fmtDate } from "@/lib/mock";
 import { formatDuration, madridTime } from "@/lib/dates";
 import { absenceLabel } from "@/lib/absences";
 import { Badge } from "@/components/ui";
+import { isExternal } from "@/lib/team";
 
 const durMs = (e) => (e.clock_out ? new Date(e.clock_out) - new Date(e.clock_in) : 0);
 const TABS = [["resumen", "Resumen"], ["nominas", "Nóminas"], ["ausencias", "Ausencias"], ["horario", "Control horario"], ["documentos", "Documentos"]];
@@ -124,6 +125,17 @@ function Resumen({ e, employees, requests, documents, time, vacUsed, year, onDon
 // Tarjeta lateral de solo lectura (organización). El botón "Editar" abre el
 // formulario completo de ficha.
 function FichaCard({ e, employees, onEdit }) {
+  const router = useRouter();
+  const [pending, run] = useTransition();
+  const [err, setErr] = useState(null);
+  // Activar y desactivar es lo que más se toca de esta tarjeta, así que se hace
+  // aquí y no dentro de "Editar ficha", donde no se encontraba.
+  const toggleActive = () => run(async () => {
+    setErr(null);
+    const r = await setEmployeeActive({ id: e.id, active: !e.active });
+    if (r.ok) router.refresh(); else setErr(r.error);
+  });
+
   return (
     <div className="rounded-2xl bg-surface/55 p-6">
       <div className="flex items-center justify-between mb-4">
@@ -133,8 +145,22 @@ function FichaCard({ e, employees, onEdit }) {
       <dl className="flex flex-col gap-2.5">
         <Row k="Responsable" v={employees.find((m) => m.id === e.manager_id)?.name || "—"} />
         <Row k="Admin" v={e.is_admin ? "Sí" : "No"} />
-        <Row k="Activo" v={e.active ? "Sí" : "No"} />
+        <Row k="Vínculo" v={isExternal(e) ? "Externo" : "Plantilla"} />
       </dl>
+      <div className="mt-4 pt-4 border-t border-border/50 flex items-center justify-between gap-2">
+        <Badge kind={e.active ? "success" : "neutral"}>{e.active ? "Activo" : "Inactivo"}</Badge>
+        <button
+          onClick={toggleActive}
+          disabled={pending}
+          title={e.active
+            ? "Deja de salir en el equipo y en los selectores; se conserva su histórico"
+            : "Vuelve a salir en el equipo y en los selectores"}
+          className="text-micro text-muted hover:text-ink transition disabled:opacity-40"
+        >
+          {pending ? "…" : e.active ? "Desactivar" : "Activar"}
+        </button>
+      </div>
+      {err && <p className="text-micro text-danger mt-2">{err}</p>}
     </div>
   );
 }
@@ -189,12 +215,6 @@ function FichaForm({ e, employees, onCancel, onSaved, isSelf = false }) {
   });
   // Eliminar borra a la persona y todo lo suyo. Desactivar es lo que se quiere
   // casi siempre: conserva el histórico y la saca del equipo.
-  // Activar/desactivar no espera a "Guardar ficha": es una decisión suelta.
-  const toggleActive = () => run(async () => {
-    setMsg(null);
-    const r = await setEmployeeActive({ id: e.id, active: !form.active });
-    if (r.ok) { set("active", !form.active); router.refresh(); } else setMsg(r.error);
-  });
   const remove = () => run(async () => {
     const r = await deleteEmployee({ id: e.id });
     if (r.ok) router.push("/admin?tab=equipo"); else { setMsg(r.error); setConfirmDel(false); }
@@ -261,19 +281,13 @@ function FichaForm({ e, employees, onCancel, onSaved, isSelf = false }) {
       ))}
 
       <div className="rounded-2xl bg-surface/55 p-6">
-        <p className="section-eyebrow mb-1">Alta y baja</p>
+        <p className="section-eyebrow mb-1">Eliminar</p>
         <p className="text-small text-muted mb-4 max-w-[62ch]">
-          {form.active
-            ? `Desactivar es la opción normal cuando alguien se va: ${e.name} deja de salir en el equipo, en el calendario y en los selectores, pero se conserva su histórico de ausencias, fichaje y documentos.`
-            : `${e.name} está inactivo: no sale en el equipo ni en los selectores, pero sus datos siguen ahí. Puedes volver a activarlo cuando quieras.`}
-          {" "}Eliminar es definitivo y se lo lleva todo por delante.
+          Cuando alguien se va, lo normal es <span className="text-ink">desactivarlo</span> desde la
+          tarjeta Ficha: deja de salir en el equipo, en el calendario y en los selectores, pero se
+          conserva su histórico de ausencias, fichaje y documentos. Eliminar es definitivo y se lo
+          lleva todo por delante.
         </p>
-        <div className="flex flex-wrap items-center gap-2 mb-4">
-          <button onClick={toggleActive} disabled={pending} className="btn-ghost h-8 text-[12.5px] disabled:opacity-50">
-            {pending ? "…" : form.active ? "Desactivar" : "Activar"}
-          </button>
-          <Badge kind={form.active ? "success" : "neutral"}>{form.active ? "Activo" : "Inactivo"}</Badge>
-        </div>
         {isSelf ? (
           <p className="text-micro text-mutedSoft">No puedes eliminar tu propia cuenta.</p>
         ) : confirmDel ? (

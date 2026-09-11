@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { decideVacation, setVacationStatus, deleteVacation } from "@/lib/actions/vacations";
-import { updateEmployee, validateMonth, createEmployee, setEmployeeClickupGroup, setEmployeeSlackUser, autolinkSlackUsers } from "@/lib/actions/admin";
+import { updateEmployee, validateMonth, createEmployee, setEmployeeClickupGroup, setEmployeeSlackUser, syncIntegrations } from "@/lib/actions/admin";
 import { recordDocument, deleteDocument, getDocumentUrl } from "@/lib/actions/documents";
 import { extractInvoice } from "@/lib/actions/extract";
 import { createClient } from "@/lib/supabase/client";
@@ -377,6 +377,18 @@ const EMP_FILTERS = [["activos", "Activos"], ["inactivos", "Inactivos"], ["todos
 
 function Equipo({ employees, vacUsed, year, clickupGroups = [], slackUsers = [], onDone }) {
   const [adding, setAdding] = useState(false);
+  // Trae de nuevo lo de fuera: perfiles y fotos de ClickUp, listas, y los
+  // perfiles de Slack que se puedan vincular por email.
+  const [sync, setSync] = useState({ busy: false, msg: null });
+  const [, startSync] = useTransition();
+  const sincronizar = () => {
+    setSync({ busy: true, msg: null });
+    startSync(async () => {
+      const r = await syncIntegrations();
+      setSync({ busy: false, msg: r.ok ? r.text : r.error });
+      if (r.ok) onDone?.();
+    });
+  };
   const [filter, setFilter] = useState("activos");
   const activos = employees.filter((e) => e.active).length;
   const inactivos = employees.length - activos;
@@ -388,9 +400,28 @@ function Equipo({ employees, vacUsed, year, clickupGroups = [], slackUsers = [],
     <div className="rounded-2xl bg-surface/55 p-6">
       <div className="flex items-center justify-between gap-3 mb-4">
         <p className="section-eyebrow">Empleados · {activos} activos{inactivos ? ` · ${inactivos} inactivos` : ""}</p>
-        {!adding && (
-          <Button size="sm" onClick={() => setAdding(true)}>+ Añadir persona</Button>
-        )}
+        <div className="flex items-center gap-2">
+          {sync.msg && <p className="text-micro text-mutedSoft">{sync.msg}</p>}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={sincronizar}
+            disabled={sync.busy}
+            title="Vuelve a traer los perfiles y fotos de ClickUp, las listas y los perfiles de Slack"
+            className="gap-1.5"
+          >
+            {/* Refresh de MynaUI (mynaui.com/icons) */}
+            <svg viewBox="0 0 24 24" className={cn("h-3.5 w-3.5", sync.busy && "animate-spin")} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M20.5 8c-1.392-3.179-4.823-5-8.522-5C7.299 3 3.453 6.552 3 11.1" />
+              <path d="M16.489 8.4h3.97A.54.54 0 0 0 21 7.86V3.9M3.5 16c1.392 3.179 4.823 5 8.522 5 4.679 0 8.525-3.552 8.978-8.1" />
+              <path d="M7.511 15.6h-3.97a.54.54 0 0 0-.541.54v3.96" />
+            </svg>
+            {sync.busy ? "Sincronizando…" : "Sincronizar"}
+          </Button>
+          {!adding && (
+            <Button size="sm" onClick={() => setAdding(true)}>+ Añadir persona</Button>
+          )}
+        </div>
       </div>
       {adding && <AddEmployee employees={employees} clickupGroups={clickupGroups} slackUsers={slackUsers} onCancel={() => setAdding(false)} onDone={() => { setAdding(false); onDone?.(); }} />}
 
@@ -405,7 +436,7 @@ function Equipo({ employees, vacUsed, year, clickupGroups = [], slackUsers = [],
           <span className="flex-1">Persona</span>
           <span className="w-[150px] hidden lg:block">ClickUp</span>
           <span className="w-[150px] hidden xl:block">Slack</span>
-          <span className="w-[44px] text-center hidden md:block" title="Plantilla del estudio o colaborador externo">Vínculo</span>
+          <span className="w-[76px] hidden md:block" title="Plantilla del estudio o colaborador externo">Vínculo</span>
           <span className="w-[76px] text-right" title={`Días de vacaciones disponibles en ${year}`}>Vacaciones</span>
         </div>
         {list.length === 0 ? (
@@ -576,32 +607,26 @@ function LinkSelect({ value, onChange, disabled, options, placeholder, title, fa
   );
 }
 
-// Vínculo con el estudio, en un solo icono: carné encendido = plantilla,
-// apagado = colabora desde fuera. BadgeSolid/Badge de MynaUI (mynaui.com/icons).
-function VinculoToggle({ externo, onClick, disabled }) {
-  const label = externo ? "Externo · colabora desde fuera" : "Plantilla de F*cts Studio";
+// Vínculo con el estudio, en una píldora que se pulsa para cambiarlo. Un icono
+// solo no distinguía nada: con ocho filas seguidas eran ocho manchas iguales.
+function VinculoPill({ externo, onClick, disabled }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      title={`${label} — pulsa para cambiar`}
-      aria-label={label}
-      aria-pressed={!externo}
+      title={externo
+        ? "Colabora desde fuera: sin fichaje, nómina, contrato ni datos bancarios. Pulsa para pasar a plantilla"
+        : "Plantilla de F*cts Studio: con fichaje y ficha laboral. Pulsa para pasar a externo"}
+      aria-pressed={externo}
       className={cn(
-        "h-7 w-7 grid place-items-center rounded-lg transition disabled:opacity-40",
-        externo ? "text-mutedSoft/60 hover:text-ink hover:bg-surface2/70" : "text-ink hover:bg-surface2/70"
+        "inline-flex items-center px-2 py-0.5 rounded-full text-[11.5px] transition disabled:opacity-40",
+        externo
+          ? "bg-warnSoft/50 text-warn hover:bg-warnSoft"
+          : "bg-surface2 text-muted hover:text-ink hover:bg-surface2/80"
       )}
     >
-      {externo ? (
-        <svg viewBox="0 0 24 24" className="h-[17px] w-[17px]" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <path d="M9.713 3.64c.581-.495.872-.743 1.176-.888a2.58 2.58 0 0 1 2.222 0c.304.145.595.393 1.176.888.599.51 1.207.768 2.007.831.761.061 1.142.092 1.46.204.734.26 1.312.837 1.571 1.572.112.317.143.698.204 1.46.063.8.32 1.407.83 2.006.496.581.744.872.889 1.176.336.703.336 1.52 0 2.222-.145.304-.393.595-.888 1.176a3.3 3.3 0 0 0-.831 2.007c-.061.761-.092 1.142-.204 1.46a2.58 2.58 0 0 1-1.572 1.571c-.317.112-.698.143-1.46.204-.8.063-1.407.32-2.006.83-.581.496-.872.744-1.176.889a2.58 2.58 0 0 1-2.222 0c-.304-.145-.595-.393-1.176-.888a3.3 3.3 0 0 0-2.007-.831c-.761-.061-1.142-.092-1.46-.204a2.58 2.58 0 0 1-1.571-1.572c-.112-.317-.143-.698-.204-1.46a3.3 3.3 0 0 0-.83-2.006c-.496-.581-.744-.872-.89-1.176a2.58 2.58 0 0 1 .001-2.222c.145-.304.393-.595.888-1.176.52-.611.769-1.223.831-2.007.061-.761.092-1.142.204-1.46a2.58 2.58 0 0 1 1.572-1.571c.317-.112.698-.143 1.46-.204a3.3 3.3 0 0 0 2.006-.83" />
-        </svg>
-      ) : (
-        <svg viewBox="0 0 24 24" className="h-[17px] w-[17px]" fill="currentColor" aria-hidden>
-          <path d="M13.435 2.075a3.33 3.33 0 0 0-2.87 0c-.394.189-.755.497-1.26.928l-.079.066a2.56 2.56 0 0 1-1.58.655l-.102.008c-.662.053-1.135.09-1.547.236a3.33 3.33 0 0 0-2.03 2.029c-.145.412-.182.885-.235 1.547l-.008.102a2.56 2.56 0 0 1-.655 1.58l-.066.078c-.431.506-.74.867-.928 1.261a3.33 3.33 0 0 0 0 2.87c.189.394.497.755.928 1.26l.066.079c.41.48.604.939.655 1.58l.008.102c.053.662.09 1.135.236 1.547a3.33 3.33 0 0 0 2.029 2.03c.412.145.885.182 1.547.235l.102.008c.629.05 1.09.238 1.58.655l.078.066c.506.431.867.74 1.261.928a3.33 3.33 0 0 0 2.87 0c.394-.189.755-.497 1.26-.928l.079-.066c.48-.41.939-.604 1.58-.655l.102-.008c.662-.053 1.135-.09 1.547-.236a3.33 3.33 0 0 0 2.03-2.029c.145-.412.182-.885.235-1.547l.008-.102c.05-.629.238-1.09.655-1.58l.066-.079c.431-.505.74-.866.928-1.26a3.33 3.33 0 0 0 0-2.87c-.189-.394-.497-.755-.928-1.26l-.066-.079a2.56 2.56 0 0 1-.655-1.58l-.008-.102c-.053-.662-.09-1.135-.236-1.547a3.33 3.33 0 0 0-2.029-2.03c-.412-.145-.885-.182-1.547-.235l-.102-.008a2.56 2.56 0 0 1-1.58-.655l-.079-.066c-.505-.431-.866-.74-1.26-.928" />
-        </svg>
-      )}
+      {externo ? "Externo" : "Interno"}
     </button>
   );
 }
@@ -662,8 +687,8 @@ function EmployeeRow({ e, used, clickupGroups = [], slackUsers = [], onDone }) {
           title={e.slack_user_id ? "Perfil de Slack vinculado" : "Sin vincular — sus tickets no se marcan como suyos"}
         />
       </span>
-      <span className="w-[44px] hidden md:flex justify-center">
-        <VinculoToggle externo={externo} onClick={toggleExterno} disabled={pending} />
+      <span className="w-[76px] hidden md:block">
+        <VinculoPill externo={externo} onClick={toggleExterno} disabled={pending} />
       </span>
       <span className="w-[76px] text-right text-small tabular-nums text-ink">
         {remaining}<span className="text-mutedSoft">/{allowance}</span>

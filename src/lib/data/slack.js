@@ -28,7 +28,9 @@ async function call(method, params) {
       "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
     },
     body: new URLSearchParams(params),
-    next: { revalidate: 60 }, // el tablero se mueve, pero no cada segundo
+    // El tablero se mueve, pero no cada segundo. La etiqueta permite forzar
+    // el refresco desde el botón de sincronizar de Administrar.
+    next: { revalidate: 60, tags: ["slack"] },
   });
   if (!res.ok) return null;
   const json = await res.json();

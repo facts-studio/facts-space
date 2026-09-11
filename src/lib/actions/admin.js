@@ -1,7 +1,8 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { getSlackUsers } from "@/lib/data/slack";
+import { syncClickUpLists } from "@/lib/actions/clickup";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentEmployee } from "@/lib/data/helpers";
 import { monthEndISO } from "@/lib/dates";
@@ -128,6 +129,33 @@ export async function autolinkSlackUsers() {
   revalidatePath("/admin");
   revalidatePath("/");
   return { ok: true, linked, pending: (employees ?? []).length - linked };
+}
+
+// Refresca lo que viene de fuera: tira la caché de ClickUp y Slack, vuelve a
+// traer la estructura de listas y vincula los perfiles de Slack que se puedan
+// por email. Las fotos no se copian: la de ClickUp se usa al leer cuando la
+// persona no tiene una propia (ver src/lib/data/avatars.js), así que basta con
+// invalidar la caché para que aparezca la nueva.
+export async function syncIntegrations() {
+  const me = await requireAdmin();
+  if (!me) return { ok: false, error: "Solo administración." };
+
+  revalidateTag("clickup");
+  revalidateTag("slack");
+
+  const notas = [];
+  const listas = await syncClickUpLists();
+  if (listas?.ok) notas.push(`${listas.count} listas`);
+  else if (listas?.error) notas.push(`ClickUp: ${listas.error}`);
+
+  const slack = await autolinkSlackUsers();
+  if (slack?.ok) notas.push(slack.linked ? `${slack.linked} perfil${slack.linked === 1 ? "" : "es"} de Slack vinculado${slack.linked === 1 ? "" : "s"}` : "Slack al día");
+  else if (slack?.error) notas.push(`Slack: ${slack.error}`);
+
+  revalidatePath("/admin");
+  revalidatePath("/equipo");
+  revalidatePath("/");
+  return { ok: true, text: notas.join(" · ") || "Nada que actualizar" };
 }
 
 // Borra un archivo/carpeta y su contenido de forma recursiva (best-effort). En
