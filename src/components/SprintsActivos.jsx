@@ -17,11 +17,15 @@ function rango(s) {
   return null;
 }
 
+// Un sprint que pasa su fecha de fin está FINALIZADO: el calendario se cumplió.
+// Que queden tareas abiertas no es un retraso del sprint, y se ve igual en el
+// "N activas · N vencidas" de la propia tarjeta.
+const finalizado = (s) => s.daysLeft != null && s.daysLeft < 0;
+
 // Cuánto queda. `urge` marca lo que merece decirse aparte: si faltan semanas,
 // la fecha de fin ya lo dice y repetirlo solo añade ruido.
 function plazo(s) {
-  if (s.daysLeft == null) return null;
-  if (s.daysLeft < 0) return { text: `${Math.abs(s.daysLeft)} d de retraso`, kind: "danger", urge: true };
+  if (s.daysLeft == null || finalizado(s)) return null; // finalizado se dice con su estado
   if (s.daysLeft === 0) return { text: "acaba hoy", kind: "pending", urge: true };
   if (s.daysLeft === 1) return { text: "queda 1 día", kind: "pending", urge: true };
   return { text: `quedan ${s.daysLeft} días`, kind: "neutral", urge: s.daysLeft <= 3 };
@@ -118,6 +122,7 @@ function SprintCard({ s }) {
           )}
         </span>
         <div className="flex items-center gap-1.5 shrink-0">
+          {finalizado(s) && <Badge kind="success">Finalizado</Badge>}
           {s.client && <Badge kind="neutral">{s.client}</Badge>}
           {fechas && <Badge kind="neutral">{fechas}</Badge>}
         </div>
