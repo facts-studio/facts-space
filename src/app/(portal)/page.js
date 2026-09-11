@@ -12,14 +12,15 @@ import { getPendingApprovals } from "@/lib/data/admin";
 import { getMyDecisions, getVacationPace } from "@/lib/data/me";
 import { getCurrentEmployee } from "@/lib/data/helpers";
 import { getMyNotes } from "@/lib/data/notes";
+import { getEmployees } from "@/lib/data/employees";
 import { getSlackTickets } from "@/lib/data/slack";
 import { getLastWorkedDate } from "@/lib/data/time";
 import { isColaborador } from "@/lib/team";
 import { madridDateISO } from "@/lib/dates";
-import { getClickUpTasks, getVisibleLists, weekTasks, teamWeekTasks, activeSprints, flattenTasks, isMine } from "@/lib/data/clickup";
+import { getClickUpTasks, getVisibleLists, weekTasks, teamWeekTasks, activeSprints, mentionAliases, COLAB_BRANCH } from "@/lib/data/clickup";
 
 export default async function HomePage() {
-  const [events, me, tasks, notes, lists, approvals, decisions, tickets] = await Promise.all([
+  const [events, me, tasks, notes, lists, approvals, decisions, tickets, team] = await Promise.all([
     getCalendarEvents(),
     getCurrentEmployee(),
     getClickUpTasks(),
@@ -28,6 +29,7 @@ export default async function HomePage() {
     getPendingApprovals(), // solicitudes que me toca resolver (responsable/admin)
     getMyDecisions(),      // mis solicitudes ya resueltas que aún no he visto
     getSlackTickets(),     // tickets de los canales compartidos (Slack Lists)
+    getEmployees(),        // para resolver a quién menciona cada sprint
   ]);
   const nombre = me?.name?.split(" ")[0] || "equipo";
   // Un colaborador entra solo por sus proyectos: nada de cumpleaños, vacaciones
@@ -55,13 +57,18 @@ export default async function HomePage() {
     lists.filter((l) => l.is_sprint).map((l) => [l.list_id, { note: (l.list_content || "").trim(), start: l.list_start, due: l.list_due }])
   );
   // Sprints y proyectos temporales en curso (fechas + progreso) para Inicio.
-  const sprints = activeSprints(lists, tasks);
-  // Un colaborador solo ve los proyectos donde tiene trabajo: "asignado" es
-  // tener al menos una tarea suya dentro (misma regla que /sprint/[id]).
-  const misListas = new Set(
-    flattenTasks(tasks).filter((t) => isMine(t, me?.email)).map((t) => String(t.listId))
-  );
-  const sprintsVisibles = colaborador ? sprints.filter((s) => misListas.has(String(s.id))) : sprints;
+  // A cada uno se le cuelga QUIÉN lo trabaja: la rama Unfiltrade es del equipo;
+  // en F*cts Studio, los colaboradores mencionados en su descripción.
+  const porAlias = new Map();
+  for (const e of team) for (const alias of mentionAliases(e)) if (!porAlias.has(alias)) porAlias.set(alias, e);
+  const sprints = activeSprints(lists, tasks).map((s) => ({
+    ...s,
+    equipo: s.branch === COLAB_BRANCH ? false : true,
+    gente: s.branch === COLAB_BRANCH
+      ? [...new Set(s.mentions.map((m) => porAlias.get(m)).filter(Boolean))]
+          .map((e) => ({ id: e.id, name: e.name, photo: e.photo || null, color: e.color }))
+      : [],
+  }));
   // Estados por lista: alimentan el menú del punto de estado en las filas.
   const statusesByList = Object.fromEntries(lists.filter((l) => (l.statuses || []).length).map((l) => [l.list_id, l.statuses]));
 
@@ -105,7 +112,7 @@ export default async function HomePage() {
           campaigns={campaigns}
           statusesByList={statusesByList}
           sprintMeta={sprintMeta}
-          sprints={sprintsVisibles}
+          sprints={sprints}
           tickets={tickets}
           meSlackId={me?.slack_user_id ?? null}
           isAdmin={Boolean(me?.is_admin)}

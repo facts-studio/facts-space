@@ -2,37 +2,22 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ScreenHeader } from "@/components/ui";
 import SprintBoard from "@/components/tasks/SprintBoard";
-import SinAcceso from "@/components/SinAcceso";
-import { getVisibleLists, getClickUpTasks, flattenTasks, isMine } from "@/lib/data/clickup";
-import { getCurrentEmployee } from "@/lib/data/helpers";
-import { isColaborador } from "@/lib/team";
+import { getVisibleLists, getClickUpTasks } from "@/lib/data/clickup";
 
 // Un sprint suelto, con sus tareas en columnas por estado. Es la única vista de
 // trabajo de un colaborador: entra por los proyectos que se le adjudican, así
 // que no ve el tablero del estudio pero sí el sprint donde tiene tareas.
 export default async function SprintPage({ params }) {
   const { id } = await params;
-  const [lists, tasks, me] = await Promise.all([getVisibleLists(), getClickUpTasks(), getCurrentEmployee()]);
+  const [lists, tasks] = await Promise.all([getVisibleLists(), getClickUpTasks()]);
   // getVisibleLists ya filtra por permisos: si no está, o no existe o no es
   // para esta persona. En ambos casos, 404.
   const list = lists.find((l) => String(l.list_id) === String(id));
   if (!list) notFound();
 
+  // La adjudicación se declara en ClickUp y getVisibleLists ya la aplica: si
+  // este sprint no es de quien mira, no aparece arriba y esto es un 404.
   const items = tasks.filter((t) => String(t.listId) === String(list.list_id));
-
-  // Para un colaborador, "asignado" es tener trabajo dentro: si no hay nada
-  // suyo en este sprint, no es su proyecto.
-  if (isColaborador(me)) {
-    const mio = flattenTasks(items).some((t) => isMine(t, me.email));
-    if (!mio) {
-      return (
-        <SinAcceso kicker="Proyecto" title={list.list_name}>
-          No tienes tareas en este proyecto, así que no es uno de los tuyos. Si debería serlo, pídele
-          al estudio que te asigne el trabajo.
-        </SinAcceso>
-      );
-    }
-  }
 
   const sprint = {
     id: list.list_id,

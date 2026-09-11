@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Surface, SectionHeader, Badge, ProgressBar, EmptyState } from "@/components/ui";
+import { Surface, SectionHeader, Badge, ProgressBar, EmptyState, Avatar } from "@/components/ui";
 
 // Verde de "hecho" (token success), mismo tratamiento que las barras de fichaje.
 const PROGRESO_VERDE = {
@@ -51,6 +51,32 @@ function InfoBubble({ text }) {
   );
 }
 
+// Quién trabaja el proyecto. El de Unfiltrade es del equipo y se dice con una
+// burbuja; en F*cts Studio se adjudica mencionando al colaborador en la
+// descripción del sprint, y entonces sale su cara.
+function Quien({ s }) {
+  if (s.equipo) {
+    return (
+      <span
+        title="Proyecto del equipo"
+        className="relative shrink-0 h-6 px-2 grid place-items-center rounded-full bg-surface2 text-micro text-mutedSoft"
+      >
+        Equipo
+      </span>
+    );
+  }
+  if (!s.gente?.length) return null;
+  return (
+    <span className="relative shrink-0 flex items-center -space-x-1.5 mr-1">
+      {s.gente.slice(0, 3).map((p) => (
+        <span key={p.id} title={`${p.name} · colabora en este proyecto`} className="rounded-full ring-2 ring-surface">
+          <Avatar name={p.name} color={p.color} photo={p.photo} size={22} />
+        </span>
+      ))}
+    </span>
+  );
+}
+
 function SprintCard({ s, soloSprint = false }) {
   const p = plazo(s);
   const pct = Math.round(s.pct);
@@ -79,6 +105,7 @@ function SprintCard({ s, soloSprint = false }) {
       />
       <div className="relative flex items-center gap-0.5">
         <p className="min-w-0 flex-1 text-[14px] font-medium text-ink leading-snug truncate">{s.name}</p>
+        <Quien s={s} />
         {!soloSprint && (
         <Link
           href={`/cronograma/${s.id}`}
