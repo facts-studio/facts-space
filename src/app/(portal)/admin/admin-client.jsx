@@ -410,11 +410,10 @@ function Equipo({ employees, vacUsed, year, clickupGroups = [], slackUsers = [],
       <div className="flex flex-col divide-y divide-border/50">
         <div className="flex items-center gap-3 px-3 pb-2 text-micro uppercase tracking-wide text-mutedSoft">
           <span className="flex-1">Persona</span>
-          <span className="w-[160px] hidden lg:block">Perfil ClickUp</span>
-          <span className="w-[150px] hidden xl:block">Perfil Slack</span>
-          <span className="w-[104px] hidden md:block" title="Plantilla del estudio o colaborador externo">Vínculo</span>
-          <span className="w-[80px] text-right" title={`Días de vacaciones disponibles en ${year}`}>Vac. disp.</span>
-          <span className="w-[46px]" />
+          <span className="w-[150px] hidden lg:block">ClickUp</span>
+          <span className="w-[150px] hidden xl:block">Slack</span>
+          <span className="w-[44px] text-center hidden md:block" title="Plantilla del estudio o colaborador externo">Vínculo</span>
+          <span className="w-[76px] text-right" title={`Días de vacaciones disponibles en ${year}`}>Vacaciones</span>
         </div>
         {list.length === 0 ? (
           <p className="text-small text-mutedSoft px-3 py-4">No hay empleados {filter === "activos" ? "activos" : filter === "inactivos" ? "inactivos" : ""}.</p>
@@ -477,6 +476,70 @@ function AddEmployee({ onDone }) {
   );
 }
 
+// Selector de vínculo (ClickUp / Slack) sin caja: el valor se lee como texto y
+// solo al pasar el ratón se ve que es editable. Con 8 filas, ocho cajas grises
+// pesaban más que la propia información.
+function LinkSelect({ value, onChange, disabled, options, placeholder, title, fallbackLabel }) {
+  const vinculado = Boolean(value);
+  const huerfano = vinculado && !options.some((o) => o.id === value);
+  return (
+    <span className="relative block group/sel">
+      <select
+        value={value || ""}
+        onChange={(ev) => onChange(ev.target.value)}
+        disabled={disabled}
+        title={title}
+        className={cn(
+          "peer h-7 w-full appearance-none rounded-lg bg-transparent pl-2 pr-6 text-[12.5px] truncate cursor-pointer transition",
+          "hover:bg-surface2/70 focus:bg-surface focus:outline-none",
+          vinculado ? "text-ink" : "text-mutedSoft/70"
+        )}
+      >
+        <option value="">{placeholder}</option>
+        {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+        {/* Vinculado a algo que ya no aparece en el directorio → no perder la selección */}
+        {huerfano && <option value={value}>{fallbackLabel}</option>}
+      </select>
+      <svg
+        className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-mutedSoft opacity-0 group-hover/sel:opacity-100 peer-focus:opacity-100 transition-opacity"
+        viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden
+      >
+        <path d="m6 9 6 6 6-6" />
+      </svg>
+    </span>
+  );
+}
+
+// Vínculo con el estudio, en un solo icono: carné encendido = plantilla,
+// apagado = colabora desde fuera. BadgeSolid/Badge de MynaUI (mynaui.com/icons).
+function VinculoToggle({ externo, onClick, disabled }) {
+  const label = externo ? "Externo · colabora desde fuera" : "Plantilla de F*cts Studio";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={`${label} — pulsa para cambiar`}
+      aria-label={label}
+      aria-pressed={!externo}
+      className={cn(
+        "h-7 w-7 grid place-items-center rounded-lg transition disabled:opacity-40",
+        externo ? "text-mutedSoft/60 hover:text-ink hover:bg-surface2/70" : "text-ink hover:bg-surface2/70"
+      )}
+    >
+      {externo ? (
+        <svg viewBox="0 0 24 24" className="h-[17px] w-[17px]" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M9.713 3.64c.581-.495.872-.743 1.176-.888a2.58 2.58 0 0 1 2.222 0c.304.145.595.393 1.176.888.599.51 1.207.768 2.007.831.761.061 1.142.092 1.46.204.734.26 1.312.837 1.571 1.572.112.317.143.698.204 1.46.063.8.32 1.407.83 2.006.496.581.744.872.889 1.176.336.703.336 1.52 0 2.222-.145.304-.393.595-.888 1.176a3.3 3.3 0 0 0-.831 2.007c-.061.761-.092 1.142-.204 1.46a2.58 2.58 0 0 1-1.572 1.571c-.317.112-.698.143-1.46.204-.8.063-1.407.32-2.006.83-.581.496-.872.744-1.176.889a2.58 2.58 0 0 1-2.222 0c-.304-.145-.595-.393-1.176-.888a3.3 3.3 0 0 0-2.007-.831c-.761-.061-1.142-.092-1.46-.204a2.58 2.58 0 0 1-1.571-1.572c-.112-.317-.143-.698-.204-1.46a3.3 3.3 0 0 0-.83-2.006c-.496-.581-.744-.872-.89-1.176a2.58 2.58 0 0 1 .001-2.222c.145-.304.393-.595.888-1.176.52-.611.769-1.223.831-2.007.061-.761.092-1.142.204-1.46a2.58 2.58 0 0 1 1.572-1.571c.317-.112.698-.143 1.46-.204a3.3 3.3 0 0 0 2.006-.83" />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 24 24" className="h-[17px] w-[17px]" fill="currentColor" aria-hidden>
+          <path d="M13.435 2.075a3.33 3.33 0 0 0-2.87 0c-.394.189-.755.497-1.26.928l-.079.066a2.56 2.56 0 0 1-1.58.655l-.102.008c-.662.053-1.135.09-1.547.236a3.33 3.33 0 0 0-2.03 2.029c-.145.412-.182.885-.235 1.547l-.008.102a2.56 2.56 0 0 1-.655 1.58l-.066.078c-.431.506-.74.867-.928 1.261a3.33 3.33 0 0 0 0 2.87c.189.394.497.755.928 1.26l.066.079c.41.48.604.939.655 1.58l.008.102c.053.662.09 1.135.236 1.547a3.33 3.33 0 0 0 2.029 2.03c.412.145.885.182 1.547.235l.102.008c.629.05 1.09.238 1.58.655l.078.066c.506.431.867.74 1.261.928a3.33 3.33 0 0 0 2.87 0c.394-.189.755-.497 1.26-.928l.079-.066c.48-.41.939-.604 1.58-.655l.102-.008c.662-.053 1.135-.09 1.547-.236a3.33 3.33 0 0 0 2.03-2.029c.145-.412.182-.885.235-1.547l.008-.102c.05-.629.238-1.09.655-1.58l.066-.079c.431-.505.74-.866.928-1.26a3.33 3.33 0 0 0 0-2.87c-.189-.394-.497-.755-.928-1.26l-.066-.079a2.56 2.56 0 0 1-.655-1.58l-.008-.102c-.053-.662-.09-1.135-.236-1.547a3.33 3.33 0 0 0-2.029-2.03c-.412-.145-.885-.182-1.547-.235l-.102-.008a2.56 2.56 0 0 1-1.58-.655l-.079-.066c-.505-.431-.866-.74-1.26-.928" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
 function EmployeeRow({ e, used, clickupGroups = [], slackUsers = [], onDone }) {
   const [pending, run] = useTransition();
   const allowance = Number(e.vacation_allowance) + Number(e.vacation_adjustment || 0);
@@ -502,56 +565,43 @@ function EmployeeRow({ e, used, clickupGroups = [], slackUsers = [], onDone }) {
         <Avatar name={e.name} lastName={e.last_name} color={e.color} photo={e.photo} size={32} />
         <div className="min-w-0">
           <p className="text-small text-ink truncate flex items-center gap-1.5">
-            {e.name}{e.last_name ? ` ${e.last_name}` : ""}
-            {!e.active && <span className="text-[10px] uppercase tracking-wide text-muted bg-surface2 rounded px-1.5 py-0.5">Inactivo</span>}
+            <span className="truncate">{e.name}{e.last_name ? ` ${e.last_name}` : ""}</span>
+            {/* Admin e inactivo van junto al nombre: son dos casos raros y no
+                merecen una columna propia en las ocho filas. */}
+            {e.is_admin && <span className="shrink-0 text-[10px] uppercase tracking-wide text-mutedSoft">Admin</span>}
+            {!e.active && <span className="shrink-0 text-[10px] uppercase tracking-wide text-muted bg-surface2 rounded px-1.5 py-0.5">Inactivo</span>}
           </p>
           <p className="text-micro text-mutedSoft truncate">{e.role || "—"}</p>
         </div>
       </Link>
-      <span className="w-[160px] hidden lg:block">
-        <select
-          value={e.clickup_group_id || ""}
-          onChange={(ev) => linkGroup(ev.target.value)}
+      <span className="w-[150px] hidden lg:block">
+        <LinkSelect
+          value={e.clickup_group_id}
+          onChange={linkGroup}
           disabled={pending}
+          options={clickupGroups.map((g) => ({ id: g.id, label: g.name }))}
+          placeholder="Sin vincular"
+          fallbackLabel="Vinculado"
           title={e.clickup_group_id ? "Perfil de ClickUp vinculado" : "Sin vincular — no aparece en cumpleaños ni calendario"}
-          className={`h-7 w-full rounded-lg bg-surface px-2 text-[12px] ${e.clickup_group_id ? "text-ink" : "text-mutedSoft"}`}
-        >
-          <option value="">Sin vincular</option>
-          {clickupGroups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
-          {/* Grupo vinculado que ya no existe/lista → no perder la selección */}
-          {e.clickup_group_id && !clickupGroups.some((g) => g.id === e.clickup_group_id) && (
-            <option value={e.clickup_group_id}>Vinculado (id {e.clickup_group_id})</option>
-          )}
-        </select>
-      </span>
-      <span className="w-[150px] hidden xl:block">
-        <select
-          value={e.slack_user_id || ""}
-          onChange={(ev) => linkSlack(ev.target.value)}
-          disabled={pending}
-          title={e.slack_user_id ? "Perfil de Slack vinculado" : "Sin vincular — sus tickets no se marcan como suyos"}
-          className={`h-7 w-full rounded-lg bg-surface px-2 text-[12px] ${e.slack_user_id ? "text-ink" : "text-mutedSoft"}`}
-        >
-          <option value="">Sin vincular</option>
-          {slackUsers.map((u) => <option key={u.id} value={u.id}>{u.name}{u.guest ? " (invitado)" : ""}</option>)}
-          {/* Perfil vinculado que ya no sale en el directorio → no perder la selección */}
-          {e.slack_user_id && !slackUsers.some((u) => u.id === e.slack_user_id) && (
-            <option value={e.slack_user_id}>Vinculado (id {e.slack_user_id})</option>
-          )}
-        </select>
-      </span>
-      {/* Interno = plantilla (ficha y fichaje); externo = colabora desde fuera.
-          Ver src/lib/team.js: sin este flag se deduce del dominio del email. */}
-      <span className="w-[104px] hidden md:flex items-center gap-2">
-        <Switch
-          checked={!externo}
-          onChange={() => toggleExterno()}
-          label={externo ? "Externo" : "Interno"}
-          className={cn("text-[12px]", externo ? "text-mutedSoft" : "text-ink")}
         />
       </span>
-      <span className="w-[80px] text-right text-small tabular-nums text-ink">{remaining} <span className="text-mutedSoft">/ {allowance}</span></span>
-      <span className="w-[46px] text-center">{e.is_admin && <span className="text-[10px] uppercase tracking-wide text-mutedSoft bg-surface2 rounded px-1.5 py-0.5">Admin</span>}</span>
+      <span className="w-[150px] hidden xl:block">
+        <LinkSelect
+          value={e.slack_user_id}
+          onChange={linkSlack}
+          disabled={pending}
+          options={slackUsers.map((u) => ({ id: u.id, label: u.name + (u.guest ? " (invitado)" : "") }))}
+          placeholder="Sin vincular"
+          fallbackLabel="Vinculado"
+          title={e.slack_user_id ? "Perfil de Slack vinculado" : "Sin vincular — sus tickets no se marcan como suyos"}
+        />
+      </span>
+      <span className="w-[44px] hidden md:flex justify-center">
+        <VinculoToggle externo={externo} onClick={toggleExterno} disabled={pending} />
+      </span>
+      <span className="w-[76px] text-right text-small tabular-nums text-ink">
+        {remaining}<span className="text-mutedSoft">/{allowance}</span>
+      </span>
 
     </div>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { updateEmployee, validateMonth, deleteEmployee } from "@/lib/actions/admin";
+import { updateEmployee, validateMonth, deleteEmployee, setEmployeeActive } from "@/lib/actions/admin";
 import { decideVacation, setVacationStatus, deleteVacation } from "@/lib/actions/vacations";
 import { deleteDocument, getDocumentUrl } from "@/lib/actions/documents";
 import { createClient } from "@/lib/supabase/client";
@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { fmtRange, fmtDate } from "@/lib/mock";
 import { formatDuration, madridTime } from "@/lib/dates";
 import { absenceLabel } from "@/lib/absences";
+import { Badge } from "@/components/ui";
 
 const durMs = (e) => (e.clock_out ? new Date(e.clock_out) - new Date(e.clock_in) : 0);
 const TABS = [["resumen", "Resumen"], ["nominas", "Nóminas"], ["ausencias", "Ausencias"], ["horario", "Control horario"], ["documentos", "Documentos"]];
@@ -188,6 +189,12 @@ function FichaForm({ e, employees, onCancel, onSaved, isSelf = false }) {
   });
   // Eliminar borra a la persona y todo lo suyo. Desactivar es lo que se quiere
   // casi siempre: conserva el histórico y la saca del equipo.
+  // Activar/desactivar no espera a "Guardar ficha": es una decisión suelta.
+  const toggleActive = () => run(async () => {
+    setMsg(null);
+    const r = await setEmployeeActive({ id: e.id, active: !form.active });
+    if (r.ok) { set("active", !form.active); router.refresh(); } else setMsg(r.error);
+  });
   const remove = () => run(async () => {
     const r = await deleteEmployee({ id: e.id });
     if (r.ok) router.push("/admin?tab=equipo"); else { setMsg(r.error); setConfirmDel(false); }
@@ -215,7 +222,6 @@ function FichaForm({ e, employees, onCancel, onSaved, isSelf = false }) {
           </Fld>
           <div className="flex items-end gap-5">
             <label className="flex items-center gap-2 text-small text-ink"><input type="checkbox" checked={form.is_admin} onChange={(ev) => set("is_admin", ev.target.checked)} /> Admin</label>
-            <label className="flex items-center gap-2 text-small text-ink"><input type="checkbox" checked={form.active} onChange={(ev) => set("active", ev.target.checked)} /> Activo</label>
             {/* Externo = colabora desde fuera: sin fichaje ni ficha laboral. */}
             <label className="flex items-center gap-2 text-small text-ink" title="Colabora desde fuera: sin fichaje, nómina, contrato ni datos bancarios">
               <input type="checkbox" checked={form.is_external} onChange={(ev) => set("is_external", ev.target.checked)} /> Externo
@@ -255,12 +261,19 @@ function FichaForm({ e, employees, onCancel, onSaved, isSelf = false }) {
       ))}
 
       <div className="rounded-2xl bg-surface/55 p-6">
-        <p className="section-eyebrow mb-1">Dar de baja</p>
+        <p className="section-eyebrow mb-1">Alta y baja</p>
         <p className="text-small text-muted mb-4 max-w-[62ch]">
-          Desmarcar <span className="text-ink">Activo</span> arriba es la opción normal: {e.name} deja de salir en
-          el equipo y en los selectores, pero se conserva su histórico de ausencias, fichaje y documentos.
-          Eliminar es definitivo y se lo lleva todo por delante.
+          {form.active
+            ? `Desactivar es la opción normal cuando alguien se va: ${e.name} deja de salir en el equipo, en el calendario y en los selectores, pero se conserva su histórico de ausencias, fichaje y documentos.`
+            : `${e.name} está inactivo: no sale en el equipo ni en los selectores, pero sus datos siguen ahí. Puedes volver a activarlo cuando quieras.`}
+          {" "}Eliminar es definitivo y se lo lleva todo por delante.
         </p>
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <button onClick={toggleActive} disabled={pending} className="btn-ghost h-8 text-[12.5px] disabled:opacity-50">
+            {pending ? "…" : form.active ? "Desactivar" : "Activar"}
+          </button>
+          <Badge kind={form.active ? "success" : "neutral"}>{form.active ? "Activo" : "Inactivo"}</Badge>
+        </div>
         {isSelf ? (
           <p className="text-micro text-mutedSoft">No puedes eliminar tu propia cuenta.</p>
         ) : confirmDel ? (
