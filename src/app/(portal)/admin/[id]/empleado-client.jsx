@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { updateEmployee, validateMonth } from "@/lib/actions/admin";
+import { updateEmployee, validateMonth, deleteEmployee } from "@/lib/actions/admin";
 import { decideVacation, setVacationStatus, deleteVacation } from "@/lib/actions/vacations";
 import { deleteDocument, getDocumentUrl } from "@/lib/actions/documents";
 import { createClient } from "@/lib/supabase/client";
@@ -13,7 +13,7 @@ import { absenceLabel } from "@/lib/absences";
 const durMs = (e) => (e.clock_out ? new Date(e.clock_out) - new Date(e.clock_in) : 0);
 const TABS = [["resumen", "Resumen"], ["nominas", "Nóminas"], ["ausencias", "Ausencias"], ["horario", "Control horario"], ["documentos", "Documentos"]];
 
-export default function EmpleadoClient({ employee, employees, requests, documents, time, vacUsed, month, year }) {
+export default function EmpleadoClient({ employee, employees, requests, documents, time, vacUsed, month, year, isSelf = false }) {
   const router = useRouter();
   const refresh = () => router.refresh();
   const [tab, setTab] = useState("resumen");
@@ -36,7 +36,7 @@ export default function EmpleadoClient({ employee, employees, requests, document
         ))}
       </div>
 
-      {tab === "resumen" && <Resumen e={e} employees={employees} requests={requests} documents={documents} time={time} vacUsed={vacUsed} year={year} onDone={refresh} />}
+      {tab === "resumen" && <Resumen isSelf={isSelf} e={e} employees={employees} requests={requests} documents={documents} time={time} vacUsed={vacUsed} year={year} onDone={refresh} />}
       {tab === "nominas" && <Docs e={e} documents={documents.filter((d) => d.category === "nomina")} category="nomina" month={month} onDone={refresh} />}
       {tab === "ausencias" && <Ausencias requests={requests} onDone={refresh} />}
       {tab === "horario" && <Horario e={e} time={time} month={month} onDone={refresh} />}
@@ -45,9 +45,9 @@ export default function EmpleadoClient({ employee, employees, requests, document
   );
 }
 
-function Resumen({ e, employees, requests, documents, time, vacUsed, year, onDone }) {
+function Resumen({ e, employees, requests, documents, time, vacUsed, year, onDone, isSelf = false }) {
   const [edit, setEdit] = useState(false);
-  if (edit) return <FichaForm e={e} employees={employees} onCancel={() => setEdit(false)} onSaved={() => { setEdit(false); onDone(); }} />;
+  if (edit) return <FichaForm e={e} employees={employees} isSelf={isSelf} onCancel={() => setEdit(false)} onSaved={() => { setEdit(false); onDone(); }} />;
   const allowance = Number(e.vacation_allowance) + Number(e.vacation_adjustment || 0);
   const monthMs = time.reduce((s, t) => s + durMs(t), 0);
   const nominas = documents.filter((d) => d.category === "nomina").slice(0, 3);
@@ -168,8 +168,10 @@ const FICHA_GROUPS = [
   ]],
 ];
 
-function FichaForm({ e, employees, onCancel, onSaved }) {
+function FichaForm({ e, employees, onCancel, onSaved, isSelf = false }) {
+  const router = useRouter();
   const [pending, run] = useTransition();
+  const [confirmDel, setConfirmDel] = useState(false);
   const [msg, setMsg] = useState(null);
   const [form, setForm] = useState(() => {
     const f = {};
@@ -183,6 +185,12 @@ function FichaForm({ e, employees, onCancel, onSaved }) {
     setMsg(null);
     const r = await updateEmployee({ id: e.id, patch: form });
     if (r.ok) onSaved(); else setMsg(r.error);
+  });
+  // Eliminar borra a la persona y todo lo suyo. Desactivar es lo que se quiere
+  // casi siempre: conserva el histórico y la saca del equipo.
+  const remove = () => run(async () => {
+    const r = await deleteEmployee({ id: e.id });
+    if (r.ok) router.push("/admin?tab=equipo"); else { setMsg(r.error); setConfirmDel(false); }
   });
 
   return (
@@ -245,6 +253,28 @@ function FichaForm({ e, employees, onCancel, onSaved }) {
           </div>
         </div>
       ))}
+
+      <div className="rounded-2xl bg-surface/55 p-6">
+        <p className="section-eyebrow mb-1">Dar de baja</p>
+        <p className="text-small text-muted mb-4 max-w-[62ch]">
+          Desmarcar <span className="text-ink">Activo</span> arriba es la opción normal: {e.name} deja de salir en
+          el equipo y en los selectores, pero se conserva su histórico de ausencias, fichaje y documentos.
+          Eliminar es definitivo y se lo lleva todo por delante.
+        </p>
+        {isSelf ? (
+          <p className="text-micro text-mutedSoft">No puedes eliminar tu propia cuenta.</p>
+        ) : confirmDel ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-small text-danger">¿Eliminar a {e.name} y todos sus datos?</span>
+            <button onClick={remove} disabled={pending} className="btn-danger h-8 text-[12.5px] disabled:opacity-50">{pending ? "Eliminando…" : "Sí, eliminar"}</button>
+            <button onClick={() => setConfirmDel(false)} disabled={pending} className="btn-ghost h-8 text-[12.5px]">Cancelar</button>
+          </div>
+        ) : (
+          <button onClick={() => setConfirmDel(true)} className="h-8 px-3 rounded-lg text-[12.5px] text-danger bg-dangerSoft/40 hover:bg-dangerSoft/70 transition">
+            Eliminar empleado
+          </button>
+        )}
+      </div>
     </div>
   );
 }

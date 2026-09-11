@@ -2,9 +2,9 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { decideVacation, setVacationStatus, deleteVacation } from "@/lib/actions/vacations";
-import { updateEmployee, validateMonth, createEmployee, setEmployeeActive, deleteEmployee, setEmployeeClickupGroup, setEmployeeSlackUser, autolinkSlackUsers } from "@/lib/actions/admin";
+import { updateEmployee, validateMonth, createEmployee, setEmployeeClickupGroup, setEmployeeSlackUser, autolinkSlackUsers } from "@/lib/actions/admin";
 import { recordDocument, deleteDocument, getDocumentUrl } from "@/lib/actions/documents";
 import { extractInvoice } from "@/lib/actions/extract";
 import { createClient } from "@/lib/supabase/client";
@@ -27,8 +27,19 @@ const TABS = [
 
 export default function AdminClient({ meId, employees, pending, recent, timeStats, vacUsed, timeHours = {}, documents = [], clickupLists = [], clickupGroups = [], slackUsers = [], events = [], month, year }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
   const refresh = () => router.refresh();
-  const [tab, setTab] = useState("aprobaciones");
+  // La pestaña vive en la URL (?tab=…) para poder enlazar y compartir una
+  // vista concreta, y para que atrás/adelante del navegador funcionen.
+  const q = params.get("tab");
+  const tab = TABS.some(([v]) => v === q) ? q : TABS[0][0];
+  const setTab = (v) => {
+    const next = new URLSearchParams(params);
+    if (v === TABS[0][0]) next.delete("tab"); else next.set("tab", v);
+    const qs = next.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  };
   const nameById = useMemo(() => new Map(employees.map((e) => [e.id, e.name])), [employees]);
 
   return (
@@ -54,7 +65,7 @@ export default function AdminClient({ meId, employees, pending, recent, timeStat
           <Fichaje employees={employees} timeStats={timeStats} month={month} onDone={refresh} />
         </div>
       )}
-      {tab === "equipo" && <Equipo meId={meId} employees={employees} vacUsed={vacUsed} year={year} clickupGroups={clickupGroups} slackUsers={slackUsers} onDone={refresh} />}
+      {tab === "equipo" && <Equipo employees={employees} vacUsed={vacUsed} year={year} clickupGroups={clickupGroups} slackUsers={slackUsers} onDone={refresh} />}
       {tab === "documentos" && <Documentos employees={employees} documents={documents} nameById={nameById} month={month} onDone={refresh} />}
       {tab === "clickup" && <ClickUpSources lists={clickupLists} />}
       {tab === "informes" && <Informes employees={employees} vacUsed={vacUsed} timeHours={timeHours} month={month} year={year} />}
@@ -373,7 +384,7 @@ function StatusPill({ status, className = "" }) {
 // ── Empleados ────────────────────────────────────────────────────────────────
 const EMP_FILTERS = [["activos", "Activos"], ["inactivos", "Inactivos"], ["todos", "Todos"]];
 
-function Equipo({ meId, employees, vacUsed, year, clickupGroups = [], slackUsers = [], onDone }) {
+function Equipo({ employees, vacUsed, year, clickupGroups = [], slackUsers = [], onDone }) {
   const [adding, setAdding] = useState(false);
   const [filter, setFilter] = useState("activos");
   const activos = employees.filter((e) => e.active).length;
@@ -403,12 +414,12 @@ function Equipo({ meId, employees, vacUsed, year, clickupGroups = [], slackUsers
           <span className="w-[150px] hidden xl:block">Perfil Slack</span>
           <span className="w-[104px] hidden md:block" title="Plantilla del estudio o colaborador externo">Vínculo</span>
           <span className="w-[80px] text-right" title={`Días de vacaciones disponibles en ${year}`}>Vac. disp.</span>
-          <span className="w-[212px]" />
+          <span className="w-[46px]" />
         </div>
         {list.length === 0 ? (
           <p className="text-small text-mutedSoft px-3 py-4">No hay empleados {filter === "activos" ? "activos" : filter === "inactivos" ? "inactivos" : ""}.</p>
         ) : list.map((e) => (
-          <EmployeeRow key={e.id} e={e} used={vacUsed[e.id] || 0} isSelf={e.id === meId} clickupGroups={clickupGroups} slackUsers={slackUsers} onDone={onDone} />
+          <EmployeeRow key={e.id} e={e} used={vacUsed[e.id] || 0} clickupGroups={clickupGroups} slackUsers={slackUsers} onDone={onDone} />
         ))}
       </div>
     </div>
@@ -466,9 +477,8 @@ function AddEmployee({ onDone }) {
   );
 }
 
-function EmployeeRow({ e, used, isSelf, clickupGroups = [], slackUsers = [], onDone }) {
+function EmployeeRow({ e, used, clickupGroups = [], slackUsers = [], onDone }) {
   const [pending, run] = useTransition();
-  const [confirmDel, setConfirmDel] = useState(false);
   const allowance = Number(e.vacation_allowance) + Number(e.vacation_adjustment || 0);
   const remaining = allowance - used;
   const externo = isExternal(e);
@@ -481,17 +491,9 @@ function EmployeeRow({ e, used, isSelf, clickupGroups = [], slackUsers = [], onD
     const r = await setEmployeeSlackUser({ id: e.id, userId });
     if (r.ok) onDone?.(); else alert(r.error);
   });
-  const toggle = () => run(async () => {
-    const r = await setEmployeeActive({ id: e.id, active: !e.active });
-    if (r.ok) onDone?.(); else alert(r.error);
-  });
   const toggleExterno = () => run(async () => {
     const r = await updateEmployee({ id: e.id, patch: { is_external: !externo } });
     if (r.ok) onDone?.(); else alert(r.error);
-  });
-  const remove = () => run(async () => {
-    const r = await deleteEmployee({ id: e.id });
-    if (r.ok) onDone?.(); else { alert(r.error); setConfirmDel(false); }
   });
 
   return (
@@ -551,22 +553,6 @@ function EmployeeRow({ e, used, isSelf, clickupGroups = [], slackUsers = [], onD
       <span className="w-[80px] text-right text-small tabular-nums text-ink">{remaining} <span className="text-mutedSoft">/ {allowance}</span></span>
       <span className="w-[46px] text-center">{e.is_admin && <span className="text-[10px] uppercase tracking-wide text-mutedSoft bg-surface2 rounded px-1.5 py-0.5">Admin</span>}</span>
 
-      <div className="w-[168px] flex items-center justify-end gap-1.5">
-        {confirmDel ? (
-          <>
-            <span className="text-micro text-danger mr-0.5">¿Eliminar?</span>
-            <button onClick={remove} disabled={pending} className="btn-danger h-7 text-[12px]">{pending ? "…" : "Sí, borrar"}</button>
-            <button onClick={() => setConfirmDel(false)} disabled={pending} className="btn-ghost h-7 text-[12px]">No</button>
-          </>
-        ) : (
-          <span className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition">
-            <button onClick={toggle} disabled={pending} className="btn-ghost h-7 text-[12px]">{e.active ? "Desactivar" : "Activar"}</button>
-            {!isSelf && (
-              <button onClick={() => setConfirmDel(true)} disabled={pending} aria-label="Eliminar empleado" className="h-7 w-7 grid place-items-center rounded-lg text-mutedSoft hover:text-danger hover:bg-dangerSoft/50 transition">✕</button>
-            )}
-          </span>
-        )}
-      </div>
     </div>
   );
 }

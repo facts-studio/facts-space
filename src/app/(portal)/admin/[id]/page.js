@@ -42,6 +42,7 @@ export default async function EmpleadoPage({ params }) {
     <div>
       <Link href="/admin" className="text-small text-muted hover:text-ink transition inline-flex items-center gap-1.5 mb-4">← Volver a Administrar</Link>
       <EmpleadoClient
+        isSelf={employee.id === me.id}
         employee={employee}
         employees={employees}
         requests={requests}
