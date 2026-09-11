@@ -44,8 +44,8 @@ export default async function PortalLayout({ children }) {
     <div className="flex min-h-screen">
       {/* Fotos del equipo real, para los avatares que solo tienen el email. */}
       <TeamPhotos people={team.map((e) => ({ email: e.email, photo: e.photo }))} />
-      {/* Un colaborador no tiene secciones entre las que moverse: en vez de una
-          barra lateral vacía, solo el logo, el tema y el cerrar sesión. */}
+      {/* Un colaborador no tiene secciones entre las que moverse: su barra es la
+          de siempre en versión recogida, sin navegación. */}
       {colaborador ? (
         <ColabChrome serverTheme={emp?.theme ?? null} />
       ) : (
@@ -59,17 +59,17 @@ export default async function PortalLayout({ children }) {
       )}
       {/* Aire para la barra inferior en móvil (56px + safe-area); en desktop, el
           padding normal. La cabecera respeta el notch con pt-safe. */}
-      {/* Sin barra lateral el contenido baja para dejar sitio al logo flotante,
-          y no hace falta el hueco de la barra inferior de móvil. */}
+      {/* Un colaborador no tiene barra inferior en móvil, así que no hace falta
+          reservarle hueco abajo. */}
       <main
         className={
           colaborador
-            ? "flex-1 min-w-0 px-5 md:px-10 pt-20 md:pt-24 pb-16"
+            ? "flex-1 min-w-0 px-5 md:px-10 pt-16 md:pt-10 pb-10"
             : "flex-1 min-w-0 px-5 md:px-10 pt-safe md:pt-10 pb-[calc(58px+env(safe-area-inset-bottom)+1.75rem)] md:pb-10"
         }
       >
         {previewRole && (
-          <div className={colaborador ? "-mx-5 md:-mx-10 -mt-20 md:-mt-24 mb-6 md:mb-8" : "-mx-5 md:-mx-10 -mt-safe md:-mt-10 mb-6 md:mb-8"}>
+          <div className={colaborador ? "-mx-5 md:-mx-10 -mt-16 md:-mt-10 mb-6 md:mb-8" : "-mx-5 md:-mx-10 -mt-safe md:-mt-10 mb-6 md:mb-8"}>
             <PreviewBanner label={PREVIEW_ROLES[previewRole].label} />
           </div>
         )}
