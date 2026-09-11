@@ -58,7 +58,7 @@ export default function HomePanels({
 
   return (
     <div className={className}>
-      <QuickLinks className="mt-10" mode={mode} onSelect={setMode} presence={presence} showStatus={!isColaborador} />
+      <QuickLinks className="mt-10" mode={mode} onSelect={setMode} presence={presence} showStatus={!isColaborador} showTimeline={!isColaborador} />
 
       <div className="mt-8">
         {mode === "notas" ? (

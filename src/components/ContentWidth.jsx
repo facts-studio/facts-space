@@ -14,8 +14,8 @@ import { cn } from "@/lib/cn";
  */
 const ANCHO_COMPLETO = ["/tareas", "/calendario", "/recursos"];
 // A sangre: pantallas que ocupan de borde a borde y anulan el padding del
-// layout (el cronograma necesita cada píxel de ancho para su línea de tiempo).
-const A_SANGRE = ["/cronograma"];
+// layout (el cronograma y el timeline necesitan cada píxel para su escala).
+const A_SANGRE = ["/cronograma", "/timeline"];
 
 export default function ContentWidth({ children, className }) {
   const pathname = usePathname() || "/";

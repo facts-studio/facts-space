@@ -324,7 +324,10 @@ export function mentionAliases(employee) {
 export function listAllowsColaborador(list, employee) {
   if ((list.space_name || "").trim() !== COLAB_BRANCH) return false;
   const menciones = mentionsIn(list.list_content);
-  if (!menciones.size) return false;
+  // Sin nadie mencionado, el proyecto es de la casa y lo ven todos: así la
+  // rama entera sigue a la vista mientras no se empiece a repartir. En cuanto
+  // una descripción menciona a alguien, ese proyecto es solo de quien nombra.
+  if (!menciones.size) return true;
   return mentionAliases(employee).some((alias) => menciones.has(alias));
 }
 
