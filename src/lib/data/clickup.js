@@ -778,8 +778,11 @@ export function activeSprints(lists = [], tasks = [], now = Date.now()) {
     // Pasado de fecha y sin nada abierto → terminado, fuera.
     const pastDue = Boolean(l.list_due && l.list_due < startToday);
     if (pastDue && open.length === 0) continue;
-    // Sin fechas y sin tareas no aporta nada.
-    if (!l.list_start && !l.list_due && total === 0) continue;
+    // Un sprint o proyecto temporal SIEMPRE tiene fechas. Sin ninguna es una
+    // lista fija del cliente ("General", "Tareas"): un cajón donde dejar sus
+    // tareas, sin principio ni fin, así que no es nada "en curso" y no pinta
+    // en este bloque. Sus tareas se ven en Tareas, por cliente.
+    if (!l.list_start && !l.list_due) continue;
 
     // Días restantes contando DÍAS DE CALENDARIO (no horas sueltas): si vence
     // mañana debe decir 1, no 2. Se compara el día del vencimiento con hoy.
