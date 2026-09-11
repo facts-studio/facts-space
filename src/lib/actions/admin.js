@@ -5,6 +5,7 @@ import { getSlackUsers } from "@/lib/data/slack";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentEmployee } from "@/lib/data/helpers";
 import { monthEndISO } from "@/lib/dates";
+import { TEAM_DOMAIN } from "@/lib/team";
 
 async function requireAdmin() {
   const me = await getCurrentEmployee();
@@ -176,7 +177,7 @@ function colorFor(email) {
   return AVATAR_COLORS[h % AVATAR_COLORS.length];
 }
 
-export async function createEmployee({ name, email, role = "" }) {
+export async function createEmployee({ name, email, role = "", isExternal = null }) {
   const me = await requireAdmin();
   if (!me) return { ok: false, error: "Solo administración." };
   const n = String(name ?? "").trim();
@@ -187,7 +188,17 @@ export async function createEmployee({ name, email, role = "" }) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("employees")
-    .insert({ name: n, email: em, role: String(role ?? ""), color: colorFor(em), active: true, is_admin: false, vacation_allowance: 22 })
+    // is_external: si no se indica, se deduce del dominio (igual que team.js).
+    .insert({
+      name: n,
+      email: em,
+      role: String(role ?? ""),
+      color: colorFor(em),
+      active: true,
+      is_admin: false,
+      is_external: typeof isExternal === "boolean" ? isExternal : !em.endsWith(`@${TEAM_DOMAIN}`),
+      vacation_allowance: 22,
+    })
     .select("id")
     .single();
   if (error) {

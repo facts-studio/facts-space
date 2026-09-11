@@ -11,8 +11,9 @@ import { createClient } from "@/lib/supabase/client";
 import { fmtRange, fmtDate } from "@/lib/mock";
 import { formatDuration } from "@/lib/dates";
 import { absenceLabel } from "@/lib/absences";
+import { isExternal, TEAM_DOMAIN } from "@/lib/team";
 import { evaluateVacation } from "@/lib/vacation-policy";
-import { Avatar, Badge } from "@/components/ui";
+import { Avatar, Badge, Switch } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import ClickUpSources from "@/components/admin/ClickUpSources";
 
@@ -400,6 +401,7 @@ function Equipo({ meId, employees, vacUsed, year, clickupGroups = [], slackUsers
           <span className="flex-1">Persona</span>
           <span className="w-[160px] hidden lg:block">Perfil ClickUp</span>
           <span className="w-[150px] hidden xl:block">Perfil Slack</span>
+          <span className="w-[104px] hidden md:block" title="Plantilla del estudio o colaborador externo">Vínculo</span>
           <span className="w-[80px] text-right" title={`Días de vacaciones disponibles en ${year}`}>Vac. disp.</span>
           <span className="w-[212px]" />
         </div>
@@ -418,12 +420,20 @@ function AddEmployee({ onDone }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("");
+  // Se propone por el dominio del email (igual que team.js) pero se puede
+  // cambiar antes de crear: hay externos con cuenta propia.
+  const [externo, setExterno] = useState(false);
+  const [externoTocado, setExternoTocado] = useState(false);
   const [msg, setMsg] = useState(null);
   const [pending, run] = useTransition();
+  const onEmail = (v) => {
+    setEmail(v);
+    if (!externoTocado && v.includes("@")) setExterno(!v.trim().toLowerCase().endsWith(`@${TEAM_DOMAIN}`));
+  };
   const submit = () => {
     setMsg(null);
     run(async () => {
-      const res = await createEmployee({ name, email, role });
+      const res = await createEmployee({ name, email, role, isExternal: externo });
       if (res.ok) { onDone?.(); router.push(`/admin/${res.id}`); } else setMsg(res.error);
     });
   };
@@ -431,11 +441,26 @@ function AddEmployee({ onDone }) {
     <div className="rounded-xl bg-surface2/40 p-4 mb-4">
       <div className="flex flex-wrap items-end gap-2">
         <Field label="Nombre"><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre y apellido" className="h-9 rounded-lg bg-surface px-2.5 text-[13px] text-ink min-w-[180px]" /></Field>
-        <Field label="Email"><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nombre@dominio.com" className="h-9 rounded-lg bg-surface px-2.5 text-[13px] text-ink min-w-[200px]" /></Field>
+        <Field label="Email"><input type="email" value={email} onChange={(e) => onEmail(e.target.value)} placeholder="nombre@dominio.com" className="h-9 rounded-lg bg-surface px-2.5 text-[13px] text-ink min-w-[200px]" /></Field>
         <Field label="Puesto"><input value={role} onChange={(e) => setRole(e.target.value)} placeholder="Opcional" className="h-9 rounded-lg bg-surface px-2.5 text-[13px] text-ink min-w-[150px]" /></Field>
+        <Field label="Vínculo">
+          <span className="h-9 flex items-center">
+            <Switch
+              checked={!externo}
+              onChange={(v) => { setExterno(!v); setExternoTocado(true); }}
+              label={externo ? "Externo" : "Plantilla"}
+              className="text-[13px] text-ink"
+            />
+          </span>
+        </Field>
         <button onClick={submit} disabled={pending} className="btn-primary h-9 text-[13px] disabled:opacity-50">{pending ? "Creando…" : "Crear"}</button>
       </div>
-      <p className="text-micro text-mutedSoft mt-2">Se vincula al entrar con Google usando ese mismo email. Después completa su ficha.</p>
+      <p className="text-micro text-mutedSoft mt-2">
+        Se vincula al entrar con Google usando ese mismo email. Después completa su ficha.
+        {externo
+          ? " Como externo, no ficha ni tiene nómina, contrato ni datos bancarios."
+          : " Como plantilla, tendrá fichaje y ficha laboral completa."}
+      </p>
       {msg && <p className="text-micro text-danger mt-1.5">{msg}</p>}
     </div>
   );
@@ -446,6 +471,7 @@ function EmployeeRow({ e, used, isSelf, clickupGroups = [], slackUsers = [], onD
   const [confirmDel, setConfirmDel] = useState(false);
   const allowance = Number(e.vacation_allowance) + Number(e.vacation_adjustment || 0);
   const remaining = allowance - used;
+  const externo = isExternal(e);
 
   const linkGroup = (groupId) => run(async () => {
     const r = await setEmployeeClickupGroup({ id: e.id, groupId });
@@ -457,6 +483,10 @@ function EmployeeRow({ e, used, isSelf, clickupGroups = [], slackUsers = [], onD
   });
   const toggle = () => run(async () => {
     const r = await setEmployeeActive({ id: e.id, active: !e.active });
+    if (r.ok) onDone?.(); else alert(r.error);
+  });
+  const toggleExterno = () => run(async () => {
+    const r = await updateEmployee({ id: e.id, patch: { is_external: !externo } });
     if (r.ok) onDone?.(); else alert(r.error);
   });
   const remove = () => run(async () => {
@@ -507,6 +537,16 @@ function EmployeeRow({ e, used, isSelf, clickupGroups = [], slackUsers = [], onD
             <option value={e.slack_user_id}>Vinculado (id {e.slack_user_id})</option>
           )}
         </select>
+      </span>
+      {/* Interno = plantilla (ficha y fichaje); externo = colabora desde fuera.
+          Ver src/lib/team.js: sin este flag se deduce del dominio del email. */}
+      <span className="w-[104px] hidden md:flex items-center gap-2">
+        <Switch
+          checked={!externo}
+          onChange={() => toggleExterno()}
+          label={externo ? "Externo" : "Interno"}
+          className={cn("text-[12px]", externo ? "text-mutedSoft" : "text-ink")}
+        />
       </span>
       <span className="w-[80px] text-right text-small tabular-nums text-ink">{remaining} <span className="text-mutedSoft">/ {allowance}</span></span>
       <span className="w-[46px] text-center">{e.is_admin && <span className="text-[10px] uppercase tracking-wide text-mutedSoft bg-surface2 rounded px-1.5 py-0.5">Admin</span>}</span>
