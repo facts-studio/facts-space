@@ -58,13 +58,18 @@
 }
 
 .dark {
-  --ct-bg: 30 30 28;           /* #1E1E1C */
-  --ct-surface: 38 38 36;
-  --ct-surface2: 47 47 44;
-  --ct-sunken: 24 24 22;
-  --ct-paper: 38 38 36;
-  --ct-border: 58 58 54;
-  --ct-borderSoft: 46 46 43;
+  /* En oscuro el ojo distingue mucho peor dos grises seguidos, y las
+     superficies se pintan con alfa (bg-surface/55, bg-surface2/40): el salto
+     real acaba siendo la mitad del que dicen los tokens. Por eso el fondo baja
+     y los dos niveles de superficie suben, para que una caja dentro de otra se
+     siga leyendo como dos planos sin que nada brille de más. */
+  --ct-bg: 26 26 24;           /* #1A1A18 */
+  --ct-surface: 40 40 37;
+  --ct-surface2: 53 53 49;
+  --ct-sunken: 20 20 19;
+  --ct-paper: 40 40 37;
+  --ct-border: 62 62 57;
+  --ct-borderSoft: 49 49 45;
   --ct-borderStrong: 78 78 72;
   --ct-ink: 239 238 235;
   --ct-inkSoft: 214 212 206;
@@ -72,7 +77,7 @@
   --ct-mutedSoft: 122 121 116;
   --ct-accent: 239 238 235;
   --ct-accentHover: 224 222 215;
-  --ct-accentSoft: 47 47 44;
+  --ct-accentSoft: 53 53 49;
   --ct-brand: 239 238 235;     /* crema sobre oscuro */
   --ct-brandSoft: 47 47 44;
   --ct-brandMid: 170 168 160;

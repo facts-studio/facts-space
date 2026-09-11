@@ -6,6 +6,7 @@ import { getCurrentEmployee } from "@/lib/data/helpers";
 import { workingDaysBetween, eachDayISO } from "@/lib/dates";
 import { getAgendaEvents } from "@/lib/data/clickup";
 import { createVacationTask, updateVacationTask, deleteVacationTask } from "@/lib/clickup-vacations";
+import { hasVacations } from "@/lib/team";
 
 // Título de la tarea espejo en ClickUp según el tipo de ausencia.
 const ABS_TITLE = { vacaciones: "Vacaciones", baja: "Baja", permiso: "Permiso", asuntos_propios: "Asuntos propios", teletrabajo: "Teletrabajo", otro: "Ausencia" };
@@ -31,6 +32,9 @@ async function getFestivos() {
 export async function requestVacation({ startDate, endDate, note = "", type = "vacaciones" }) {
   const me = await getCurrentEmployee();
   if (!me) return { ok: false, error: "No has iniciado sesión." };
+  // Quien no gestiona sus ausencias aquí no puede solicitarlas: la UI no le
+  // enseña el formulario, pero la ruta también se cierra.
+  if (!hasVacations(me)) return { ok: false, error: "Tus ausencias no se gestionan desde el portal." };
   if (!startDate) return { ok: false, error: "Falta la fecha de inicio." };
   const end = endDate || startDate;
   if (end < startDate) return { ok: false, error: "La fecha de fin es anterior al inicio." };

@@ -14,6 +14,7 @@ import { getCurrentEmployee } from "@/lib/data/helpers";
 import { getMyNotes } from "@/lib/data/notes";
 import { getSlackTickets } from "@/lib/data/slack";
 import { getLastWorkedDate } from "@/lib/data/time";
+import { hasVacations } from "@/lib/team";
 import { madridDateISO } from "@/lib/dates";
 import { getClickUpTasks, getVisibleLists, weekTasks, teamWeekTasks, activeSprints } from "@/lib/data/clickup";
 
@@ -56,8 +57,9 @@ export default async function HomePage() {
 
   // Días sin fichar (para el aviso en Inicio). null = nunca ha fichado.
   const lastWorked = me ? await getLastWorkedDate(me.id) : null;
-  // Ritmo de vacaciones (aviso recurrente si no vas al día).
-  const vacationPace = me ? await getVacationPace(me) : null;
+  // Ritmo de vacaciones (aviso recurrente si no vas al día). A quien no las
+  // gestiona aquí no se le avisa de nada: no son sus vacaciones.
+  const vacationPace = me && hasVacations(me) ? await getVacationPace(me) : null;
   const daysSinceFichaje = lastWorked
     ? Math.round((new Date(madridDateISO() + "T00:00:00") - new Date(lastWorked + "T00:00:00")) / 86400000)
     : null;

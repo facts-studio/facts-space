@@ -26,13 +26,8 @@ export default function VerComo({ className }) {
     });
 
   return (
-    <div className={cn("rounded-2xl bg-surface2/40 p-5", className)}>
-      <p className="section-eyebrow mb-1">Ver el portal como…</p>
-      <p className="text-small text-muted mb-4 max-w-[70ch]">
-        Entra en el portal con los permisos de otro tipo de usuario para comprobar qué ve.
-        Cambian los permisos y la navegación, no los datos: sigues viendo tus propias ausencias
-        y fichajes, y puedes salir cuando quieras desde el aviso de arriba.
-      </p>
+    <div className={cn("rounded-3xl bg-surface2/40 p-3", className)}>
+      <p className="section-eyebrow px-2 pt-2 pb-3">Ver el portal como…</p>
       <div className="grid gap-3 sm:grid-cols-2">
         {OPCIONES.map(([role, label, hint]) => (
           <div key={role} className="rounded-xl bg-surface p-4 flex flex-col gap-2">

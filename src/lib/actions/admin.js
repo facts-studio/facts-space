@@ -26,6 +26,8 @@ export async function updateEmployee({ id, patch }) {
   if ("is_admin" in patch) allowed.is_admin = Boolean(patch.is_admin);
   // Colaborador externo: sin fichaje ni ficha laboral (ver src/lib/team.js).
   if ("is_external" in patch) allowed.is_external = Boolean(patch.is_external);
+  // Vacaciones: se pueden apagar a quien las gestione fuera del portal.
+  if ("vacations_enabled" in patch) allowed.vacations_enabled = Boolean(patch.vacations_enabled);
   if ("active" in patch) allowed.active = Boolean(patch.active);
   if ("clickup_group_id" in patch) allowed.clickup_group_id = patch.clickup_group_id || null;
   if ("role" in patch) allowed.role = String(patch.role);

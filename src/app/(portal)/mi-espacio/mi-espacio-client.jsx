@@ -5,12 +5,13 @@ import Link from "next/link";
 import { fmtRange, fmtDate } from "@/lib/mock";
 import { ABSENCE_TYPES } from "@/lib/absences";
 import { getDocumentUrl } from "@/lib/actions/documents";
-import { isExternal, companyOf } from "@/lib/team";
+import { isExternal, companyOf, hasVacations } from "@/lib/team";
 
 // `team`: pestañas que solo tienen sentido con relación laboral con el estudio.
+// `vac`: solo si esa persona gestiona sus ausencias aquí (ver src/lib/team.js).
 const TABS = [
   ["resumen", "Resumen"],
-  ["ausencias", "Ausencias"],
+  ["ausencias", "Ausencias", false, true],
   ["datos", "Datos"],
   ["nominas", "Nóminas", true],
   ["documentos", "Documentos"],
@@ -28,7 +29,8 @@ export default function MiEspacioClient({ me, overview, missingCount, requests =
   const nominas = documents.filter((d) => d.category === "nomina");
   const otros = documents.filter((d) => d.category !== "nomina");
   const [tab, setTab] = useState("resumen");
-  const tabs = TABS.filter(([, , soloEquipo]) => !soloEquipo || !externo);
+  const conVacaciones = hasVacations(me);
+  const tabs = TABS.filter(([, , soloEquipo, soloVac]) => (!soloEquipo || !externo) && (!soloVac || conVacaciones));
   return (
     <div className="space-y-3">
       <div className="flex items-center bg-surface2/60 rounded-lg p-0.5 w-fit">
@@ -43,7 +45,7 @@ export default function MiEspacioClient({ me, overview, missingCount, requests =
         ))}
       </div>
 
-      {tab === "resumen" && <Resumen me={me} overview={overview} missingCount={missingCount} externo={externo} />}
+      {tab === "resumen" && <Resumen me={me} overview={overview} missingCount={missingCount} externo={externo} conVacaciones={conVacaciones} />}
       {tab === "ausencias" && <Ausencias requests={requests} />}
       {tab === "datos" && <Datos me={me} externo={externo} />}
       {tab === "nominas" && !externo && <DocList title="Nóminas" items={nominas} empty="Aún no hay nóminas publicadas." />}
@@ -52,12 +54,15 @@ export default function MiEspacioClient({ me, overview, missingCount, requests =
   );
 }
 
-function Resumen({ me, overview, missingCount, externo = false }) {
+function Resumen({ me, overview, missingCount, externo = false, conVacaciones = true }) {
   const o = overview;
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-        <Stat label="Vacaciones restantes" value={o ? `${o.remaining}` : "—"} sub={o ? `de ${o.allowance} días · ${o.used} usados` : ""} />
+        {/* Quien no gestiona sus ausencias aquí no tiene saldo que mirar. */}
+        {conVacaciones && (
+          <Stat label="Vacaciones restantes" value={o ? `${o.remaining}` : "—"} sub={o ? `de ${o.allowance} días · ${o.used} usados` : ""} />
+        )}
         {/* Días sin fichar y jornada son de la plantilla; un externo ve de qué
             empresa viene, que es lo que le sitúa en el portal. */}
         {externo ? (
@@ -70,6 +75,7 @@ function Resumen({ me, overview, missingCount, externo = false }) {
         )}
       </div>
 
+      {conVacaciones && (
       <div className="rounded-2xl bg-surface/55 p-6">
         <p className="section-eyebrow mb-4">Próximas vacaciones</p>
         {o?.upcoming?.length ? (
@@ -85,10 +91,11 @@ function Resumen({ me, overview, missingCount, externo = false }) {
           <p className="text-small text-mutedSoft">No tienes vacaciones próximas. Pídelas desde el calendario.</p>
         )}
       </div>
+      )}
 
       <div className="grid sm:grid-cols-3 gap-3">
-        <QuickLink href="/calendario" title="Pedir vacaciones" desc="Elige las fechas en el calendario." />
-        <QuickLink href="/fichaje" title="Fichar" desc="Registra tu jornada de hoy." />
+        {conVacaciones && <QuickLink href="/calendario" title="Pedir vacaciones" desc="Elige las fechas en el calendario." />}
+        {!externo && <QuickLink href="/fichaje" title="Fichar" desc="Registra tu jornada de hoy." />}
         <QuickLink href="/calendario" title="Calendario" desc="Vacaciones y festivos del equipo." />
       </div>
     </div>

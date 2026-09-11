@@ -4,6 +4,7 @@ import { getCurrentEmployee } from "@/lib/data/helpers";
 import { getClickUpTasks, getVisibleLists } from "@/lib/data/clickup";
 import { getEmployees } from "@/lib/data/employees";
 import { paletteColor } from "@/lib/client-palette";
+import { hasVacations } from "@/lib/team";
 
 // Tarea de ClickUp → evento del calendario (tipo "tarea", en su fecha límite).
 // `tint` lleva el color del CLIENTE al que pertenece (mismo criterio que el
@@ -50,7 +51,7 @@ export default async function CalendarioPage() {
       events={events.concat(pending).map(withTint)}
       tasks={taskEvents}
       team={(team || []).map((e) => ({ id: e.id, name: e.name, photo: e.photo }))}
-      canRequest={Boolean(me)}
+      canRequest={Boolean(me) && hasVacations(me)}
     />
   );
 }

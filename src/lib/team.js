@@ -17,6 +17,13 @@ export function isExternal(employee) {
 
 export const isTeam = (employee) => !isExternal(employee);
 
+// ¿Gestiona sus vacaciones con nosotros? La plantilla siempre; a un externo se
+// le puede apagar desde su ficha cuando las lleva en su propia empresa. Con
+// esto en false desaparece todo el sistema para esa persona: no puede
+// solicitar, no ve su saldo ni sus ausencias, y no recibe los avisos.
+// Por defecto sí (columna employees.vacations_enabled, default true).
+export const hasVacations = (employee) => employee?.vacations_enabled !== false;
+
 // Empresa a la que pertenece un externo. Si no está rellenada en su ficha, se
 // usa el dominio de su email como pista ("unfiltrade.com" → "Unfiltrade").
 export function companyOf(employee) {
