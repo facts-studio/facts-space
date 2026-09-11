@@ -16,6 +16,7 @@ import { evaluateVacation } from "@/lib/vacation-policy";
 import { Avatar, Badge, Button, Field, Input, Select } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import ClickUpSources from "@/components/admin/ClickUpSources";
+import VerComo from "@/components/admin/VerComo";
 
 const TABS = [
   ["aprobaciones", "Aprobaciones"],
@@ -423,6 +424,7 @@ function Equipo({ employees, vacUsed, year, clickupGroups = [], slackUsers = [],
           )}
         </div>
       </div>
+      {!adding && <VerComo className="mb-4" />}
       {adding && <AddEmployee employees={employees} clickupGroups={clickupGroups} slackUsers={slackUsers} onCancel={() => setAdding(false)} onDone={() => { setAdding(false); onDone?.(); }} />}
 
       <div className="flex items-center bg-surface2/60 rounded-lg p-0.5 w-fit mb-3">

@@ -9,6 +9,8 @@ import TeamPhotos from "@/components/tasks/TeamPhotos";
 import AsistenteDock from "@/components/asistente/AsistenteDock";
 import { AsistenteProvider } from "@/lib/asistente";
 import { getEmployees } from "@/lib/data/employees";
+import PreviewBanner from "@/components/PreviewBanner";
+import { PREVIEW_ROLES } from "@/lib/preview";
 
 const PREVIEW = process.env.NEXT_PUBLIC_AUTH_DISABLED === "true";
 const PREVIEW_USER = {
@@ -30,6 +32,9 @@ export default async function PortalLayout({ children }) {
   const [emp, team] = await Promise.all([getCurrentEmployee(), getEmployees()]);
   // Los colaboradores externos no ven las secciones de plantilla.
   const externo = isExternal(emp);
+  // "Ver como": emp ya viene con los permisos del rol elegido, así que el resto
+  // del layout no se enrera; solo hace falta avisar de que se está dentro.
+  const previewRole = emp?._previewRole ? emp._previewRole : null;
 
   return (
     <AsistenteProvider>
@@ -46,6 +51,11 @@ export default async function PortalLayout({ children }) {
       {/* Aire para la barra inferior en móvil (56px + safe-area); en desktop, el
           padding normal. La cabecera respeta el notch con pt-safe. */}
       <main className="flex-1 min-w-0 px-5 md:px-10 pt-safe md:pt-10 pb-[calc(58px+env(safe-area-inset-bottom)+1.75rem)] md:pb-10">
+        {previewRole && (
+          <div className="-mx-5 md:-mx-10 -mt-safe md:-mt-10 mb-6 md:mb-8">
+            <PreviewBanner label={PREVIEW_ROLES[previewRole].label} />
+          </div>
+        )}
         <ContentWidth>{children}</ContentWidth>
       </main>
 
