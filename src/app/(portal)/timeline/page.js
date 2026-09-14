@@ -42,8 +42,8 @@ export default async function TimelinePage() {
     .map((l) => ({
       id: l.list_id,
       name: l.list_name,
-      // El cronograma pinta el nombre dentro de la barra; el cliente va en el
-      // tooltip, donde hay sitio.
+      // El cliente sale en su etiqueta dentro de la barra; en `status` va para
+      // que el tooltip también lo diga.
       status: l.folder_name ?? "",
       client: l.folder_name ?? null,
       colorKey: colorsByClient[l.folder_name] ?? l.color ?? null,

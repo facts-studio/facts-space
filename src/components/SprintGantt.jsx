@@ -343,7 +343,9 @@ export default function SprintGantt({
                         // se recorte antes de meterse debajo: los dos son
                         // `sticky` y, sin reservarlo, se pisan al hacer scroll.
                         const caras = Math.min((t.assignees ?? []).length, readOnly ? 4 : 1);
-                        const reservado = 24 + (t.meta ? 40 : 0) + (caras ? caras * 18 + 8 : 0);
+                        const tag = readOnly ? t.client : null;
+                        const reservado =
+                          24 + (t.meta ? 40 : 0) + (caras ? caras * 18 + 8 : 0) + (tag ? tag.length * 6.2 + 18 : 0);
                         return (
                           <Bar
                             as={readOnly && t.href ? "a" : "button"}
@@ -365,11 +367,25 @@ export default function SprintGantt({
                             )}
                             style={{ left: x(ini), width: w, ...barStyle(t, colorDe(t), colorPorFila).style }}
                           >
+                            {/* Etiqueta de cliente: el color ya lo agrupa, pero
+                                con seis clientes en pantalla hay que poder
+                                nombrarlo sin ir al tooltip. */}
+                            {tag && (
+                              <span
+                                className="sticky left-3 shrink-0 inline-flex items-center h-5 px-1.5 rounded-md text-[10.5px] font-medium leading-none whitespace-nowrap"
+                                style={{ background: `${colorDe(t).fg}1f`, color: colorDe(t).fg }}
+                              >
+                                {tag}
+                              </span>
+                            )}
                             {/* Sticky: mientras la barra siga en pantalla, el
                                 nombre se queda a la vista aunque su inicio haya
                                 quedado atrás con el scroll. */}
                             <span
-                              className="sticky left-3 text-[12px] leading-none font-medium whitespace-nowrap overflow-hidden text-ellipsis"
+                              className={cn(
+                                "text-[12px] leading-none font-medium whitespace-nowrap overflow-hidden text-ellipsis",
+                                tag ? "shrink" : "sticky left-3"
+                              )}
                               style={{ color: barStyle(t, colorDe(t), colorPorFila).text, maxWidth: Math.max(24, w - reservado) }}
                             >
                               {t.name}
