@@ -75,11 +75,11 @@ export default function TimelineClient({ proyectos = [], sinFecha = [], sprint, 
       readOnly
       back={back}
       now={now}
+      titleExtra={puedeCompartir && !publico ? <CompartirTimeline /> : null}
       controls={
         // En la vista pública ya son todos de Adhōc: no hay nada que filtrar.
         publico ? null : (
           <span className="flex items-center gap-1 shrink-0">
-            {puedeCompartir && <CompartirTimeline />}
             <Switch
               checked={soloEstudio}
               onChange={setSoloEstudio}

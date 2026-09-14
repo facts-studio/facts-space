@@ -16,6 +16,14 @@ const addDays = (ts, n) => { const d = new Date(ts); d.setDate(d.getDate() + n);
 const isWeekend = (ts) => [0, 6].includes(new Date(ts).getDay());
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 const dm = (ts) => `${new Date(ts).getDate()} ${MESES[new Date(ts).getMonth()]}`;
+// Un rango que cambia de año necesita decirlo: "19 jun – 29 ene" se lee como si
+// fuera hacia atrás.
+const rangoTexto = (a, b) => {
+  const ma = new Date(a).getFullYear();
+  const mb = new Date(b).getFullYear();
+  const yy = (ts) => ` ${String(new Date(ts).getFullYear()).slice(2)}`;
+  return ma === mb ? `${dm(a)} – ${dm(b)}` : `${dm(a)}${yy(a)} – ${dm(b)}${yy(b)}`;
+};
 
 // Ancho de un día en píxeles por nivel de zoom. Es lo único que cambia entre
 // vistas: el resto del dibujo se deriva de aquí.
@@ -155,6 +163,7 @@ export default function SprintGantt({
   readOnly = false,
   footer = null,
   controls = null,
+  titleExtra = null,
   now = null,
 }) {
   // Cambios de estado hechos aquí: se pintan al momento y se revierten si la
@@ -257,8 +266,9 @@ export default function SprintGantt({
             </span>
           )}
           {sprint.start && sprint.due && (
-            <span className="hidden lg:block text-micro text-mutedSoft shrink-0">{dm(sprint.start)} – {dm(sprint.due)}</span>
+            <span className="hidden lg:block text-micro text-mutedSoft shrink-0">{rangoTexto(sprint.start, sprint.due)}</span>
           )}
+          {titleExtra}
         </div>
 
         <div className="flex items-center gap-4 ml-auto">
@@ -277,7 +287,9 @@ export default function SprintGantt({
           <button
             type="button"
             onClick={() => { const el = scroller.current; if (el && range) el.scrollTo({ left: Math.max(0, x(hoy) - el.clientWidth / 3), behavior: "smooth" }); }}
-            className="h-8 px-2.5 rounded-lg text-[12.5px] text-muted hover:text-ink hover:bg-surface2/70 transition"
+            // Con caja en reposo: es una acción, no una etiqueta, y sin
+            // contorno pasaba por texto suelto hasta que el ratón lo cruzaba.
+            className="h-8 px-2.5 rounded-lg border border-border bg-surface2/40 text-[12.5px] text-muted hover:text-ink hover:bg-surface2/80 hover:border-borderStrong transition"
           >
             Hoy
           </button>
