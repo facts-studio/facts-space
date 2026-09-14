@@ -80,9 +80,11 @@ function rangeOf(sprint, tasks) {
   return { from, to, days };
 }
 
-// `colorOf` y `hrefOf` permiten reutilizar este mismo cronograma para el
+// `colorPorFila` y `readOnly` permiten reutilizar este mismo cronograma para el
 // timeline global de proyectos: allí cada fila es un proyecto, con el color de
-// su cliente y un enlace a su tablero, en vez de una tarea con estado editable.
+// su cliente (`t.client` / `t.colorKey`) y un enlace a su tablero (`t.href`),
+// en vez de una tarea con estado editable. Va por datos y no por funciones:
+// una página de servidor no puede pasarle callbacks a un componente cliente.
 export default function SprintGantt({
   sprint,
   tasks = [],
@@ -90,8 +92,7 @@ export default function SprintGantt({
   isAdmin = false,
   myEmail = null,
   back = null,
-  colorOf = null,
-  hrefOf = null,
+  colorPorFila = false,
   readOnly = false,
 }) {
   // Cambios de estado hechos aquí: se pintan al momento y se revierten si la
@@ -169,6 +170,9 @@ export default function SprintGantt({
 
   const hechas = tasks.map(conEstado).filter(cerrada).length;
   const col = paletteColor(sprint.client || sprint.name, sprint.colorKey);
+  // En un sprint todas las barras comparten el color del proyecto; en el
+  // timeline global cada fila es un proyecto y lleva el de su cliente.
+  const colorDe = (t) => (colorPorFila ? paletteColor(t.client || t.name, t.colorKey) : col);
 
   return (
     // Alto de la ventana menos el aire del layout: el scroll vive dentro.
@@ -324,8 +328,8 @@ export default function SprintGantt({
                         const w = Math.max(x(fin) - x(ini) + px, 64);
                         return (
                           <Bar
-                            as={readOnly && hrefOf ? "a" : "button"}
-                            href={readOnly && hrefOf ? hrefOf(t) : undefined}
+                            as={readOnly && t.href ? "a" : "button"}
+                            href={readOnly && t.href ? t.href : undefined}
                             onClick={readOnly ? undefined : (ev) => {
                               const r = ev.currentTarget.getBoundingClientRect();
                               setTip(null);
@@ -340,14 +344,14 @@ export default function SprintGantt({
                               "absolute top-1/2 -translate-y-1/2 h-7 rounded-full border flex items-center pl-3 pr-1 transition hover:brightness-[0.97]",
                               vencida && "ring-1 ring-danger/70"
                             )}
-                            style={{ left: x(ini), width: w, ...barStyle(t, colorOf ? colorOf(t) : col).style }}
+                            style={{ left: x(ini), width: w, ...barStyle(t, colorDe(t)).style }}
                           >
                             {/* Sticky: mientras la barra siga en pantalla, el
                                 nombre se queda a la vista aunque su inicio haya
                                 quedado atrás con el scroll. */}
                             <span
                               className="sticky left-3 text-[12px] leading-none font-medium whitespace-nowrap overflow-hidden text-ellipsis"
-                              style={{ color: barStyle(t, colorOf ? colorOf(t) : col).text, maxWidth: w - 44 }}
+                              style={{ color: barStyle(t, colorDe(t)).text, maxWidth: w - 44 }}
                             >
                               {t.name}
                             </span>

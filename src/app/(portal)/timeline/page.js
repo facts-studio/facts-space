@@ -4,7 +4,6 @@ import SinAcceso from "@/components/SinAcceso";
 import { getVisibleLists } from "@/lib/data/clickup";
 import { getCurrentEmployee } from "@/lib/data/helpers";
 import { isColaborador } from "@/lib/team";
-import { paletteColor } from "@/lib/client-palette";
 
 // Timeline global: todos los proyectos con fechas sobre la misma línea de
 // tiempo. Usa el cronograma de sprint tal cual —misma escala, mismos zooms,
@@ -36,6 +35,7 @@ export default async function TimelinePage() {
       status: l.folder_name ?? "",
       client: l.folder_name ?? null,
       colorKey: colorsByClient[l.folder_name] ?? l.color ?? null,
+      href: `/sprint/${l.list_id}`,
       startDate: new Date(l.list_start).getTime(),
       dueDate: new Date(l.list_due).getTime(),
       assignees: [],
@@ -52,8 +52,7 @@ export default async function TimelinePage() {
       sprint={{ id: "timeline", name: "Timeline de proyectos", client: null, start, due }}
       tasks={proyectos}
       readOnly
-      colorOf={(p) => paletteColor(p.client || p.name, p.colorKey)}
-      hrefOf={(p) => `/sprint/${p.id}`}
+      colorPorFila
       back={<Link href="/" className="text-small text-muted hover:text-ink transition">← Inicio</Link>}
     />
   );
