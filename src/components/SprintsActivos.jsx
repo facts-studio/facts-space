@@ -85,7 +85,16 @@ function SprintCard({ s, soloSprint = false }) {
   return (
     // Lleva a Tareas ya filtrado por este sprint (?sprint=… lo resuelve
     // tareas-client contra las tareas para componer su clave interna).
-    <Surface variant="muted" pad="sm" hover className="relative flex flex-col gap-2.5">
+    // Un sprint cerrado sigue en la lista mientras le queden tareas abiertas,
+    // pero cambia de tono para que los vivos destaquen. Va por variante y no
+    // por clase suelta: cn() no resuelve conflictos de Tailwind, así que dos
+    // bg-* juntos los decidiría el orden de la hoja de estilos, no el del JSX.
+    <Surface
+      variant={finalizado(s) ? "soft" : "muted"}
+      pad="sm"
+      hover
+      className="relative flex flex-col gap-2.5"
+    >
       {/* El enlace es una capa que cubre la tarjeta: así los botones de arriba
           no quedan anidados dentro de un <a> (HTML inválido) y siguen pulsables.
           Los sprints tienen agrupación propia en Tareas; los proyectos
