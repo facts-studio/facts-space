@@ -31,7 +31,15 @@ export async function syncClickUpLists() {
       visible: known.has(r.list_id) ? known.get(r.list_id) : (r.list_name || "").trim().toLowerCase() === "tareas",
       synced_at: new Date().toISOString(),
     }));
-    const { error } = await supabase.from("clickup_lists").upsert(payload, { onConflict: "list_id" });
+    let { error } = await supabase.from("clickup_lists").upsert(payload, { onConflict: "list_id" });
+    // list_priority llega con la migración 0036. Mientras no esté aplicada, la
+    // columna no existe y PostgREST rechaza el lote entero: se reintenta sin
+    // ella para que el resto (descripciones, fechas, jerarquía) sí se
+    // actualice. En cuanto la migración corra, esto deja de hacer falta solo.
+    if (error && /list_priority/.test(error.message)) {
+      const sinPrioridad = payload.map(({ list_priority, ...resto }) => resto);
+      ({ error } = await supabase.from("clickup_lists").upsert(sinPrioridad, { onConflict: "list_id" }));
+    }
     if (error) return { ok: false, error: error.message };
     // Limpia listas que ya no existen en ClickUp (evita columnas fantasma).
     const currentSet = new Set(rows.map((r) => r.list_id));

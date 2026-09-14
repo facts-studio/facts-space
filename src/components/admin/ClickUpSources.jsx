@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { Surface, Button, EmptyState } from "@/components/ui";
+import { Surface, Button, EmptyState, Badge } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import { isFactsSpace, isFactsProject, parseProjectMeta, phaseOf } from "@/lib/projects";
 import { syncClickUpLists, setListsAccess, setFolderCampaign, setFolderIcon, setFolderColor, setListSprint } from "@/lib/actions/clickup";
 import { clientIcon } from "@/lib/client-icons";
 import { CLIENT_COLORS, paletteColor } from "@/lib/client-palette";
@@ -37,6 +38,29 @@ const LockIcon = ({ size = 11 }) => (
 
 // Estados de acceso de una lista, con su glifo. Se pintan igual en la píldora y
 // en el menú, para que uno explique al otro.
+// Quién ve un proyecto del estudio: lo dicta su cabecera en ClickUp, así que
+// aquí solo se informa. Sin nadie nombrado, solo lo ven los admins.
+function Adjudicado({ list }) {
+  const { colaboradores } = parseProjectMeta(list.list_content);
+  const proyecto = isFactsProject(list);
+  const fase = phaseOf(list);
+  return (
+    <span className="shrink-0 flex items-center gap-1.5">
+      {fase && <Badge kind={fase.badge}>{fase.estado}</Badge>}
+      <span
+        className="text-micro text-mutedSoft"
+        title={
+          proyecto
+            ? "Quién lo ve se declara en ClickUp, en la línea [colaborador: …] de la descripción"
+            : "La lista General de un cliente no es un proyecto: no se puede adjudicar"
+        }
+      >
+        {colaboradores.length ? colaboradores.join(", ") : "Solo admins"}
+      </span>
+    </span>
+  );
+}
+
 const ACCESS = [
   { key: "all",   label: "Visible para todos" },
   { key: "admin", label: "Solo admin" },
@@ -483,14 +507,22 @@ export default function ClickUpSources({ lists }) {
                                 {l.list_name}
                                 {isSprint(l.list_id) && <span className="ml-1.5 text-brandMid text-[10px]" title="Sprint">✦</span>}
                               </span>
-                              <ListMenu
-                                showState
-                                name={l.list_name}
-                                access={accessOf(l.list_id)}
-                                onAccess={(a) => setAccess([l.list_id], a)}
-                                sprint={isSprint(l.list_id)}
-                                onToggleSprint={isClient ? () => toggleSprint(l.list_id) : null}
-                              />
+                              {/* El área del estudio no se abre ni se cierra a
+                                  mano: la ven los admins y quien esté nombrado
+                                  como colaborador en ClickUp. Enseñar aquí un
+                                  selector que no manda sería mentir. */}
+                              {isFactsSpace(l) ? (
+                                <Adjudicado list={l} />
+                              ) : (
+                                <ListMenu
+                                  showState
+                                  name={l.list_name}
+                                  access={accessOf(l.list_id)}
+                                  onAccess={(a) => setAccess([l.list_id], a)}
+                                  sprint={isSprint(l.list_id)}
+                                  onToggleSprint={isClient ? () => toggleSprint(l.list_id) : null}
+                                />
+                              )}
                             </li>
                           ))}
                         </ul>
