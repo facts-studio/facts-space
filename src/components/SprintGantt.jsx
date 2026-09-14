@@ -46,8 +46,11 @@ function barStyle(t, col, suave = false) {
   // semáforo —el terracota compite con el rojo de "vencido" y el crema, cuyo
   // tono fuerte es el negro de marca, sale como una barra negra.
   if (suave) {
+    // Filete del tono fuerte: sin él, un relleno claro como el crema de Demà
+    // (#E9E7E1) queda a seis puntos de gris del fondo del portal y la barra
+    // desaparece. Con el borde, cualquier color se recorta.
     return {
-      style: { background: col.bg, borderColor: "transparent", opacity: cerrada(t) ? 0.55 : 1 },
+      style: { background: col.bg, borderColor: `${col.fg}33`, opacity: cerrada(t) ? 0.55 : 1 },
       text: col.fg,
     };
   }
