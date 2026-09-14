@@ -35,7 +35,14 @@ const COLOR_FASE = {
 };
 const COLOR_UNFILTRADE = { bg: v("infoSoft"), fg: v("info"), border: v("info", 0.22), tagBg: v("info", 0.12) };
 
+// Dos situaciones mandan sobre el área y sobre la fase, porque son las que
+// piden mirar: está todo hecho, o la fecha quedó atrás con trabajo vivo dentro.
+const COLOR_COMPLETADO = { bg: v("successSoft"), fg: v("success"), border: v("success", 0.24), tagBg: v("success", 0.12) };
+const COLOR_RETRASO = { bg: v("warnSoft"), fg: v("warn"), border: v("warn", 0.3), tagBg: v("warn", 0.14) };
+
 function colorDe(p) {
+  if (p.completado) return COLOR_COMPLETADO;
+  if (p.fueraDePlazo) return COLOR_RETRASO;
   if (!p.esDelEstudio) return COLOR_UNFILTRADE;
   return COLOR_FASE[p.phase?.key] ?? COLOR_FASE.propuesta;
 }

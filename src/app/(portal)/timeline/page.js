@@ -56,8 +56,13 @@ export default async function TimelinePage() {
       const acc = porLista.get(String(l.list_id));
       return acc?.total ? `${acc.hechas}/${acc.total}` : null;
     })(),
-    // Pasado de fecha y CON trabajo vivo dentro. Terminar a tiempo y terminar
-    // tarde se distinguen; haber acabado todo y que la fecha quede atrás, no
+    // Todo el trabajo cerrado: da igual de quién sea el proyecto.
+    completado: (() => {
+      const acc = porLista.get(String(l.list_id));
+      return Boolean(acc && acc.total > 0 && acc.hechas === acc.total);
+    })(),
+    // Pasado de fecha y CON trabajo vivo dentro. Terminar tarde y terminar a
+    // tiempo se distinguen; haber acabado todo y que la fecha quede atrás no
     // es ningún problema.
     fueraDePlazo: (() => {
       const acc = porLista.get(String(l.list_id));

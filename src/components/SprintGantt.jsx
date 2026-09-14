@@ -399,7 +399,11 @@ export default function SprintGantt({
                         const caras = Math.min((t.assignees ?? []).length, readOnly ? 4 : 1);
                         const tag = readOnly ? t.client : null;
                         const reservado =
-                          28 + (t.meta ? 44 : 0) + (caras ? (caras - 1) * 14 + 20 + 8 : 0) + (tag ? tag.length * 6.2 + 20 : 0);
+                          28 +
+                          (t.meta ? 44 : 0) +
+                          (caras ? (caras - 1) * 14 + 20 + 8 : 0) +
+                          (tag ? tag.length * 6.2 + 20 : 0) +
+                          (t.completado ? 22 : 0);
                         return (
                           <Bar
                             as={readOnly && t.href ? "a" : "button"}
@@ -417,7 +421,7 @@ export default function SprintGantt({
                             className={cn(
                               "absolute top-1/2 -translate-y-1/2 border flex items-center pl-3 pr-1 transition hover:brightness-[0.97]",
                               readOnly ? "h-9 rounded-xl pr-2 gap-2" : "h-7 rounded-full",
-                              vencida && "ring-1 ring-danger/70"
+                              !readOnly && vencida && "ring-1 ring-danger/70"
                             )}
                             style={{ left: x(ini), width: w, ...barStyle(t, colorDe(t), readOnly).style }}
                           >
@@ -428,6 +432,21 @@ export default function SprintGantt({
                                 al hacer scroll sobre una barra larga. */}
                             {readOnly ? (
                               <span className="sticky left-3 flex items-center gap-2 min-w-0">
+                                {t.completado && (
+                                  <svg
+                                    viewBox="0 0 24 24"
+                                    className="shrink-0 h-3.5 w-3.5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2.6"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    aria-label="Completado"
+                                  >
+                                    <title>Completado</title>
+                                    <path d="M20 6 9 17l-5-5" />
+                                  </svg>
+                                )}
                                 {tag && (
                                   <span
                                     className="shrink-0 inline-flex items-center h-5 px-1.5 rounded-md text-[10.5px] font-medium leading-none whitespace-nowrap"
