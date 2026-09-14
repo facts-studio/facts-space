@@ -33,7 +33,9 @@ const COLOR_FASE = {
     bg: v("surface2", 0.45),
     fg: v("muted"),
     border: v("ink", 0.08),
-    stripe: v("mutedSoft", 0.28),
+    // Las rayas solo tienen que insinuar "parado": por encima de esto
+    // compiten con el texto que llevan encima.
+    stripe: v("mutedSoft", 0.17),
     tagBg: v("ink", 0.06),
   },
 };
