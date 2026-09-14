@@ -8,6 +8,7 @@ import { useMemo, useState } from "react";
 import SprintGantt from "@/components/SprintGantt";
 import SinFechas from "@/components/tasks/SinFechas";
 import { Switch } from "@/components/ui";
+import CompartirTimeline from "@/components/tasks/CompartirTimeline";
 
 // El timeline NO se pinta por cliente: con doce proyectos a la vez, seis
 // colores de marca convierten la pantalla en un semáforo y el color deja de
@@ -50,7 +51,7 @@ function colorDe(p) {
   return COLOR_FASE[p.phase?.key] ?? COLOR_FASE.propuesta;
 }
 
-export default function TimelineClient({ proyectos = [], sinFecha = [], sprint, back }) {
+export default function TimelineClient({ proyectos = [], sinFecha = [], sprint, back, publico = false, puedeCompartir = false, now = null }) {
   const [soloEstudio, setSoloEstudio] = useState(false);
   const filtrar = (lista) =>
     (soloEstudio ? lista.filter((p) => p.esDelEstudio) : lista).map((p) => ({ ...p, color: colorDe(p) }));
@@ -73,13 +74,20 @@ export default function TimelineClient({ proyectos = [], sinFecha = [], sprint, 
       tasks={filas}
       readOnly
       back={back}
+      now={now}
       controls={
-        <Switch
-          checked={soloEstudio}
-          onChange={setSoloEstudio}
-          label="Adhōc"
-          className="text-[12.5px] text-muted shrink-0"
-        />
+        // En la vista pública ya son todos de Adhōc: no hay nada que filtrar.
+        publico ? null : (
+          <span className="flex items-center gap-1 shrink-0">
+            {puedeCompartir && <CompartirTimeline />}
+            <Switch
+              checked={soloEstudio}
+              onChange={setSoloEstudio}
+              label="Adhōc"
+              className="text-[12.5px] text-muted shrink-0"
+            />
+          </span>
+        )
       }
       footer={<SinFechas items={pie} />}
     />

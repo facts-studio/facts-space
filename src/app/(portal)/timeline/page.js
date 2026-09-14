@@ -4,7 +4,8 @@ import SinAcceso from "@/components/SinAcceso";
 import { getVisibleLists, getClickUpTasks, flattenTasks } from "@/lib/data/clickup";
 import { getCurrentEmployee } from "@/lib/data/helpers";
 import { isColaborador } from "@/lib/team";
-import { phaseOf, isFactsSpace, isFactsProject } from "@/lib/projects";
+import { phaseOf, isFactsSpace, isFactsProject, parseProjectMeta, identitiesOf, normalizeName } from "@/lib/projects";
+import { getEmployees } from "@/lib/data/employees";
 import { madridDateISO } from "@/lib/dates";
 
 // Timeline global: todos los proyectos con fechas sobre la misma línea de
@@ -21,12 +22,22 @@ export default async function TimelinePage() {
     );
   }
 
-  const [lists, tasks] = await Promise.all([getVisibleLists(), getClickUpTasks()]);
+  const [lists, tasks, team] = await Promise.all([getVisibleLists(), getClickUpTasks(), getEmployees()]);
   // Una sola lectura del reloj, y del día de Madrid: en el render sería impuro.
   const ahora = new Date(`${madridDateISO()}T00:00:00`).getTime();
 
-  // Quién trabaja cada proyecto y cuánto lleva: sale de sus propias tareas, no
-  // hay que declararlo en ninguna parte.
+  // Quién lleva un proyecto de Adhōc lo dice su cabecera [colaborador: …]; en
+  // el trabajo con Unfiltrade no hay tal cosa y se deduce de quién tiene
+  // tareas. Se resuelve contra la plantilla para poder poner cara al nombre.
+  const porNombre = new Map();
+  for (const e of team) for (const id of identitiesOf(e, e.clickup_group_name)) porNombre.set(id, e);
+  const colaboradoresDe = (l) =>
+    parseProjectMeta(l.list_content)
+      .colaboradores.map((c) => porNombre.get(normalizeName(c)))
+      .filter(Boolean)
+      .map((e) => ({ email: e.email, name: e.name, initials: (e.name || "?")[0] }));
+
+  // Cuánto lleva hecho cada proyecto, y quién tiene tareas dentro.
   const porLista = new Map();
   for (const t of flattenTasks(tasks)) {
     const k = String(t.listId);
@@ -50,7 +61,12 @@ export default async function TimelinePage() {
     href: `/sprint/${l.list_id}`,
     startDate: new Date(l.list_start).getTime(),
     dueDate: new Date(l.list_due).getTime(),
-    assignees: [...(porLista.get(String(l.list_id))?.gente.values() ?? [])],
+    // La cabecera manda; las tareas completan cuando no hay nadie declarado.
+    assignees: (() => {
+      const declarados = colaboradoresDe(l);
+      if (declarados.length) return declarados;
+      return [...(porLista.get(String(l.list_id))?.gente.values() ?? [])];
+    })(),
     // Avance del proyecto, dentro de la propia barra.
     meta: (() => {
       const acc = porLista.get(String(l.list_id));
@@ -100,6 +116,7 @@ export default async function TimelinePage() {
     <TimelineClient
       proyectos={proyectos}
       sinFecha={sinFecha}
+      puedeCompartir={Boolean(me?.is_admin)}
       sprint={{ id: "timeline", name: "Timeline de proyectos", client: null, start, due }}
       back={<Link href="/" className="text-small text-muted hover:text-ink transition">← Inicio</Link>}
     />

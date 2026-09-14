@@ -154,6 +154,7 @@ export default function SprintGantt({
   readOnly = false,
   footer = null,
   controls = null,
+  now = null,
 }) {
   // Cambios de estado hechos aquí: se pintan al momento y se revierten si la
   // llamada a ClickUp falla.
@@ -180,8 +181,9 @@ export default function SprintGantt({
       });
     }
   };
-  // Una sola lectura del reloj por render.
-  const hoy = useMemo(() => startOfDay(new Date().getTime()), []);
+  // Una sola lectura del reloj por render. En una vista servida sin sesión el
+  // "hoy" llega del servidor, para que no dependa del reloj de quien mira.
+  const hoy = useMemo(() => startOfDay(now ?? new Date().getTime()), [now]);
   const people = useMemo(() => {
     const m = new Map();
     for (const t of tasks) for (const a of t.assignees ?? []) if (a.name) m.set(a.name, a);
