@@ -74,8 +74,15 @@ const norm = normalizeName;
 export function isFactsSpace(list) {
   return String(list?.space_id ?? "") === FACTS_SPACE_ID || (list?.space_name ?? "").trim() === FACTS_SPACE_NAME;
 }
+// Sin bandera de prioridad no es un proyecto, es la "General" del cliente.
+// Pero hay un tercer caso: que la prioridad todavía no se esté sincronizando
+// (columna list_priority, migración 0036). Se distingue `null` —ClickUp dice
+// que no hay bandera— de `undefined` —no lo hemos preguntado—, y en ese caso
+// se cae a la cabecera: un proyecto siempre trae [estado: …].
 export function isFactsProject(list) {
-  return isFactsSpace(list) && Boolean(list?.list_priority);
+  if (!isFactsSpace(list)) return false;
+  if (list.list_priority !== undefined) return Boolean(list.list_priority);
+  return Boolean(parseProjectMeta(list.list_content).estado);
 }
 
 // Lee la cabecera de la descripción. Devuelve siempre la misma forma, para que
@@ -106,6 +113,8 @@ export function parseProjectMeta(content) {
 export function phaseOf(list) {
   if (!isFactsProject(list)) return null;
   const { estado } = parseProjectMeta(list.list_content);
+  // El estado exacto manda porque distingue lo que la prioridad agrupa (En
+  // curso de Revisión, Entregado de Cerrado); la prioridad es el respaldo.
   const grupo = ESTADO_GRUPO[norm(estado)] ?? PRIORIDAD_GRUPO[norm(list.list_priority)] ?? "parado";
   return { key: grupo, ...PHASES[grupo], estado: estado || PHASES[grupo].label };
 }
