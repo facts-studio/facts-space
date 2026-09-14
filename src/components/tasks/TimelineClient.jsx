@@ -16,6 +16,9 @@ import { Switch } from "@/components/ui";
 //
 // El trabajo con Unfiltrade va aparte, todo del mismo color: no es un proyecto
 // del estudio con sus fases, es otra cosa, y así se distingue de un golpe.
+//
+// El space "F*cts Studio" de ClickUp son los clientes de Adhōc; por eso el
+// filtro se llama así y no por el nombre del space.
 const v = (token, alfa = 1) => `rgb(var(--ct-${token}) / ${alfa})`;
 
 const COLOR_FASE = {
@@ -64,7 +67,7 @@ export default function TimelineClient({ proyectos = [], sinFecha = [], sprint, 
         <Switch
           checked={soloEstudio}
           onChange={setSoloEstudio}
-          label="Solo F*cts"
+          label="Adhōc"
           className="text-[12.5px] text-muted shrink-0"
         />
       }
