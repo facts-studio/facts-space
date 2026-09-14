@@ -167,8 +167,11 @@ function SprintCard({ s, soloSprint = false }) {
           )}
         </span>
         <div className="flex items-center gap-1.5 shrink-0">
+          {/* Fase del proyecto (solo los del estudio): la dice ClickUp con la
+              prioridad de la lista y el [estado: …] de su descripción. */}
+          {s.phase && <Badge kind={s.phase.badge}>{s.phase.estado}</Badge>}
           {completado(s) && <Badge kind="success">Completado</Badge>}
-          {fueraDePlazo(s) && <Badge kind="pending">Fuera de plazo</Badge>}
+          {fueraDePlazo(s) && !s.phase && <Badge kind="pending">Fuera de plazo</Badge>}
           {s.client && <Badge kind="neutral">{s.client}</Badge>}
           {fechas && <Badge kind="neutral">{fechas}</Badge>}
         </div>

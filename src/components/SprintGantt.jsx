@@ -48,6 +48,14 @@ function Cara({ a, readOnly = false }) {
   );
 }
 
+// Punto de fase en el timeline (el texto completo va en el tooltip).
+const FASE_PUNTO = {
+  activo: "bg-success",
+  aprobado: "bg-info",
+  propuesta: "bg-warn",
+  parado: "bg-mutedSoft",
+};
+
 const norm = (v) => (v || "").toLowerCase().trim();
 const TODOS = "__todos__"; // "sin filtro" con un valor propio, no ""
 const cerrada = (t) => ["done", "closed"].includes(t.statusType);
@@ -68,7 +76,14 @@ function barStyle(t, col, suave = false) {
     // (#E9E7E1) queda a seis puntos de gris del fondo del portal y la barra
     // desaparece. Con el borde, cualquier color se recorta.
     return {
-      style: { background: col.bg, borderColor: `${col.fg}33`, opacity: cerrada(t) ? 0.55 : 1 },
+      style: {
+        background: col.bg,
+        borderColor: `${col.fg}33`,
+        // Lo cerrado y lo que no está en marcha (propuesta, lead, bloqueado)
+        // pasan a segundo plano: ocupan sitio en el calendario, pero no son
+        // trabajo vivo.
+        opacity: cerrada(t) || t.apagado ? 0.55 : 1,
+      },
       text: col.fg,
     };
   }
@@ -402,6 +417,17 @@ export default function SprintGantt({
                                   >
                                     {tag}
                                   </span>
+                                )}
+                                {/* Fase del proyecto: un punto basta, el estado
+                                    entero va en el tooltip. */}
+                                {t.phase && (
+                                  <span
+                                    title={t.phase.estado}
+                                    className={cn(
+                                      "shrink-0 h-1.5 w-1.5 rounded-full",
+                                      FASE_PUNTO[t.phase.key] ?? "bg-mutedSoft"
+                                    )}
+                                  />
                                 )}
                                 {(t.assignees ?? []).length > 0 && (
                                   <span className="shrink-0 flex items-center">

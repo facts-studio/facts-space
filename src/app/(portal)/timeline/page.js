@@ -4,6 +4,8 @@ import SinAcceso from "@/components/SinAcceso";
 import { getVisibleLists, getClickUpTasks, flattenTasks } from "@/lib/data/clickup";
 import { getCurrentEmployee } from "@/lib/data/helpers";
 import { isColaborador } from "@/lib/team";
+import { paletteColor } from "@/lib/client-palette";
+import { phaseOf } from "@/lib/projects";
 
 // Timeline global: todos los proyectos con fechas sobre la misma línea de
 // tiempo. Usa el cronograma de sprint tal cual —misma escala, mismos zooms,
@@ -42,9 +44,9 @@ export default async function TimelinePage() {
     .map((l) => ({
       id: l.list_id,
       name: l.list_name,
-      // El cliente sale en su etiqueta dentro de la barra; en `status` va para
-      // que el tooltip también lo diga.
-      status: l.folder_name ?? "",
+      // El tooltip dice cliente y estado; la barra ya enseña el cliente.
+      status: [l.folder_name, phaseOf(l)?.estado].filter(Boolean).join(" · "),
+      phase: phaseOf(l),
       client: l.folder_name ?? null,
       colorKey: colorsByClient[l.folder_name] ?? l.color ?? null,
       href: `/sprint/${l.list_id}`,
@@ -56,6 +58,9 @@ export default async function TimelinePage() {
         const acc = porLista.get(String(l.list_id));
         return acc?.total ? `${acc.hechas}/${acc.total}` : null;
       })(),
+      // Lo que no está vivo se atenúa: una propuesta o un lead ocupan sitio en
+      // el calendario pero no son trabajo en marcha.
+      apagado: Boolean(phaseOf(l) && phaseOf(l).key !== "activo"),
     }))
     // Fechas a cero (epoch) son basura de ClickUp, no un proyecto de 1970.
     .filter((p) => p.startDate > 0 && p.dueDate >= p.startDate)

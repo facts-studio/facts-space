@@ -2,6 +2,14 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { isConfigured, getCurrentEmployee } from "./helpers";
 import { isColaborador } from "@/lib/team";
+import {
+  isFactsSpace,
+  isFactsProject,
+  listNamesCollaborator,
+  parseProjectMeta,
+  phaseOf,
+  identitiesOf,
+} from "@/lib/projects";
 import { TEAM } from "@/lib/mock";
 
 const stripAccents = (s) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
@@ -291,56 +299,53 @@ export function filterVisibleLists(lists, isAdmin) {
   );
 }
 
-// ── Qué proyectos ve un colaborador ─────────────────────────────────────────
-// Internos y externos ven todo lo visible. Un colaborador, no: entra por los
-// proyectos que se le adjudican, y la adjudicación se declara en ClickUp.
+// ── Quién ve cada lista ─────────────────────────────────────────────────────
+// Dos reglas distintas según el área, porque son dos trabajos distintos:
 //
-//   Rama Unfiltrade → nunca. Es el trabajo del equipo con el cliente-holding.
-//   Rama F*cts Studio → solo si está mencionado en la descripción del sprint.
+//   Space "F*cts Studio" → clientes propios del estudio. NO se gestiona a mano:
+//     lo ven los admins y quien esté nombrado en la cabecera [colaborador: …]
+//     de la descripción del proyecto. Los flags visible/admin_only del panel no
+//     pintan nada aquí, porque el reparto ya lo declara Bitácora en ClickUp.
 //
-// El identificador se busca como "@algo" en el texto de la lista y se compara
-// con el nombre de la persona, su grupo de ClickUp o la parte local de su
-// email, para que valga "@gabri" tanto si se llama Gabriel como Gabri.
-export const COLAB_BRANCH = "F*cts Studio";
-
-export function mentionsIn(text) {
-  return new Set((String(text || "").match(/@[\p{L}\p{N}._-]+/gu) ?? []).map((m) => m.slice(1).toLowerCase()));
+//   Resto de spaces (Unfiltrade…) → el trabajo con el cliente-holding, que se
+//     sigue abriendo o cerrando a mano desde Administrar → ClickUp.
+export function listVisibleFor(list, employee, identidades = []) {
+  if (isFactsSpace(list)) {
+    if (employee?.is_admin) return true;
+    // La "General" de un cliente no es un proyecto y no se puede adjudicar, así
+    // que no hay a quién enseñársela.
+    return isFactsProject(list) && listNamesCollaborator(list, identidades);
+  }
+  // Un colaborador entra solo por los proyectos del estudio que se le
+  // adjudican: el trabajo del equipo con Unfiltrade no es suyo.
+  return !isColaborador(employee);
 }
 
-export function mentionAliases(employee) {
+// Identidades con las que se reconoce a alguien en la cabecera de un proyecto:
+// el nombre de su perfil de ClickUp (el que se vincula en su ficha) y el suyo.
+export async function identitiesFor(employee) {
   if (!employee) return [];
-  const local = (employee.email || "").split("@")[0].toLowerCase();
-  return [
-    employee.name,
-    employee.clickup_group_name,
-    local,
-    local.split(".")[0], // "gabriel.florencio" → "gabriel"
-    (employee.name || "").split(" ")[0],
-  ]
-    .filter(Boolean)
-    .map((v) => String(v).trim().toLowerCase());
-}
-
-export function listAllowsColaborador(list, employee) {
-  if ((list.space_name || "").trim() !== COLAB_BRANCH) return false;
-  const menciones = mentionsIn(list.list_content);
-  // Sin nadie mencionado, el proyecto es de la casa y lo ven todos: así la
-  // rama entera sigue a la vista mientras no se empiece a repartir. En cuanto
-  // una descripción menciona a alguien, ese proyecto es solo de quien nombra.
-  if (!menciones.size) return true;
-  return mentionAliases(employee).some((alias) => menciones.has(alias));
+  let grupo = null;
+  if (employee.clickup_group_id) {
+    const groups = await getClickUpGroups();
+    grupo = groups.find((g) => String(g.id) === String(employee.clickup_group_id))?.name ?? null;
+  }
+  return identitiesOf(employee, grupo);
 }
 
 // Listas que puede ver QUIEN está mirando. Es lo que deben usar las pantallas;
 // getConfiguredLists() devuelve la configuración entera y es solo para admin.
 export async function getVisibleLists() {
   const [lists, me] = await Promise.all([getConfiguredLists(), getCurrentEmployee()]);
-  const visibles = filterVisibleLists(lists, Boolean(me?.is_admin));
-  // Un colaborador solo ve los proyectos donde está mencionado, y nada de la
-  // rama Unfiltrade. Se filtra aquí para que TODA pantalla que pida listas
-  // (Inicio, sprints, tareas) herede el recorte sin repetirlo.
-  if (!isColaborador(me)) return visibles;
-  return visibles.filter((l) => listAllowsColaborador(l, me));
+  const identidades = await identitiesFor(me);
+  // Los flags del panel (visible / admin_only / Management) siguen mandando en
+  // los spaces que se gestionan a mano; el área de F*cts Studio se salta ese
+  // filtro porque su reparto se decide solo (ver listVisibleFor).
+  const manuales = filterVisibleLists(lists, Boolean(me?.is_admin)).filter((l) => !isFactsSpace(l));
+  const candidatas = [...manuales, ...lists.filter((l) => isFactsSpace(l))];
+  // Se filtra aquí, y no en cada pantalla, para que Inicio, sprints, tareas,
+  // calendario y timeline hereden el mismo recorte sin poder olvidarse.
+  return candidatas.filter((l) => listVisibleFor(l, me, identidades));
 }
 
 // Tareas del portal. Orden de preferencia:
@@ -583,6 +588,9 @@ export async function getClickUpHierarchy() {
       list_id: list.id,
       list_name: list.name,
       list_content: list.content ?? "",
+      // En el space de F*cts Studio la prioridad ES la fase del proyecto; en el
+      // resto no significa nada (ver src/lib/projects.js).
+      list_priority: list.priority?.priority ?? null,
       list_start: stamp(list.start_date),
       list_due: stamp(list.due_date),
       folder_id: folder?.id ?? null,
@@ -871,12 +879,17 @@ export function activeSprints(lists = [], tasks = [], now = Date.now()) {
       // Color elegido en admin para el cliente (buscado en todas sus listas, no
       // solo en ésta); si no hay, la UI lo deriva del nombre.
       colorKey: (l.folder_name && colorsByClient[l.folder_name]) || l.color || null,
-      note: (l.list_content || "").trim() || null,
-      // Rama y personas mencionadas en la descripción: quién trabaja este
-      // proyecto. La rama Unfiltrade es del equipo; en F*cts Studio el trabajo
-      // se adjudica mencionando al colaborador (ver listAllowsColaborador).
+      // La descripción de un proyecto del estudio lleva cabecera; lo que se
+      // enseña es solo el objetivo (ver src/lib/projects.js).
+      note: (isFactsProject(l) ? parseProjectMeta(l.list_content).objetivo : (l.list_content || "").trim()) || null,
       branch: l.space_name ?? null,
-      mentions: [...mentionsIn(l.list_content)],
+      // Área: el trabajo del estudio con sus clientes, o el del equipo con
+      // Unfiltrade. Decide cómo se lee la fila y quién la ve.
+      esDelEstudio: isFactsSpace(l),
+      // Fase (solo proyectos del estudio): en curso, aprobado, propuesta o
+      // parado, con su estado exacto.
+      phase: phaseOf(l),
+      colaboradores: parseProjectMeta(l.list_content).colaboradores,
       start: l.list_start ?? null,
       due: l.list_due ?? null,
       total,

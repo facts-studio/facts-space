@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ScreenHeader } from "@/components/ui";
 import SprintBoard from "@/components/tasks/SprintBoard";
 import { getVisibleLists, getClickUpTasks } from "@/lib/data/clickup";
+import { parseProjectMeta, phaseOf, isFactsProject } from "@/lib/projects";
 
 // Un sprint suelto, con sus tareas en columnas por estado. Es la única vista de
 // trabajo de un colaborador: entra por los proyectos que se le adjudican, así
@@ -19,13 +20,18 @@ export default async function SprintPage({ params }) {
   // este sprint no es de quien mira, no aparece arriba y esto es un 404.
   const items = tasks.filter((t) => String(t.listId) === String(list.list_id));
 
+  const meta = parseProjectMeta(list.list_content);
   const sprint = {
     id: list.list_id,
     name: list.list_name,
     client: list.folder_name ?? null,
     start: list.list_start ? new Date(list.list_start).getTime() : null,
     due: list.list_due ? new Date(list.list_due).getTime() : null,
-    note: (list.list_content || "").trim() || null,
+    // En un proyecto del estudio la descripción lleva cabecera: se enseña el
+    // objetivo, y el estado va en su píldora.
+    note: (isFactsProject(list) ? meta.objetivo : (list.list_content || "").trim()) || null,
+    phase: phaseOf(list),
+    colaboradores: meta.colaboradores,
   };
 
   return (

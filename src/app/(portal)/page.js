@@ -17,7 +17,8 @@ import { getSlackTickets } from "@/lib/data/slack";
 import { getLastWorkedDate } from "@/lib/data/time";
 import { isColaborador } from "@/lib/team";
 import { madridDateISO } from "@/lib/dates";
-import { getClickUpTasks, getVisibleLists, weekTasks, teamWeekTasks, activeSprints, mentionAliases, COLAB_BRANCH } from "@/lib/data/clickup";
+import { getClickUpTasks, getVisibleLists, weekTasks, teamWeekTasks, activeSprints } from "@/lib/data/clickup";
+import { identitiesOf, normalizeName } from "@/lib/projects";
 
 export default async function HomePage() {
   const [events, me, tasks, notes, lists, approvals, decisions, tickets, team] = await Promise.all([
@@ -56,16 +57,16 @@ export default async function HomePage() {
   const sprintMeta = Object.fromEntries(
     lists.filter((l) => l.is_sprint).map((l) => [l.list_id, { note: (l.list_content || "").trim(), start: l.list_start, due: l.list_due }])
   );
-  // Sprints y proyectos temporales en curso (fechas + progreso) para Inicio.
-  // A cada uno se le cuelga QUIÉN lo trabaja: la rama Unfiltrade es del equipo;
-  // en F*cts Studio, los colaboradores mencionados en su descripción.
-  const porAlias = new Map();
-  for (const e of team) for (const alias of mentionAliases(e)) if (!porAlias.has(alias)) porAlias.set(alias, e);
+  // Sprints y proyectos en curso (fechas + progreso) para Inicio. A cada uno se
+  // le cuelga QUIÉN lo trabaja: lo del equipo con Unfiltrade es "Equipo"; un
+  // proyecto del estudio lo lleva quien diga su cabecera [colaborador: …].
+  const porNombre = new Map();
+  for (const e of team) for (const id of identitiesOf(e, e.clickup_group_name)) porNombre.set(id, e);
   const sprints = activeSprints(lists, tasks).map((s) => ({
     ...s,
-    equipo: s.branch === COLAB_BRANCH ? false : true,
-    gente: s.branch === COLAB_BRANCH
-      ? [...new Set(s.mentions.map((m) => porAlias.get(m)).filter(Boolean))]
+    equipo: !s.esDelEstudio,
+    gente: s.esDelEstudio
+      ? [...new Set(s.colaboradores.map((c) => porNombre.get(normalizeName(c))).filter(Boolean))]
           .map((e) => ({ id: e.id, name: e.name, photo: e.photo || null, color: e.color }))
       : [],
   }));

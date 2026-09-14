@@ -53,6 +53,7 @@ export default function SprintBoard({ sprint, tasks = [], statuses = [] }) {
     <div className="space-y-6">
       <Surface variant="raised" pad="none" className="rounded-[28px] p-6 md:p-8">
         <div className="flex flex-wrap items-center gap-2 mb-3">
+          {sprint.phase && <Badge kind={sprint.phase.badge}>{sprint.phase.estado}</Badge>}
           {sprint.client && <Badge kind="neutral">{sprint.client}</Badge>}
           {sprint.start && sprint.due && <Badge kind="neutral">{dm(sprint.start)} – {dm(sprint.due)}</Badge>}
         </div>
