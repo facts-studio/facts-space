@@ -81,10 +81,12 @@ function barStyle(t, col, suave = false) {
     //   propuesta           → atenuado, aún no es nuestro.
     //   parado              → atenuado y rayado (lead, bloqueado, entregado):
     //                         ocupa sitio en el calendario pero no se trabaja.
-    const fase = t.phase?.key ?? null;
-    const rayado = fase === "parado";
+    const rayado = (t.phase?.key ?? null) === "parado";
     // `stripe` y `border` permiten dar el color con tokens del sistema
     // (rgb(var(--ct-…))), donde el truco del hex con alfa no sirve.
+    //
+    // Lo apagado se consigue con el ALFA del fondo, nunca con `opacity` sobre
+    // la barra: eso arrastraba también al texto y en oscuro lo dejaba ilegible.
     return {
       style: {
         background: col.bg,
@@ -92,7 +94,6 @@ function barStyle(t, col, suave = false) {
           ? { backgroundImage: `repeating-linear-gradient(45deg, ${col.stripe ?? `${col.fg}2b`} 0 5px, transparent 5px 11px)` }
           : null),
         borderColor: col.border ?? `${col.fg}33`,
-        opacity: cerrada(t) ? 0.5 : rayado ? 0.5 : fase === "propuesta" ? 0.7 : 1,
       },
       text: col.fg,
     };
@@ -396,11 +397,17 @@ export default function SprintGantt({
                         // Sitio que se llevan avance y caras, para que el nombre
                         // se recorte antes de meterse debajo: los dos son
                         // `sticky` y, sin reservarlo, se pisan al hacer scroll.
-                        const caras = Math.min((t.assignees ?? []).length, readOnly ? 4 : 1);
+                        // En una barra corta no cabe todo: lo accesorio se cae
+                        // por orden inverso de utilidad, para que nunca se
+                        // desborde. El cliente y el estado aguantan hasta el
+                        // final; el nombre se recorta.
+                        const cabenCaras = !readOnly || w >= 210;
+                        const cabeMeta = !readOnly || w >= 140;
+                        const caras = cabenCaras ? Math.min((t.assignees ?? []).length, readOnly ? 4 : 1) : 0;
                         const tag = readOnly ? t.client : null;
                         const reservado =
                           28 +
-                          (t.meta ? 44 : 0) +
+                          (t.meta && cabeMeta ? 44 : 0) +
                           (caras ? (caras - 1) * 14 + 20 + 8 : 0) +
                           (tag ? tag.length * 6.2 + 20 : 0) +
                           (t.completado ? 22 : 0);
@@ -420,7 +427,7 @@ export default function SprintGantt({
                             onMouseLeave={() => setTip(null)}
                             className={cn(
                               "absolute top-1/2 -translate-y-1/2 border flex items-center pl-3 pr-1 transition hover:brightness-[0.97]",
-                              readOnly ? "h-9 rounded-xl pr-2 gap-2" : "h-7 rounded-full",
+                              readOnly ? "h-9 rounded-xl pr-2 gap-2 overflow-hidden" : "h-7 rounded-full",
                               !readOnly && vencida && "ring-1 ring-danger/70"
                             )}
                             style={{ left: x(ini), width: w, ...barStyle(t, colorDe(t), readOnly).style }}
@@ -469,7 +476,7 @@ export default function SprintGantt({
                                     )}
                                   />
                                 )}
-                                {(t.assignees ?? []).length > 0 && (
+                                {cabenCaras && (t.assignees ?? []).length > 0 && (
                                   <span className="shrink-0 flex items-center">
                                     {(t.assignees ?? []).slice(0, 4).map((a) => (
                                       <Cara key={a.email ?? a.name} a={a} readOnly />
@@ -498,7 +505,7 @@ export default function SprintGantt({
                             )}
                             {/* El avance cierra la barra por la derecha, fuera
                                 del bloque sticky. */}
-                            {t.meta && (
+                            {t.meta && cabeMeta && (
                               <span
                                 className="ml-auto shrink-0 text-[11px] leading-none tabular-nums opacity-70 whitespace-nowrap pl-2"
                                 style={{ color: barStyle(t, colorDe(t), readOnly).text }}

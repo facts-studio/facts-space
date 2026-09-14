@@ -21,16 +21,19 @@ import { Switch } from "@/components/ui";
 // filtro se llama así y no por el nombre del space.
 const v = (token, alfa = 1) => `rgb(var(--ct-${token}) / ${alfa})`;
 
+// El fondo baja de intensidad según la fase; el TEXTO no, porque un proyecto
+// apagado se sigue teniendo que leer. En oscuro `ink` es casi blanco y
+// `surface2` un gris levantado, así que el par funciona en los dos temas.
 const COLOR_FASE = {
   activo: { bg: v("ink", 0.13), fg: v("ink"), border: v("ink", 0.2), tagBg: v("ink", 0.1) },
-  aprobado: { bg: v("ink", 0.08), fg: v("inkSoft"), border: v("ink", 0.14), tagBg: v("ink", 0.08) },
-  propuesta: { bg: v("surface2"), fg: v("muted"), border: v("ink", 0.08), tagBg: v("ink", 0.06) },
+  aprobado: { bg: v("ink", 0.09), fg: v("ink"), border: v("ink", 0.14), tagBg: v("ink", 0.08) },
+  propuesta: { bg: v("surface2", 0.8), fg: v("inkSoft"), border: v("ink", 0.08), tagBg: v("ink", 0.07) },
   parado: {
-    bg: v("surface2", 0.5),
-    fg: v("mutedSoft"),
-    border: v("ink", 0.07),
-    stripe: v("mutedSoft", 0.35),
-    tagBg: v("ink", 0.05),
+    bg: v("surface2", 0.45),
+    fg: v("muted"),
+    border: v("ink", 0.08),
+    stripe: v("mutedSoft", 0.28),
+    tagBg: v("ink", 0.06),
   },
 };
 const COLOR_UNFILTRADE = { bg: v("infoSoft"), fg: v("info"), border: v("info", 0.22), tagBg: v("info", 0.12) };
