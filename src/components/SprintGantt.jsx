@@ -381,7 +381,10 @@ export default function SprintGantt({
               {visibles.map((t) => {
                 const fin = t.dueDate ?? null;
                 const ini = t.startDate && t.startDate < (fin ?? Infinity) ? t.startDate : fin;
-                const vencida = fin && startOfDay(fin) < hoy && !cerrada(t);
+                // En una TAREA, vencida es pasarse de fecha sin cerrarla. En un
+                // PROYECTO no hay estado que cerrar: se pasa de fecha con
+                // trabajo vivo dentro, y eso lo sabe quien monta la fila.
+                const vencida = readOnly ? Boolean(t.fueraDePlazo) : fin && startOfDay(fin) < hoy && !cerrada(t);
                 return (
                   <div key={t.id} className="relative flex border-b border-border/30 hover:bg-surface2/20 transition-colors">
                     {/* El timeline global respira más: la fila es una franja de

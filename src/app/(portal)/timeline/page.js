@@ -4,8 +4,8 @@ import SinAcceso from "@/components/SinAcceso";
 import { getVisibleLists, getClickUpTasks, flattenTasks } from "@/lib/data/clickup";
 import { getCurrentEmployee } from "@/lib/data/helpers";
 import { isColaborador } from "@/lib/team";
-import { paletteColor } from "@/lib/client-palette";
 import { phaseOf, isFactsSpace, isFactsProject } from "@/lib/projects";
+import { madridDateISO } from "@/lib/dates";
 
 // Timeline global: todos los proyectos con fechas sobre la misma línea de
 // tiempo. Usa el cronograma de sprint tal cual —misma escala, mismos zooms,
@@ -22,9 +22,8 @@ export default async function TimelinePage() {
   }
 
   const [lists, tasks] = await Promise.all([getVisibleLists(), getClickUpTasks()]);
-  const colorsByClient = Object.fromEntries(
-    lists.filter((l) => l.color && l.folder_name).map((l) => [l.folder_name, l.color])
-  );
+  // Una sola lectura del reloj, y del día de Madrid: en el render sería impuro.
+  const ahora = new Date(`${madridDateISO()}T00:00:00`).getTime();
 
   // Quién trabaja cada proyecto y cuánto lleva: sale de sus propias tareas, no
   // hay que declararlo en ninguna parte.
@@ -48,7 +47,6 @@ export default async function TimelinePage() {
     phase: phaseOf(l),
     esDelEstudio: isFactsSpace(l),
     client: l.folder_name ?? null,
-    colorKey: colorsByClient[l.folder_name] ?? l.color ?? null,
     href: `/sprint/${l.list_id}`,
     startDate: new Date(l.list_start).getTime(),
     dueDate: new Date(l.list_due).getTime(),
@@ -57,6 +55,15 @@ export default async function TimelinePage() {
     meta: (() => {
       const acc = porLista.get(String(l.list_id));
       return acc?.total ? `${acc.hechas}/${acc.total}` : null;
+    })(),
+    // Pasado de fecha y CON trabajo vivo dentro. Terminar a tiempo y terminar
+    // tarde se distinguen; haber acabado todo y que la fecha quede atrás, no
+    // es ningún problema.
+    fueraDePlazo: (() => {
+      const acc = porLista.get(String(l.list_id));
+      const fin = new Date(l.list_due).getTime();
+      const parado = phaseOf(l)?.key === "parado";
+      return Boolean(fin < ahora && !parado && acc && acc.total > acc.hechas);
     })(),
   });
 
