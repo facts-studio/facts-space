@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Surface, SectionHeader, Badge, ProgressBar, EmptyState, Avatar } from "@/components/ui";
+import { FctsAsterisk } from "@/components/FctsMark";
 
 // Verde de "hecho" (token success), mismo tratamiento que las barras de fichaje.
 const PROGRESO_VERDE = {
@@ -60,12 +61,14 @@ function InfoBubble({ text }) {
 // descripción del sprint, y entonces sale su cara.
 function Quien({ s }) {
   if (s.equipo) {
+    // La casa en vez de la palabra: mismo asterisco que marca al grupo Team,
+    // y así ocupa lo mismo que una cara y la fila no baila.
     return (
       <span
         title="Proyecto del equipo"
-        className="relative shrink-0 h-6 px-2 grid place-items-center rounded-full bg-surface2 text-micro text-mutedSoft"
+        className="relative shrink-0 grid place-items-center h-6 w-6 rounded-full bg-surface2 text-mutedSoft"
       >
-        Equipo
+        <FctsAsterisk className="h-3 w-3" />
       </span>
     );
   }
