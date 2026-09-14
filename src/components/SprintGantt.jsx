@@ -6,6 +6,7 @@ import { Tabs, ProgressBar } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { paletteColor } from "@/lib/client-palette";
 import { teamPhoto } from "@/components/tasks/task-atoms";
+import { FctsAsterisk } from "@/components/FctsMark";
 import PersonFilter from "@/components/tasks/PersonFilter";
 import { setClickUpTaskStatus } from "@/lib/actions/clickup";
 
@@ -405,7 +406,9 @@ export default function SprintGantt({
                         // final; el nombre se recorta.
                         const cabenCaras = !readOnly || w >= 210;
                         const cabeMeta = !readOnly || w >= 140;
-                        const caras = cabenCaras ? Math.min((t.assignees ?? []).length, readOnly ? 4 : 1) : 0;
+                        const caras = cabenCaras
+                          ? (t.equipo ? 1 : 0) + Math.min((t.assignees ?? []).length, readOnly ? 4 : 1)
+                          : 0;
                         const tag = readOnly ? t.client : null;
                         const reservado =
                           28 +
@@ -477,6 +480,16 @@ export default function SprintGantt({
                                       FASE_PUNTO[t.phase.key] ?? "bg-mutedSoft"
                                     )}
                                   />
+                                )}
+                                {/* Lo del equipo se marca con la casa: no hay
+                                    una persona que lo lleve, lo llevamos todos. */}
+                                {cabenCaras && t.equipo && (
+                                  <span
+                                    title="Proyecto del equipo"
+                                    className="shrink-0 grid place-items-center h-5 w-5 rounded-full bg-bg/70 ring-2 ring-bg"
+                                  >
+                                    <FctsAsterisk className="h-2.5 w-2.5" />
+                                  </span>
                                 )}
                                 {cabenCaras && (t.assignees ?? []).length > 0 && (
                                   <span className="shrink-0 flex items-center">

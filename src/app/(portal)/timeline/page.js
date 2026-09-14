@@ -26,9 +26,10 @@ export default async function TimelinePage() {
   // Una sola lectura del reloj, y del día de Madrid: en el render sería impuro.
   const ahora = new Date(`${madridDateISO()}T00:00:00`).getTime();
 
-  // Quién lleva un proyecto de Adhōc lo dice su cabecera [colaborador: …]; en
-  // el trabajo con Unfiltrade no hay tal cosa y se deduce de quién tiene
-  // tareas. Se resuelve contra la plantilla para poder poner cara al nombre.
+  // Quién lleva un proyecto de Adhōc lo dice su cabecera [colaborador: …], y
+  // solo eso: quién tenga tareas dentro no es lo mismo que quién lo lleva. El
+  // trabajo con Unfiltrade es del equipo entero, así que ahí no hay caras que
+  // poner — va la marca de F*cts.
   const porNombre = new Map();
   for (const e of team) for (const id of identitiesOf(e, e.clickup_group_name)) porNombre.set(id, e);
   const colaboradoresDe = (l) =>
@@ -37,15 +38,14 @@ export default async function TimelinePage() {
       .filter(Boolean)
       .map((e) => ({ email: e.email, name: e.name, initials: (e.name || "?")[0] }));
 
-  // Cuánto lleva hecho cada proyecto, y quién tiene tareas dentro.
+  // Cuánto lleva hecho cada proyecto.
   const porLista = new Map();
   for (const t of flattenTasks(tasks)) {
     const k = String(t.listId);
-    if (!porLista.has(k)) porLista.set(k, { total: 0, hechas: 0, gente: new Map() });
+    if (!porLista.has(k)) porLista.set(k, { total: 0, hechas: 0 });
     const acc = porLista.get(k);
     acc.total++;
     if (["done", "closed"].includes(t.statusType)) acc.hechas++;
-    for (const a of t.assignees ?? []) if (a.email && !acc.gente.has(a.email)) acc.gente.set(a.email, a);
   }
 
   // El timeline los enseña TODOS, cada uno con su fase. Fuera quedan solo las
@@ -61,12 +61,9 @@ export default async function TimelinePage() {
     href: `/sprint/${l.list_id}`,
     startDate: new Date(l.list_start).getTime(),
     dueDate: new Date(l.list_due).getTime(),
-    // La cabecera manda; las tareas completan cuando no hay nadie declarado.
-    assignees: (() => {
-      const declarados = colaboradoresDe(l);
-      if (declarados.length) return declarados;
-      return [...(porLista.get(String(l.list_id))?.gente.values() ?? [])];
-    })(),
+    assignees: isFactsSpace(l) ? colaboradoresDe(l) : [],
+    // Trabajo del equipo: se marca con la casa, no con personas.
+    equipo: !isFactsSpace(l),
     // Avance del proyecto, dentro de la propia barra.
     meta: (() => {
       const acc = porLista.get(String(l.list_id));
@@ -106,6 +103,7 @@ export default async function TimelinePage() {
       client: l.folder_name ?? null,
       phase: phaseOf(l),
       esDelEstudio: isFactsSpace(l),
+      equipo: !isFactsSpace(l),
     }))
     .sort((a, b) => (a.phase?.orden ?? 9) - (b.phase?.orden ?? 9));
 
