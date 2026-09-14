@@ -851,6 +851,15 @@ export function activeSprints(lists = [], tasks = [], now = Date.now()) {
     // tampoco sin empezar.
     const doing = open.filter((t) => t.statusType === "custom").length;
 
+    // Un proyecto del estudio solo cuenta como "activo" si está vendido o en
+    // marcha (prioridad Urgente o Alta). Una propuesta o un lead ocupan sitio
+    // en el calendario, pero no son trabajo del que haya que estar pendiente:
+    // esos se miran en el timeline.
+    if (isFactsSpace(l)) {
+      const fase = phaseOf(l);
+      if (!fase || !["activo", "aprobado"].includes(fase.key)) continue;
+    }
+
     // Pasado de fecha y sin nada abierto → terminado, fuera.
     const pastDue = Boolean(l.list_due && l.list_due < startToday);
     if (pastDue && open.length === 0) continue;

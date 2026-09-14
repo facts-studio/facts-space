@@ -5,7 +5,8 @@ import { getVisibleLists, getClickUpTasks, flattenTasks } from "@/lib/data/click
 import { getCurrentEmployee } from "@/lib/data/helpers";
 import { isColaborador } from "@/lib/team";
 import { paletteColor } from "@/lib/client-palette";
-import { phaseOf } from "@/lib/projects";
+import { phaseOf, isFactsSpace, isFactsProject } from "@/lib/projects";
+import SinFechas from "@/components/tasks/SinFechas";
 
 // Timeline global: todos los proyectos con fechas sobre la misma línea de
 // tiempo. Usa el cronograma de sprint tal cual —misma escala, mismos zooms,
@@ -38,33 +39,41 @@ export default async function TimelinePage() {
     for (const a of t.assignees ?? []) if (a.email && !acc.gente.has(a.email)) acc.gente.set(a.email, a);
   }
 
-  const proyectos = lists
-    // Sin fechas no hay nada que situar: son las listas fijas de cliente.
-    .filter((l) => l.list_start && l.list_due)
-    .map((l) => ({
-      id: l.list_id,
-      name: l.list_name,
-      // El tooltip dice cliente y estado; la barra ya enseña el cliente.
-      status: [l.folder_name, phaseOf(l)?.estado].filter(Boolean).join(" · "),
-      phase: phaseOf(l),
-      client: l.folder_name ?? null,
-      colorKey: colorsByClient[l.folder_name] ?? l.color ?? null,
-      href: `/sprint/${l.list_id}`,
-      startDate: new Date(l.list_start).getTime(),
-      dueDate: new Date(l.list_due).getTime(),
-      assignees: [...(porLista.get(String(l.list_id))?.gente.values() ?? [])],
-      // Avance del proyecto, dentro de la propia barra.
-      meta: (() => {
-        const acc = porLista.get(String(l.list_id));
-        return acc?.total ? `${acc.hechas}/${acc.total}` : null;
-      })(),
-      // Lo que no está vivo se atenúa: una propuesta o un lead ocupan sitio en
-      // el calendario pero no son trabajo en marcha.
-      apagado: Boolean(phaseOf(l) && phaseOf(l).key !== "activo"),
-    }))
-    // Fechas a cero (epoch) son basura de ClickUp, no un proyecto de 1970.
-    .filter((p) => p.startDate > 0 && p.dueDate >= p.startDate)
-    .sort((a, b) => a.startDate - b.startDate);
+  // El timeline los enseña TODOS, cada uno con su fase. Fuera quedan solo las
+  // listas que no son proyectos: las "General" de cada cliente.
+  const fila = (l) => ({
+    id: l.list_id,
+    name: l.list_name,
+    // El tooltip dice cliente y estado; la barra ya enseña el cliente.
+    status: [l.folder_name, phaseOf(l)?.estado].filter(Boolean).join(" · "),
+    phase: phaseOf(l),
+    client: l.folder_name ?? null,
+    colorKey: colorsByClient[l.folder_name] ?? l.color ?? null,
+    href: `/sprint/${l.list_id}`,
+    startDate: new Date(l.list_start).getTime(),
+    dueDate: new Date(l.list_due).getTime(),
+    assignees: [...(porLista.get(String(l.list_id))?.gente.values() ?? [])],
+    // Avance del proyecto, dentro de la propia barra.
+    meta: (() => {
+      const acc = porLista.get(String(l.list_id));
+      return acc?.total ? `${acc.hechas}/${acc.total}` : null;
+    })(),
+  });
+
+  const candidatas = lists.filter((l) => (isFactsSpace(l) ? isFactsProject(l) : l.list_start || l.list_due));
+  // Fechas a cero (epoch) son basura de ClickUp, no un proyecto de 1970.
+  const conFecha = (l) => {
+    const i = l.list_start ? new Date(l.list_start).getTime() : 0;
+    const f = l.list_due ? new Date(l.list_due).getTime() : 0;
+    return i > 0 && f >= i;
+  };
+  const proyectos = candidatas.filter(conFecha).map(fila).sort((a, b) => a.startDate - b.startDate);
+  // Los que aún no tienen fechas no se pueden situar en una línea de tiempo,
+  // pero existen: se listan aparte para que no desaparezcan del mapa.
+  const sinFecha = candidatas
+    .filter((l) => !conFecha(l))
+    .map((l) => ({ id: l.list_id, name: l.list_name, client: l.folder_name ?? null, phase: phaseOf(l) }))
+    .sort((a, b) => (a.phase?.orden ?? 9) - (b.phase?.orden ?? 9));
 
   const start = proyectos.length ? Math.min(...proyectos.map((p) => p.startDate)) : null;
   const due = proyectos.length ? Math.max(...proyectos.map((p) => p.dueDate)) : null;
@@ -76,6 +85,7 @@ export default async function TimelinePage() {
       readOnly
       colorPorFila
       back={<Link href="/" className="text-small text-muted hover:text-ink transition">← Inicio</Link>}
+      footer={<SinFechas items={sinFecha} />}
     />
   );
 }

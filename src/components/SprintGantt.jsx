@@ -75,14 +75,24 @@ function barStyle(t, col, suave = false) {
     // Filete del tono fuerte: sin él, un relleno claro como el crema de Demà
     // (#E9E7E1) queda a seis puntos de gris del fondo del portal y la barra
     // desaparece. Con el borde, cualquier color se recorta.
+    //
+    // El acabado dice en qué punto está el proyecto sin leer nada:
+    //   en curso / aprobado → sólido, es trabajo comprometido.
+    //   propuesta           → atenuado, aún no es nuestro.
+    //   parado              → atenuado y rayado (lead, bloqueado, entregado):
+    //                         ocupa sitio en el calendario pero no se trabaja.
+    const fase = t.phase?.key ?? null;
+    const rayado = fase === "parado";
     return {
       style: {
         background: col.bg,
+        ...(rayado
+          ? {
+              backgroundImage: `repeating-linear-gradient(45deg, ${col.fg}2b 0 5px, transparent 5px 11px)`,
+            }
+          : null),
         borderColor: `${col.fg}33`,
-        // Lo cerrado y lo que no está en marcha (propuesta, lead, bloqueado)
-        // pasan a segundo plano: ocupan sitio en el calendario, pero no son
-        // trabajo vivo.
-        opacity: cerrada(t) || t.apagado ? 0.55 : 1,
+        opacity: cerrada(t) ? 0.5 : rayado ? 0.5 : fase === "propuesta" ? 0.65 : 1,
       },
       text: col.fg,
     };
@@ -141,6 +151,7 @@ export default function SprintGantt({
   back = null,
   colorPorFila = false,
   readOnly = false,
+  footer = null,
 }) {
   // Cambios de estado hechos aquí: se pintan al momento y se revierten si la
   // llamada a ClickUp falla.
@@ -485,6 +496,7 @@ export default function SprintGantt({
           </div>
         </div>
       )}
+      {footer}
 
       {tip && !panel && typeof document !== "undefined" && createPortal(
         <div
