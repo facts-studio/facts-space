@@ -17,15 +17,19 @@ function rango(s) {
   return null;
 }
 
-// Un sprint que pasa su fecha de fin está FINALIZADO: el calendario se cumplió.
-// Que queden tareas abiertas no es un retraso del sprint, y se ve igual en el
-// "N activas · N vencidas" de la propia tarjeta.
-const finalizado = (s) => s.daysLeft != null && s.daysLeft < 0;
+// Un sprint que pasa su fecha de fin se cierra en el calendario, pero cerrar la
+// fecha no es cerrar el trabajo: si queda algo vivo NO está completado, y
+// decirle "Finalizado" en verde sería mentir. Dos estados distintos:
+//   completado → la fecha pasó y no queda nada abierto.
+//   fuera de plazo → la fecha pasó y sí queda.
+const pasadoDeFecha = (s) => s.daysLeft != null && s.daysLeft < 0;
+const completado = (s) => pasadoDeFecha(s) && s.active === 0;
+const fueraDePlazo = (s) => pasadoDeFecha(s) && s.active > 0;
 
 // Cuánto queda. `urge` marca lo que merece decirse aparte: si faltan semanas,
 // la fecha de fin ya lo dice y repetirlo solo añade ruido.
 function plazo(s) {
-  if (s.daysLeft == null || finalizado(s)) return null; // finalizado se dice con su estado
+  if (s.daysLeft == null || pasadoDeFecha(s)) return null; // se dice con su estado
   if (s.daysLeft === 0) return { text: "acaba hoy", kind: "pending", urge: true };
   if (s.daysLeft === 1) return { text: "queda 1 día", kind: "pending", urge: true };
   return { text: `quedan ${s.daysLeft} días`, kind: "neutral", urge: s.daysLeft <= 3 };
@@ -85,12 +89,11 @@ function SprintCard({ s, soloSprint = false }) {
   return (
     // Lleva a Tareas ya filtrado por este sprint (?sprint=… lo resuelve
     // tareas-client contra las tareas para componer su clave interna).
-    // Un sprint cerrado sigue en la lista mientras le queden tareas abiertas,
-    // así que se tiñe del verde de "hecho" para distinguirlo de un vistazo. Va
-    // por variante y no por clase suelta: cn() no resuelve conflictos de
-    // Tailwind, y dos bg-* juntos los decidiría el orden de la hoja de estilos.
+    // El tinte dice en qué estado está sin leer nada. Va por variante y no por
+    // clase suelta: cn() no resuelve conflictos de Tailwind, y dos bg-* juntos
+    // los decidiría el orden de la hoja de estilos, no el del JSX.
     <Surface
-      variant={finalizado(s) ? "done" : "muted"}
+      variant={completado(s) ? "done" : fueraDePlazo(s) ? "late" : "muted"}
       pad="sm"
       hover
       className="relative flex flex-col gap-2.5"
@@ -164,7 +167,8 @@ function SprintCard({ s, soloSprint = false }) {
           )}
         </span>
         <div className="flex items-center gap-1.5 shrink-0">
-          {finalizado(s) && <Badge kind="success">Finalizado</Badge>}
+          {completado(s) && <Badge kind="success">Completado</Badge>}
+          {fueraDePlazo(s) && <Badge kind="pending">Fuera de plazo</Badge>}
           {s.client && <Badge kind="neutral">{s.client}</Badge>}
           {fechas && <Badge kind="neutral">{fechas}</Badge>}
         </div>

@@ -66,7 +66,10 @@ const HAS_SPAN = new Set(["vacaciones", "ausencia"]);
 // de un vistazo sin leer la etiqueta.
 // Clases explícitas: Tailwind no ve las compuestas en tiempo de ejecución.
 const TONO = {
-  hito: { bubble: "bg-dangerSoft text-danger", ring: "ring-danger/35", label: "text-danger" },
+  // El hito NO va en rojo: ahí el rojo ya significa "vencido", y una entrega
+  // que aún no ha llegado no es una alarma. Taupe de marca: presente, de la
+  // casa, y sin confundirse con las vidas del equipo, que van en color.
+  hito: { bubble: "bg-surface2 text-brandMid", ring: "ring-brandMid/30", label: "text-brandMid" },
   cumple: { bubble: "bg-infoSoft text-info", ring: "ring-info/35", label: "text-info" },
   festivo: { bubble: "bg-violetSoft text-violet", ring: "ring-violet/35", label: "text-violet" },
   vacaciones: { bubble: "bg-warnSoft text-warn", ring: "ring-warn/35", label: "text-warn" },
