@@ -83,16 +83,16 @@ function barStyle(t, col, suave = false) {
     //                         ocupa sitio en el calendario pero no se trabaja.
     const fase = t.phase?.key ?? null;
     const rayado = fase === "parado";
+    // `stripe` y `border` permiten dar el color con tokens del sistema
+    // (rgb(var(--ct-…))), donde el truco del hex con alfa no sirve.
     return {
       style: {
         background: col.bg,
         ...(rayado
-          ? {
-              backgroundImage: `repeating-linear-gradient(45deg, ${col.fg}2b 0 5px, transparent 5px 11px)`,
-            }
+          ? { backgroundImage: `repeating-linear-gradient(45deg, ${col.stripe ?? `${col.fg}2b`} 0 5px, transparent 5px 11px)` }
           : null),
-        borderColor: `${col.fg}33`,
-        opacity: cerrada(t) ? 0.5 : rayado ? 0.5 : fase === "propuesta" ? 0.65 : 1,
+        borderColor: col.border ?? `${col.fg}33`,
+        opacity: cerrada(t) ? 0.5 : rayado ? 0.5 : fase === "propuesta" ? 0.7 : 1,
       },
       text: col.fg,
     };
@@ -231,7 +231,9 @@ export default function SprintGantt({
   const col = paletteColor(sprint.client || sprint.name, sprint.colorKey);
   // En un sprint todas las barras comparten el color del proyecto; en el
   // timeline global cada fila es un proyecto y lleva el de su cliente.
-  const colorDe = (t) => (colorPorFila ? paletteColor(t.client || t.name, t.colorKey) : col);
+  // `t.color` manda: el timeline lo tiñe por estado con tokens del sistema, no
+  // por cliente. Sin él se cae al color del cliente y, si no, al del sprint.
+  const colorDe = (t) => t.color ?? (colorPorFila ? paletteColor(t.client || t.name, t.colorKey) : col);
 
   return (
     // Alto de la ventana menos el aire del layout: el scroll vive dentro.
@@ -414,7 +416,7 @@ export default function SprintGantt({
                               readOnly ? "h-9 rounded-xl pr-2 gap-2" : "h-7 rounded-full",
                               vencida && "ring-1 ring-danger/70"
                             )}
-                            style={{ left: x(ini), width: w, ...barStyle(t, colorDe(t), colorPorFila).style }}
+                            style={{ left: x(ini), width: w, ...barStyle(t, colorDe(t), readOnly).style }}
                           >
                             {/* En el timeline los tres datos que identifican la
                                 fila —cliente, quién la trabaja y el nombre— van
@@ -426,7 +428,10 @@ export default function SprintGantt({
                                 {tag && (
                                   <span
                                     className="shrink-0 inline-flex items-center h-5 px-1.5 rounded-md text-[10.5px] font-medium leading-none whitespace-nowrap"
-                                    style={{ background: `${colorDe(t).fg}1f`, color: colorDe(t).fg }}
+                                    style={{
+                                      background: colorDe(t).tagBg ?? `${colorDe(t).fg}1f`,
+                                      color: colorDe(t).fg,
+                                    }}
                                   >
                                     {tag}
                                   </span>
@@ -451,7 +456,7 @@ export default function SprintGantt({
                                 )}
                                 <span
                                   className="text-[12px] leading-none font-medium whitespace-nowrap overflow-hidden text-ellipsis"
-                                  style={{ color: barStyle(t, colorDe(t), colorPorFila).text, maxWidth: Math.max(24, w - reservado) }}
+                                  style={{ color: barStyle(t, colorDe(t), readOnly).text, maxWidth: Math.max(24, w - reservado) }}
                                 >
                                   {t.name}
                                 </span>
@@ -460,7 +465,7 @@ export default function SprintGantt({
                               <>
                                 <span
                                   className="sticky left-3 text-[12px] leading-none font-medium whitespace-nowrap overflow-hidden text-ellipsis"
-                                  style={{ color: barStyle(t, colorDe(t), colorPorFila).text, maxWidth: w - 44 }}
+                                  style={{ color: barStyle(t, colorDe(t), readOnly).text, maxWidth: w - 44 }}
                                 >
                                   {t.name}
                                 </span>
@@ -474,7 +479,7 @@ export default function SprintGantt({
                             {t.meta && (
                               <span
                                 className="ml-auto shrink-0 text-[11px] leading-none tabular-nums opacity-70 whitespace-nowrap pl-2"
-                                style={{ color: barStyle(t, colorDe(t), colorPorFila).text }}
+                                style={{ color: barStyle(t, colorDe(t), readOnly).text }}
                               >
                                 {t.meta}
                               </span>

@@ -9,9 +9,38 @@ import SprintGantt from "@/components/SprintGantt";
 import SinFechas from "@/components/tasks/SinFechas";
 import { Switch } from "@/components/ui";
 
+// El timeline NO se pinta por cliente: con doce proyectos a la vez, seis
+// colores de marca convierten la pantalla en un semáforo y el color deja de
+// significar nada. Aquí el color dice UNA cosa —en qué punto está el
+// proyecto— y se hace con tokens de interfaz, que son neutros por diseño.
+//
+// El trabajo con Unfiltrade va aparte, todo del mismo color: no es un proyecto
+// del estudio con sus fases, es otra cosa, y así se distingue de un golpe.
+const v = (token, alfa = 1) => `rgb(var(--ct-${token}) / ${alfa})`;
+
+const COLOR_FASE = {
+  activo: { bg: v("ink", 0.13), fg: v("ink"), border: v("ink", 0.2), tagBg: v("ink", 0.1) },
+  aprobado: { bg: v("ink", 0.08), fg: v("inkSoft"), border: v("ink", 0.14), tagBg: v("ink", 0.08) },
+  propuesta: { bg: v("surface2"), fg: v("muted"), border: v("ink", 0.08), tagBg: v("ink", 0.06) },
+  parado: {
+    bg: v("surface2", 0.5),
+    fg: v("mutedSoft"),
+    border: v("ink", 0.07),
+    stripe: v("mutedSoft", 0.35),
+    tagBg: v("ink", 0.05),
+  },
+};
+const COLOR_UNFILTRADE = { bg: v("infoSoft"), fg: v("info"), border: v("info", 0.22), tagBg: v("info", 0.12) };
+
+function colorDe(p) {
+  if (!p.esDelEstudio) return COLOR_UNFILTRADE;
+  return COLOR_FASE[p.phase?.key] ?? COLOR_FASE.propuesta;
+}
+
 export default function TimelineClient({ proyectos = [], sinFecha = [], sprint, back }) {
   const [soloEstudio, setSoloEstudio] = useState(false);
-  const filtrar = (lista) => (soloEstudio ? lista.filter((p) => p.esDelEstudio) : lista);
+  const filtrar = (lista) =>
+    (soloEstudio ? lista.filter((p) => p.esDelEstudio) : lista).map((p) => ({ ...p, color: colorDe(p) }));
   const filas = useMemo(() => filtrar(proyectos), [proyectos, soloEstudio]); // eslint-disable-line react-hooks/exhaustive-deps
   const pie = useMemo(() => filtrar(sinFecha), [sinFecha, soloEstudio]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -30,7 +59,6 @@ export default function TimelineClient({ proyectos = [], sinFecha = [], sprint, 
       sprint={{ ...sprint, ...rango }}
       tasks={filas}
       readOnly
-      colorPorFila
       back={back}
       controls={
         <Switch
