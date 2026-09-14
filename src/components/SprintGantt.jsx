@@ -444,10 +444,20 @@ export default function SprintGantt({
                             onMouseLeave={() => setTip(null)}
                             className={cn(
                               "absolute top-1/2 -translate-y-1/2 border flex items-center pl-3 pr-1 transition hover:brightness-[0.97]",
-                              readOnly ? "h-9 rounded-xl pr-2 gap-2 overflow-hidden" : "h-7 rounded-full",
+                              readOnly ? "h-9 rounded-xl pr-2 gap-2" : "h-7 rounded-full",
                               !readOnly && vencida && "ring-1 ring-danger/70"
                             )}
-                            style={{ left: x(ini), width: w, ...barStyle(t, colorDe(t), readOnly).style }}
+                            style={{
+                              left: x(ini),
+                              width: w,
+                              // Recorta lo que sobresalga SIN `overflow-hidden`:
+                              // ese convierte la barra en contenedor de scroll
+                              // y entonces el bloque sticky se pega a ella en
+                              // vez de al scroll de la vista, que es justo lo
+                              // que hace falta aquí.
+                              ...(readOnly ? { clipPath: "inset(0 round 0.75rem)" } : null),
+                              ...barStyle(t, colorDe(t), readOnly).style,
+                            }}
                           >
                             {/* En el timeline los tres datos que identifican la
                                 fila —cliente, quién la trabaja y el nombre— van
