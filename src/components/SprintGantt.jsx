@@ -152,6 +152,7 @@ export default function SprintGantt({
   colorPorFila = false,
   readOnly = false,
   footer = null,
+  controls = null,
 }) {
   // Cambios de estado hechos aquí: se pintan al momento y se revierten si la
   // llamada a ClickUp falla.
@@ -261,6 +262,7 @@ export default function SprintGantt({
               <span className="text-micro text-mutedSoft tabular-nums">{hechas}/{tasks.length}</span>
             </div>
           )}
+          {controls}
           <Tabs
             value={zoom}
             onChange={setZoom}

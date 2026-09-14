@@ -1,12 +1,11 @@
 import Link from "next/link";
-import SprintGantt from "@/components/SprintGantt";
+import TimelineClient from "@/components/tasks/TimelineClient";
 import SinAcceso from "@/components/SinAcceso";
 import { getVisibleLists, getClickUpTasks, flattenTasks } from "@/lib/data/clickup";
 import { getCurrentEmployee } from "@/lib/data/helpers";
 import { isColaborador } from "@/lib/team";
 import { paletteColor } from "@/lib/client-palette";
 import { phaseOf, isFactsSpace, isFactsProject } from "@/lib/projects";
-import SinFechas from "@/components/tasks/SinFechas";
 
 // Timeline global: todos los proyectos con fechas sobre la misma línea de
 // tiempo. Usa el cronograma de sprint tal cual —misma escala, mismos zooms,
@@ -47,6 +46,7 @@ export default async function TimelinePage() {
     // El tooltip dice cliente y estado; la barra ya enseña el cliente.
     status: [l.folder_name, phaseOf(l)?.estado].filter(Boolean).join(" · "),
     phase: phaseOf(l),
+    esDelEstudio: isFactsSpace(l),
     client: l.folder_name ?? null,
     colorKey: colorsByClient[l.folder_name] ?? l.color ?? null,
     href: `/sprint/${l.list_id}`,
@@ -72,20 +72,24 @@ export default async function TimelinePage() {
   // pero existen: se listan aparte para que no desaparezcan del mapa.
   const sinFecha = candidatas
     .filter((l) => !conFecha(l))
-    .map((l) => ({ id: l.list_id, name: l.list_name, client: l.folder_name ?? null, phase: phaseOf(l) }))
+    .map((l) => ({
+      id: l.list_id,
+      name: l.list_name,
+      client: l.folder_name ?? null,
+      phase: phaseOf(l),
+      esDelEstudio: isFactsSpace(l),
+    }))
     .sort((a, b) => (a.phase?.orden ?? 9) - (b.phase?.orden ?? 9));
 
   const start = proyectos.length ? Math.min(...proyectos.map((p) => p.startDate)) : null;
   const due = proyectos.length ? Math.max(...proyectos.map((p) => p.dueDate)) : null;
 
   return (
-    <SprintGantt
+    <TimelineClient
+      proyectos={proyectos}
+      sinFecha={sinFecha}
       sprint={{ id: "timeline", name: "Timeline de proyectos", client: null, start, due }}
-      tasks={proyectos}
-      readOnly
-      colorPorFila
       back={<Link href="/" className="text-small text-muted hover:text-ink transition">← Inicio</Link>}
-      footer={<SinFechas items={sinFecha} />}
     />
   );
 }
