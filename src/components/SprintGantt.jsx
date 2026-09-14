@@ -39,7 +39,18 @@ const cerrada = (t) => ["done", "closed"].includes(t.statusType);
 //  · pendiente → sólido
 //  · en curso  → sólido con rayas claras, como las barras de progreso del portal
 //  · hecha     → sólido atenuado, pasa a segundo plano
-function barStyle(t, col) {
+function barStyle(t, col, suave = false) {
+  // Modo suave: relleno en el tono claro del cliente y texto en el fuerte, como
+  // las píldoras de cliente del resto del portal. Es lo que pide el timeline
+  // global, donde conviven seis clientes y el relleno fuerte los vuelve un
+  // semáforo —el terracota compite con el rojo de "vencido" y el crema, cuyo
+  // tono fuerte es el negro de marca, sale como una barra negra.
+  if (suave) {
+    return {
+      style: { background: col.bg, borderColor: "transparent", opacity: cerrada(t) ? 0.55 : 1 },
+      text: col.fg,
+    };
+  }
   if (cerrada(t)) {
     return { style: { background: col.fg, borderColor: "transparent", opacity: 0.4 }, text: "#fff" };
   }
@@ -344,14 +355,14 @@ export default function SprintGantt({
                               "absolute top-1/2 -translate-y-1/2 h-7 rounded-full border flex items-center pl-3 pr-1 transition hover:brightness-[0.97]",
                               vencida && "ring-1 ring-danger/70"
                             )}
-                            style={{ left: x(ini), width: w, ...barStyle(t, colorDe(t)).style }}
+                            style={{ left: x(ini), width: w, ...barStyle(t, colorDe(t), colorPorFila).style }}
                           >
                             {/* Sticky: mientras la barra siga en pantalla, el
                                 nombre se queda a la vista aunque su inicio haya
                                 quedado atrás con el scroll. */}
                             <span
                               className="sticky left-3 text-[12px] leading-none font-medium whitespace-nowrap overflow-hidden text-ellipsis"
-                              style={{ color: barStyle(t, colorDe(t)).text, maxWidth: w - 44 }}
+                              style={{ color: barStyle(t, colorDe(t), colorPorFila).text, maxWidth: w - 44 }}
                             >
                               {t.name}
                             </span>
