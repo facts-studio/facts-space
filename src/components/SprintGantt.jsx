@@ -24,6 +24,12 @@ const ZOOM = {
   mes: { px: 6, label: "Meses" },
 };
 
+// La barra es un botón (abre el selector de estado) o un enlace (timeline de
+// proyectos, donde lleva a su tablero). Mismo aspecto en ambos casos.
+function Bar({ as: Tag = "button", ...rest }) {
+  return <Tag {...(Tag === "button" ? { type: "button" } : {})} {...rest} />;
+}
+
 const norm = (v) => (v || "").toLowerCase().trim();
 const TODOS = "__todos__"; // "sin filtro" con un valor propio, no ""
 const cerrada = (t) => ["done", "closed"].includes(t.statusType);
@@ -74,7 +80,20 @@ function rangeOf(sprint, tasks) {
   return { from, to, days };
 }
 
-export default function SprintGantt({ sprint, tasks = [], statuses = [], isAdmin = false, myEmail = null, back = null }) {
+// `colorOf` y `hrefOf` permiten reutilizar este mismo cronograma para el
+// timeline global de proyectos: allí cada fila es un proyecto, con el color de
+// su cliente y un enlace a su tablero, en vez de una tarea con estado editable.
+export default function SprintGantt({
+  sprint,
+  tasks = [],
+  statuses = [],
+  isAdmin = false,
+  myEmail = null,
+  back = null,
+  colorOf = null,
+  hrefOf = null,
+  readOnly = false,
+}) {
   // Cambios de estado hechos aquí: se pintan al momento y se revierten si la
   // llamada a ClickUp falla.
   const [overrides, setOverrides] = useState(() => new Map());
@@ -174,7 +193,7 @@ export default function SprintGantt({ sprint, tasks = [], statuses = [], isAdmin
         </div>
 
         <div className="flex items-center gap-4 ml-auto">
-          {tasks.length > 0 && (
+          {tasks.length > 0 && !readOnly && (
             <div className="hidden sm:flex items-center gap-2.5">
               <ProgressBar value={hechas} max={tasks.length} className="w-[80px]" />
               <span className="text-micro text-mutedSoft tabular-nums">{hechas}/{tasks.length}</span>
@@ -192,6 +211,7 @@ export default function SprintGantt({ sprint, tasks = [], statuses = [], isAdmin
           >
             Hoy
           </button>
+          {!readOnly && (
           <PersonFilter
             isAdmin={isAdmin && people.length > 1}
             members={people.map((p) => ({ email: p.email, name: p.name }))}
@@ -201,13 +221,16 @@ export default function SprintGantt({ sprint, tasks = [], statuses = [], isAdmin
             mine={soloMias}
             onToggleMine={() => setSoloMias((v) => !v)}
           />
+          )}
         </div>
       </header>
 
       {!range || visibles.length === 0 ? (
         <div className="flex-1 grid place-items-center px-5 md:px-10">
           <p className="text-small text-mutedSoft text-center">
-            {tasks.length === 0 ? "Este sprint aún no tiene tareas." : "Ninguna tarea con estos filtros."}
+            {tasks.length === 0
+              ? readOnly ? "No hay proyectos con fechas." : "Este sprint aún no tiene tareas."
+              : "Ninguna tarea con estos filtros."}
           </p>
         </div>
       ) : (
@@ -300,9 +323,10 @@ export default function SprintGantt({ sprint, tasks = [], statuses = [], isAdmin
                         // Mínimo 64px: por debajo, dentro de la barra no cabe ni una sílaba.
                         const w = Math.max(x(fin) - x(ini) + px, 64);
                         return (
-                          <button
-                            type="button"
-                            onClick={(ev) => {
+                          <Bar
+                            as={readOnly && hrefOf ? "a" : "button"}
+                            href={readOnly && hrefOf ? hrefOf(t) : undefined}
+                            onClick={readOnly ? undefined : (ev) => {
                               const r = ev.currentTarget.getBoundingClientRect();
                               setTip(null);
                               setPanel({ task: t, ini, fin, x: r.left + r.width / 2, y: r.top });
@@ -316,14 +340,14 @@ export default function SprintGantt({ sprint, tasks = [], statuses = [], isAdmin
                               "absolute top-1/2 -translate-y-1/2 h-7 rounded-full border flex items-center pl-3 pr-1 transition hover:brightness-[0.97]",
                               vencida && "ring-1 ring-danger/70"
                             )}
-                            style={{ left: x(ini), width: w, ...barStyle(t, col).style }}
+                            style={{ left: x(ini), width: w, ...barStyle(t, colorOf ? colorOf(t) : col).style }}
                           >
                             {/* Sticky: mientras la barra siga en pantalla, el
                                 nombre se queda a la vista aunque su inicio haya
                                 quedado atrás con el scroll. */}
                             <span
                               className="sticky left-3 text-[12px] leading-none font-medium whitespace-nowrap overflow-hidden text-ellipsis"
-                              style={{ color: barStyle(t, col).text, maxWidth: w - 44 }}
+                              style={{ color: barStyle(t, colorOf ? colorOf(t) : col).text, maxWidth: w - 44 }}
                             >
                               {t.name}
                             </span>
@@ -342,7 +366,7 @@ export default function SprintGantt({ sprint, tasks = [], statuses = [], isAdmin
                                 </span>
                               );
                             })}
-                          </button>
+                          </Bar>
                         );
                       })() : null}
                       {!fin && (
