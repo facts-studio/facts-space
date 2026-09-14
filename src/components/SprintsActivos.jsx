@@ -86,11 +86,11 @@ function SprintCard({ s, soloSprint = false }) {
     // Lleva a Tareas ya filtrado por este sprint (?sprint=… lo resuelve
     // tareas-client contra las tareas para componer su clave interna).
     // Un sprint cerrado sigue en la lista mientras le queden tareas abiertas,
-    // pero cambia de tono para que los vivos destaquen. Va por variante y no
-    // por clase suelta: cn() no resuelve conflictos de Tailwind, así que dos
-    // bg-* juntos los decidiría el orden de la hoja de estilos, no el del JSX.
+    // así que se tiñe del verde de "hecho" para distinguirlo de un vistazo. Va
+    // por variante y no por clase suelta: cn() no resuelve conflictos de
+    // Tailwind, y dos bg-* juntos los decidiría el orden de la hoja de estilos.
     <Surface
-      variant={finalizado(s) ? "soft" : "muted"}
+      variant={finalizado(s) ? "done" : "muted"}
       pad="sm"
       hover
       className="relative flex flex-col gap-2.5"
