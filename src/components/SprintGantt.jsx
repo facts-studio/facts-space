@@ -333,7 +333,9 @@ export default function SprintGantt({
                 const vencida = fin && startOfDay(fin) < hoy && !cerrada(t);
                 return (
                   <div key={t.id} className="relative flex border-b border-border/30 hover:bg-surface2/20 transition-colors">
-                    <div className="relative flex-1 h-11" style={{ minWidth: width }}>
+                    {/* El timeline global respira más: la fila es una franja de
+                        proyecto, no un renglón de tarea. */}
+                    <div className={cn("relative flex-1", readOnly ? "h-14" : "h-11")} style={{ minWidth: width }}>
                       {fin ? (() => {
                         // Mínimo 64px: por debajo, dentro de la barra no cabe ni una sílaba.
                         const w = Math.max(x(fin) - x(ini) + px, 64);
@@ -352,7 +354,8 @@ export default function SprintGantt({
                             }}
                             onMouseLeave={() => setTip(null)}
                             className={cn(
-                              "absolute top-1/2 -translate-y-1/2 h-7 rounded-full border flex items-center pl-3 pr-1 transition hover:brightness-[0.97]",
+                              "absolute top-1/2 -translate-y-1/2 border flex items-center pl-3 pr-1 transition hover:brightness-[0.97]",
+                              readOnly ? "h-9 rounded-xl pr-2 gap-2" : "h-7 rounded-full",
                               vencida && "ring-1 ring-danger/70"
                             )}
                             style={{ left: x(ini), width: w, ...barStyle(t, colorDe(t), colorPorFila).style }}
@@ -366,15 +369,27 @@ export default function SprintGantt({
                             >
                               {t.name}
                             </span>
-                            {(t.assignees ?? []).slice(0, 1).map((a) => {
+                            {t.meta && (
+                              <span
+                                className="sticky left-0 shrink-0 text-[11px] leading-none tabular-nums opacity-70 whitespace-nowrap"
+                                style={{ color: barStyle(t, colorDe(t), colorPorFila).text }}
+                              >
+                                {t.meta}
+                              </span>
+                            )}
+                            {(t.assignees ?? []).slice(0, readOnly ? 4 : 1).map((a) => {
                               const foto = teamPhoto(a.email);
                               return (
-                                <span key={a.email ?? a.name} title={a.name} className="ml-auto shrink-0 pl-1.5">
+                                <span
+                                  key={a.email ?? a.name}
+                                  title={a.name}
+                                  className={cn("shrink-0", readOnly ? "-ml-1.5 first:ml-auto first:-ml-0" : "ml-auto pl-1.5")}
+                                >
                                   {foto ? (
                                     // eslint-disable-next-line @next/next/no-img-element
-                                    <img src={foto} alt="" className="h-5 w-5 rounded-full object-cover ring-1 ring-white/50" />
+                                    <img src={foto} alt="" className={cn("h-5 w-5 rounded-full object-cover", readOnly ? "ring-2 ring-bg" : "ring-1 ring-white/50")} />
                                   ) : (
-                                    <span className="grid place-items-center h-5 w-5 rounded-full bg-white/25 text-[9.5px] font-medium text-white">
+                                    <span className={cn("grid place-items-center h-5 w-5 rounded-full text-[9.5px] font-medium", readOnly ? "bg-bg/70 text-ink ring-2 ring-bg" : "bg-white/25 text-white")}>
                                       {a.initials ?? a.name?.[0]}
                                     </span>
                                   )}
