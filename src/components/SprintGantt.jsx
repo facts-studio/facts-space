@@ -30,6 +30,24 @@ function Bar({ as: Tag = "button", ...rest }) {
   return <Tag {...(Tag === "button" ? { type: "button" } : {})} {...rest} />;
 }
 
+// Miniatura de una persona dentro de la barra. En el timeline se solapan unas
+// con otras y llevan anillo del fondo; en un sprint va suelta sobre el color.
+function Cara({ a, readOnly = false }) {
+  const foto = teamPhoto(a.email);
+  return (
+    <span title={a.name} className={cn("shrink-0", readOnly ? "-ml-1.5 first:ml-0" : "ml-auto pl-1.5")}>
+      {foto ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={foto} alt="" className={cn("h-5 w-5 rounded-full object-cover", readOnly ? "ring-2 ring-bg" : "ring-1 ring-white/50")} />
+      ) : (
+        <span className={cn("grid place-items-center h-5 w-5 rounded-full text-[9.5px] font-medium", readOnly ? "bg-bg/70 text-ink ring-2 ring-bg" : "bg-white/25 text-white")}>
+          {a.initials ?? a.name?.[0]}
+        </span>
+      )}
+    </span>
+  );
+}
+
 const norm = (v) => (v || "").toLowerCase().trim();
 const TODOS = "__todos__"; // "sin filtro" con un valor propio, no ""
 const cerrada = (t) => ["done", "closed"].includes(t.statusType);
@@ -348,7 +366,7 @@ export default function SprintGantt({
                         const caras = Math.min((t.assignees ?? []).length, readOnly ? 4 : 1);
                         const tag = readOnly ? t.client : null;
                         const reservado =
-                          24 + (t.meta ? 40 : 0) + (caras ? caras * 18 + 8 : 0) + (tag ? tag.length * 6.2 + 18 : 0);
+                          28 + (t.meta ? 44 : 0) + (caras ? (caras - 1) * 14 + 20 + 8 : 0) + (tag ? tag.length * 6.2 + 20 : 0);
                         return (
                           <Bar
                             as={readOnly && t.href ? "a" : "button"}
@@ -370,58 +388,58 @@ export default function SprintGantt({
                             )}
                             style={{ left: x(ini), width: w, ...barStyle(t, colorDe(t), colorPorFila).style }}
                           >
-                            {/* Etiqueta de cliente: el color ya lo agrupa, pero
-                                con seis clientes en pantalla hay que poder
-                                nombrarlo sin ir al tooltip. */}
-                            {tag && (
-                              <span
-                                className="sticky left-3 shrink-0 inline-flex items-center h-5 px-1.5 rounded-md text-[10.5px] font-medium leading-none whitespace-nowrap"
-                                style={{ background: `${colorDe(t).fg}1f`, color: colorDe(t).fg }}
-                              >
-                                {tag}
+                            {/* En el timeline los tres datos que identifican la
+                                fila —cliente, quién la trabaja y el nombre— van
+                                en UN bloque sticky: si cada uno se pegara por su
+                                cuenta al borde, acabarían montándose entre ellos
+                                al hacer scroll sobre una barra larga. */}
+                            {readOnly ? (
+                              <span className="sticky left-3 flex items-center gap-2 min-w-0">
+                                {tag && (
+                                  <span
+                                    className="shrink-0 inline-flex items-center h-5 px-1.5 rounded-md text-[10.5px] font-medium leading-none whitespace-nowrap"
+                                    style={{ background: `${colorDe(t).fg}1f`, color: colorDe(t).fg }}
+                                  >
+                                    {tag}
+                                  </span>
+                                )}
+                                {(t.assignees ?? []).length > 0 && (
+                                  <span className="shrink-0 flex items-center">
+                                    {(t.assignees ?? []).slice(0, 4).map((a) => (
+                                      <Cara key={a.email ?? a.name} a={a} readOnly />
+                                    ))}
+                                  </span>
+                                )}
+                                <span
+                                  className="text-[12px] leading-none font-medium whitespace-nowrap overflow-hidden text-ellipsis"
+                                  style={{ color: barStyle(t, colorDe(t), colorPorFila).text, maxWidth: Math.max(24, w - reservado) }}
+                                >
+                                  {t.name}
+                                </span>
                               </span>
+                            ) : (
+                              <>
+                                <span
+                                  className="sticky left-3 text-[12px] leading-none font-medium whitespace-nowrap overflow-hidden text-ellipsis"
+                                  style={{ color: barStyle(t, colorDe(t), colorPorFila).text, maxWidth: w - 44 }}
+                                >
+                                  {t.name}
+                                </span>
+                                {(t.assignees ?? []).slice(0, 1).map((a) => (
+                                  <Cara key={a.email ?? a.name} a={a} />
+                                ))}
+                              </>
                             )}
-                            {/* Sticky: mientras la barra siga en pantalla, el
-                                nombre se queda a la vista aunque su inicio haya
-                                quedado atrás con el scroll. */}
-                            <span
-                              className={cn(
-                                "text-[12px] leading-none font-medium whitespace-nowrap overflow-hidden text-ellipsis",
-                                tag ? "shrink" : "sticky left-3"
-                              )}
-                              style={{ color: barStyle(t, colorDe(t), colorPorFila).text, maxWidth: Math.max(24, w - reservado) }}
-                            >
-                              {t.name}
-                            </span>
-                            {/* El avance va pegado al nombre y NO es sticky: si
-                                lo fuera, los dos pelearían por el mismo borde. */}
+                            {/* El avance cierra la barra por la derecha, fuera
+                                del bloque sticky. */}
                             {t.meta && (
                               <span
-                                className="shrink-0 text-[11px] leading-none tabular-nums opacity-70 whitespace-nowrap"
+                                className="ml-auto shrink-0 text-[11px] leading-none tabular-nums opacity-70 whitespace-nowrap pl-2"
                                 style={{ color: barStyle(t, colorDe(t), colorPorFila).text }}
                               >
                                 {t.meta}
                               </span>
                             )}
-                            {(t.assignees ?? []).slice(0, readOnly ? 4 : 1).map((a) => {
-                              const foto = teamPhoto(a.email);
-                              return (
-                                <span
-                                  key={a.email ?? a.name}
-                                  title={a.name}
-                                  className={cn("shrink-0", readOnly ? "-ml-1.5 first:ml-auto first:-ml-0" : "ml-auto pl-1.5")}
-                                >
-                                  {foto ? (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img src={foto} alt="" className={cn("h-5 w-5 rounded-full object-cover", readOnly ? "ring-2 ring-bg" : "ring-1 ring-white/50")} />
-                                  ) : (
-                                    <span className={cn("grid place-items-center h-5 w-5 rounded-full text-[9.5px] font-medium", readOnly ? "bg-bg/70 text-ink ring-2 ring-bg" : "bg-white/25 text-white")}>
-                                      {a.initials ?? a.name?.[0]}
-                                    </span>
-                                  )}
-                                </span>
-                              );
-                            })}
                           </Bar>
                         );
                       })() : null}
