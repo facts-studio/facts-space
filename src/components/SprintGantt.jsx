@@ -339,6 +339,11 @@ export default function SprintGantt({
                       {fin ? (() => {
                         // Mínimo 64px: por debajo, dentro de la barra no cabe ni una sílaba.
                         const w = Math.max(x(fin) - x(ini) + px, 64);
+                        // Sitio que se llevan avance y caras, para que el nombre
+                        // se recorte antes de meterse debajo: los dos son
+                        // `sticky` y, sin reservarlo, se pisan al hacer scroll.
+                        const caras = Math.min((t.assignees ?? []).length, readOnly ? 4 : 1);
+                        const reservado = 24 + (t.meta ? 40 : 0) + (caras ? caras * 18 + 8 : 0);
                         return (
                           <Bar
                             as={readOnly && t.href ? "a" : "button"}
@@ -365,13 +370,15 @@ export default function SprintGantt({
                                 quedado atrás con el scroll. */}
                             <span
                               className="sticky left-3 text-[12px] leading-none font-medium whitespace-nowrap overflow-hidden text-ellipsis"
-                              style={{ color: barStyle(t, colorDe(t), colorPorFila).text, maxWidth: w - 44 }}
+                              style={{ color: barStyle(t, colorDe(t), colorPorFila).text, maxWidth: Math.max(24, w - reservado) }}
                             >
                               {t.name}
                             </span>
+                            {/* El avance va pegado al nombre y NO es sticky: si
+                                lo fuera, los dos pelearían por el mismo borde. */}
                             {t.meta && (
                               <span
-                                className="sticky left-0 shrink-0 text-[11px] leading-none tabular-nums opacity-70 whitespace-nowrap"
+                                className="shrink-0 text-[11px] leading-none tabular-nums opacity-70 whitespace-nowrap"
                                 style={{ color: barStyle(t, colorDe(t), colorPorFila).text }}
                               >
                                 {t.meta}
