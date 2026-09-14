@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { navFor } from "@/lib/nav";
+import SyncNavButton from "@/components/SyncNavButton";
 import { setNavCollapsed } from "@/lib/actions/prefs";
 import FctsMark from "@/components/FctsMark";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -207,7 +208,10 @@ export default function Sidebar({ user, isAdmin = false, isExternal = false, ser
 
       <nav className="mt-auto pt-6 flex flex-col gap-1">
         {isAdmin && (
-          <NavLink href="/admin" label="Administrar" icon="settings" active={isActive("/admin")} collapsed={collapsed} />
+          <>
+            <SyncNavButton collapsed={collapsed} />
+            <NavLink href="/admin" label="Administrar" icon="settings" active={isActive("/admin")} collapsed={collapsed} />
+          </>
         )}
       </nav>
 
