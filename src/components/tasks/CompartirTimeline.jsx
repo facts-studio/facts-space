@@ -15,6 +15,13 @@ export default function CompartirTimeline() {
     start(async () => {
       const r = await crearEnlaceTimeline(30);
       if (!r.ok) { setEstado(r.error); return; }
+      // En desarrollo el enlace apunta a esta máquina: se enseña en vez de
+      // copiarlo en silencio, para no repartir un enlace muerto sin saberlo.
+      if (r.local) {
+        window.prompt("Ojo: sin dominio público, este enlace solo abre en tu máquina.", r.url);
+        setEstado(null);
+        return;
+      }
       try {
         await navigator.clipboard.writeText(r.url);
         setEstado("copiado");
