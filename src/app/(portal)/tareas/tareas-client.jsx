@@ -1091,7 +1091,9 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
           )}
           style={{
             left: derecha ? (hoverCtx.xr ?? hoverCtx.x) + 8 : hoverCtx.x,
-            top: below ? (hoverCtx.yb ?? hoverCtx.y) + 8 : hoverCtx.y + 8,
+            // Arriba del icono se resta: con `-translate-y-full`, sumar metía
+            // la burbuja 8px DENTRO del chip y le tapaba la letra.
+            top: below ? (hoverCtx.yb ?? hoverCtx.y) + 8 : hoverCtx.y - 8,
           }}
         >
           {hoverCtx.desc ? (
