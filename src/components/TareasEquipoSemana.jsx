@@ -88,16 +88,17 @@ export default function TareasEquipoSemana({ tasks = [], campaigns = [], statuse
           next,
           done,
           campaign: campaignSet.has(g.client),
-          // 0 = tiene activas · 1 = solo semana siguiente · 2 = solo completadas
-          rank: active.length ? 0 : next.length ? 1 : 2,
+          // Orden del repaso, que es el orden en que se habla: primero lo de
+          // casa (General), luego los sprints —lo que tiene principio y fin— y
+          // al final cada cliente con su trabajo corriente.
+          orden: (g.client || "").trim().toLowerCase() === "general" ? 0 : g.sprint || campaignSet.has(g.client) ? 1 : 2,
           first: active[0]?.dueDate ?? next[0]?.dueDate ?? Infinity,
         };
       })
-      // Primero los que tienen actividad; dentro de cada nivel, lo temporal
-      // (sprint o campaña) delante; luego urgencia y nombre.
+      // General → sprints → clientes. Dentro de cada bloque, lo que vence
+      // antes primero, y a igualdad, por nombre.
       .sort((a, b) =>
-        (a.rank - b.rank) ||
-        ((b.sprint || b.campaign ? 1 : 0) - (a.sprint || a.campaign ? 1 : 0)) ||
+        (a.orden - b.orden) ||
         ((a.first === b.first) ? 0 : a.first - b.first) ||
         a.name.localeCompare(b.name)
       );
