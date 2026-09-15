@@ -6,7 +6,7 @@ import MobileNav from "@/components/MobileNav";
 import ContentWidth from "@/components/ContentWidth";
 import { isExternal, isColaborador } from "@/lib/team";
 import TeamPhotos from "@/components/tasks/TeamPhotos";
-import AsistenteDock from "@/components/asistente/AsistenteDock";
+import AsistenteBar from "@/components/asistente/AsistenteBar";
 import { AsistenteProvider } from "@/lib/asistente";
 import { getEmployees } from "@/lib/data/employees";
 import PreviewBanner from "@/components/PreviewBanner";
@@ -80,9 +80,10 @@ export default async function PortalLayout({ children }) {
         <MobileNav isAdmin={Boolean(emp?.is_admin)} isExternal={externo} serverTheme={emp?.theme ?? null} />
       )}
 
-      {/* F*ctito. Solo se pinta donde el portal lo sirve tu máquina: en
-          producción la ruta ni existe (ver src/lib/lineasRojas.js). */}
-      <AsistenteDock />
+      {/* F*ctito: barra flotante centrada abajo, con su panel hacia arriba.
+          Solo se pinta donde el portal lo sirve tu máquina: en producción la
+          ruta ni existe (ver src/lib/lineasRojas.js). */}
+      <AsistenteBar />
     </div>
     </AsistenteProvider>
   );

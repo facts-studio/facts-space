@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { navFor } from "@/lib/nav";
@@ -100,6 +100,16 @@ export default function Sidebar({ user, isAdmin = false, isExternal = false, ser
       setNavCollapsed(next);
       return next;
     });
+
+  // El ancho de la barra, publicado como variable para quien lo necesite: la
+  // barra de F*ctito es `fixed` y con esto se centra con el CONTENIDO en vez
+  // de con la pantalla. Se toca el DOM a propósito —es un sistema externo al
+  // render— y se limpia al desmontar.
+  useEffect(() => {
+    const raiz = document.documentElement;
+    raiz.style.setProperty("--sidebar-w", collapsed ? "76px" : "248px");
+    return () => raiz.style.removeProperty("--sidebar-w");
+  }, [collapsed]);
 
   const isActive = (href) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);

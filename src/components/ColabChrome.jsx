@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import FctsMark from "@/components/FctsMark";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -33,6 +34,14 @@ function LogoutButton({ className = "" }) {
 }
 
 export default function ColabChrome({ serverTheme = null }) {
+  // Mismo hueco que la barra lateral, para que lo que se centre con el
+  // contenido (F*ctito) no se descuadre aquí.
+  useEffect(() => {
+    const raiz = document.documentElement;
+    raiz.style.setProperty("--sidebar-w", "76px");
+    return () => raiz.style.removeProperty("--sidebar-w");
+  }, []);
+
   return (
     <>
       {/* fixed, no sticky: no entra en el flujo, así que el contenido usa todo
