@@ -1,6 +1,16 @@
 import "server-only";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { createClient } from "@/lib/supabase/server";
 import { getPreviewRole, applyPreview } from "@/lib/preview";
+
+// Identidad impuesta para una petición que NO viene del navegador: el MCP, que
+// se autentica con un token personal y no con la cookie de sesión. Va por
+// AsyncLocalStorage para que valga en toda la cadena de llamadas sin tener que
+// pasar el empleado por parámetro a media aplicación.
+const identidad = new AsyncLocalStorage();
+export function comoEmpleado(empleado, fn) {
+  return identidad.run(empleado, fn);
+}
 
 // ¿Hay un Supabase real configurado? En modo preview o con el placeholder
 // seguimos sirviendo el mock para no romper el desarrollo local.
@@ -14,6 +24,8 @@ export function isConfigured() {
 // null si no hay sesión o no está dado de alta. Úsalo solo donde haga falta la
 // identidad de verdad (salir de "ver como", comprobar quién puede activarlo).
 export async function getRealEmployee() {
+  const impuesta = identidad.getStore();
+  if (impuesta) return impuesta;
   if (!isConfigured()) return null;
   const supabase = await createClient();
   const {
@@ -31,6 +43,8 @@ export async function getRealEmployee() {
 // Empleado con el que se pinta el portal. Si un admin está mirándolo "como"
 // otro tipo de usuario, devuelve su ficha con esos permisos (ver src/lib/preview.js).
 export async function getCurrentEmployee() {
+  const impuesta = identidad.getStore();
+  if (impuesta) return impuesta; // petición con token: esa es la persona
   const me = await getRealEmployee();
   if (!me?.is_admin) return me; // solo un admin puede estar previsualizando
   const role = await getPreviewRole();

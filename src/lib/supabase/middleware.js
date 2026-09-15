@@ -39,6 +39,7 @@ export async function updateSession(request) {
     pathname.startsWith("/api/clickup/webhook") || // webhook de ClickUp (sin sesión)
     pathname.startsWith("/api/cron/") || // crons de Vercel (sin sesión)
     pathname.startsWith("/publico/") || // vistas compartidas por enlace firmado
+    pathname.startsWith("/api/mcp") || // F*ctito: se autentica con token propio
     pathname === "/favicon.ico";
 
   // Sin sesión → al login.
