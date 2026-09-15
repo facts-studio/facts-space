@@ -235,7 +235,9 @@ export default function Sidebar({ user, isAdmin = false, isExternal = false, ser
                 </div>
               )}
             </Link>
-            <ThemeToggle serverTheme={serverTheme} />
+            {/* Recogida, el interruptor va de pie: en 76px de columna uno
+                horizontal se sale o se come todo el ancho. */}
+            <ThemeToggle serverTheme={serverTheme} vertical />
           </div>
         ) : (
           <div className="flex items-center gap-3 px-2">
