@@ -112,7 +112,7 @@ export default async function TimelinePage() {
     <TimelineClient
       proyectos={proyectos}
       sinFecha={sinFecha}
-      puedeCompartir={Boolean(me?.is_admin)}
+      isAdmin={Boolean(me?.is_admin)}
       sprint={{ id: "timeline", name: "Timeline de proyectos", client: null, start, due }}
       back={<Link href="/" className="text-small text-muted hover:text-ink transition">← Inicio</Link>}
     />

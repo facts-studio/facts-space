@@ -53,7 +53,11 @@ function colorDe(p) {
   return COLOR_FASE[p.phase?.key] ?? COLOR_FASE.propuesta;
 }
 
-export default function TimelineClient({ proyectos = [], sinFecha = [], sprint, back, publico = false, puedeCompartir = false, now = null }) {
+// `isAdmin` gobierna los dos controles de la cabecera, y por el mismo motivo:
+// solo un admin ve el mapa entero. Al resto ya le llega recortado —lo de
+// Unfiltrade más los proyectos a los que se le invita—, así que un filtro por
+// área le ofrecería separar algo que no tiene mezclado.
+export default function TimelineClient({ proyectos = [], sinFecha = [], sprint, back, publico = false, isAdmin = false, now = null }) {
   const [soloEstudio, setSoloEstudio] = useState(false);
   const filtrar = (lista) =>
     (soloEstudio ? lista.filter((p) => p.esDelEstudio) : lista).map((p) => ({ ...p, color: colorDe(p) }));
@@ -77,10 +81,10 @@ export default function TimelineClient({ proyectos = [], sinFecha = [], sprint, 
       readOnly
       back={back}
       now={now}
-      titleExtra={puedeCompartir && !publico ? <CompartirTimeline /> : null}
+      titleExtra={isAdmin && !publico ? <CompartirTimeline /> : null}
       controls={
         // En la vista pública ya son todos de Adhōc: no hay nada que filtrar.
-        publico ? null : (
+        publico || !isAdmin ? null : (
           <span className="flex items-center gap-1 shrink-0">
             <Switch
               checked={soloEstudio}
