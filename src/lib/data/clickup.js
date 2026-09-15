@@ -354,17 +354,22 @@ export async function getClientBranding(visibles = []) {
 
 // Listas que puede ver QUIEN está mirando. Es lo que deben usar las pantallas;
 // getConfiguredLists() devuelve la configuración entera y es solo para admin.
+// Recorte de listas para una persona concreta. Lo usan TODAS las lecturas —las
+// listas y las tareas—, porque si cada una aplica su propia regla acaban
+// discrepando: las listas de Adhōc se ocultaban bien, pero las tareas de esos
+// mismos proyectos seguían llegando y delataban al cliente en los filtros.
+export function listsFor(lists, employee, identidades = []) {
+  // Los flags del panel (visible / admin_only / Management) mandan en los
+  // spaces que se gestionan a mano; el área del estudio se los salta porque su
+  // reparto se decide solo (ver listVisibleFor).
+  const manuales = filterVisibleLists(lists, Boolean(employee?.is_admin)).filter((l) => !isFactsSpace(l));
+  const candidatas = [...manuales, ...lists.filter((l) => isFactsSpace(l))];
+  return candidatas.filter((l) => listVisibleFor(l, employee, identidades));
+}
+
 export async function getVisibleLists() {
   const [lists, me] = await Promise.all([getConfiguredLists(), getCurrentEmployee()]);
-  const identidades = await identitiesFor(me);
-  // Los flags del panel (visible / admin_only / Management) siguen mandando en
-  // los spaces que se gestionan a mano; el área de F*cts Studio se salta ese
-  // filtro porque su reparto se decide solo (ver listVisibleFor).
-  const manuales = filterVisibleLists(lists, Boolean(me?.is_admin)).filter((l) => !isFactsSpace(l));
-  const candidatas = [...manuales, ...lists.filter((l) => isFactsSpace(l))];
-  // Se filtra aquí, y no en cada pantalla, para que Inicio, sprints, tareas,
-  // calendario y timeline hereden el mismo recorte sin poder olvidarse.
-  return candidatas.filter((l) => listVisibleFor(l, me, identidades));
+  return listsFor(lists, me, await identitiesFor(me));
 }
 
 // Tareas del portal. Orden de preferencia:
@@ -378,10 +383,10 @@ export async function getClickUpTasks() {
   const team = process.env.CLICKUP_TEAM_ID;
   try {
     const [configured, me, dir] = await Promise.all([getConfiguredLists(), getCurrentEmployee(), directorioPorGrupo()]);
-    const isAdmin = Boolean(me?.is_admin);
-    // Visibles = activadas; "bloqueadas" (admin_only) y las de "Management"
-    // (privadas por norma) solo para admins.
-    const visibleIds = filterVisibleLists(configured, isAdmin).map((l) => l.list_id);
+    // Mismo recorte que las listas: de lo contrario llegaban tareas de
+    // proyectos que esa persona no puede ver, y el filtro de clientes las
+    // delataba aunque el proyecto estuviera oculto.
+    const visibleIds = listsFor(configured, me, await identitiesFor(me)).map((l) => l.list_id);
     // Listas marcadas como sprint: mini-proyecto temporal DENTRO de un cliente.
     // La tarea conserva su cliente (project) y añade `sprint` con el nombre de
     // la lista; no es un cliente aparte.
