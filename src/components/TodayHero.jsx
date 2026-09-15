@@ -274,7 +274,7 @@ export default function TodayHero({ nombre = "equipo", meName = "", events = [],
     <header className="pb-2 mb-8 fade-up">
       <div className="flex items-center justify-between gap-3 mb-5">
         <p className="text-caption uppercase text-mutedSoft">{fecha}</p>
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0">
           {controls}
           <RefreshButton />
         </div>
