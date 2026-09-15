@@ -57,6 +57,20 @@
   --border-strong: rgb(var(--ct-borderStrong));
 }
 
+/* Chips de cliente (filtro de Tareas). El color llega en variables desde el
+   componente; aquí se decide cómo se aplica en cada tema. Las pastel de la
+   paleta están calculadas para el fondo crema: puestas tal cual sobre el
+   oscuro deslumbran y el texto, que es su tono fuerte, se apaga. Así que en
+   oscuro el fondo se mezcla con la superficie y el texto sube hacia el ink. */
+.chip-cliente {
+  background: var(--chip-bg);
+  color: var(--chip-fg);
+}
+.dark .chip-cliente {
+  background: color-mix(in srgb, var(--chip-bg) 20%, rgb(var(--ct-surface2)));
+  color: color-mix(in srgb, var(--chip-fg) 45%, rgb(var(--ct-ink)));
+}
+
 .dark {
   /* En oscuro el ojo distingue mucho peor dos grises seguidos, y las
      superficies se pintan con alfa (bg-surface/55, bg-surface2/40): el salto

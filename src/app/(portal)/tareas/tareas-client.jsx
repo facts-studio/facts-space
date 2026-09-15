@@ -109,9 +109,13 @@ function ClientAvatar({ name, active, campaign, todos, icon, colorKey, shade = 0
         className={cn(
           "grid place-items-center rounded-[13px] w-10 h-10 font-display text-[15px] transition",
           active ? "ring-2 ring-ink" : "ring-1 ring-border/60",
-          todos && (active ? "bg-ink text-bg" : "bg-surface2/70 text-muted")
+          todos && (active ? "bg-ink text-bg" : "bg-surface2/70 text-muted"),
+          !todos && c && "chip-cliente"
         )}
-        style={!todos && c ? { background: bg, color: c.fg } : undefined}
+        // El color va en variables y lo resuelve el CSS: las pastel de la
+        // paleta están pensadas para el fondo crema y en oscuro deslumbran
+        // (ver globals.css).
+        style={!todos && c ? { "--chip-bg": bg, "--chip-fg": c.fg } : undefined}
       >
         {icon ? (
           // Icono monocromo teñido con el fg del cliente (misma lógica que la letra).
@@ -119,7 +123,9 @@ function ClientAvatar({ name, active, campaign, todos, icon, colorKey, shade = 0
             aria-hidden
             className="block h-[52%] w-[52%]"
             style={{
-              backgroundColor: c?.fg,
+              // currentColor: así el icono sigue al color que el tema haya
+              // decidido para el chip, en vez de fijar el de la paleta.
+              backgroundColor: "currentColor",
               WebkitMaskImage: `url("${icon}")`,
               maskImage: `url("${icon}")`,
               WebkitMaskRepeat: "no-repeat",
@@ -832,11 +838,15 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
               { key: "sprints", short: "Sprints", icon: null, items: camps.filter(isUf) },
               { key: "fcts", short: "F*cts", icon: clientIcon("F*cts Studio"), items: [...genFirst(fixed.filter((c) => !isUf(c))), ...camps.filter((c) => !isUf(c))] },
             ].filter((g) => g.items.length);
+            // Quien no tiene clientes de Adhōc ve pocos chips y le caben todos:
+            // recogerlos solo escondería información sin ganar sitio. Con F*cts
+            // delante sí hace falta, que ahí la fila se desborda.
+            const siempreVisibles = !groups.some((g) => g.key === "fcts");
             const Avatar = (c, i) => {
               const sel = selection.has(c.key);
               // Recogidos bajo el maestro por defecto; un cliente SELECCIONADO se
               // queda desplegado para que el filtro activo sea visible sin hover.
-              const collapsed = !sel;
+              const collapsed = !sel && !siempreVisibles;
               return (
                 <button
                   key={c.key}
