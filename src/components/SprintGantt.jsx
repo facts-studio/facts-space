@@ -165,6 +165,9 @@ export default function SprintGantt({
   controls = null,
   titleExtra = null,
   now = null,
+  // Arrastrar la barra para cambiar las fechas del proyecto. Lo resuelve quien
+  // usa el cronograma (sabe a qué escribir); aquí solo se dibuja el gesto.
+  onFechas = null,
 }) {
   // Cambios de estado hechos aquí: se pintan al momento y se revierten si la
   // llamada a ClickUp falla.
@@ -191,6 +194,14 @@ export default function SprintGantt({
       });
     }
   };
+  // Arrastre en curso: { id, modo, dias }. `modo` dice qué extremo se mueve.
+  // Todo el gesto vive en estado, sin refs: el cronograma ya se repinta en cada
+  // día que se mueve, y leer un ref al pintar es lo que React desaconseja.
+  const [arrastre, setArrastre] = useState(null); // { id, modo, x0, tarea, dias }
+  // El clic llega DESPUÉS de soltar, cuando el arrastre ya se ha limpiado: sin
+  // esta ventana, terminar de arrastrar navegaría al proyecto.
+  const [bloqueoClic, setBloqueoClic] = useState(false);
+
   // Una sola lectura del reloj por render. En una vista servida sin sesión el
   // "hoy" llega del servidor, para que no dependa del reloj de quien mira.
   const hoy = useMemo(() => startOfDay(now ?? new Date().getTime()), [now]);
@@ -239,6 +250,50 @@ export default function SprintGantt({
     }
     return out;
   }, [dias]);
+
+  // ── Arrastrar para cambiar fechas ──────────────────────────────────────
+  // Se mide en píxeles y se traduce a DÍAS con la escala actual, así que el
+  // gesto vale igual en la vista de días que en la de meses. Solo se escribe al
+  // soltar: mientras tanto es una previsualización.
+  const iniciarArrastre = (ev, t, modo) => {
+    if (!onFechas || !t.startDate || !t.dueDate) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    ev.currentTarget.setPointerCapture?.(ev.pointerId);
+    setArrastre({ id: t.id, modo, x0: ev.clientX, tarea: t, dias: 0 });
+  };
+  const moverArrastre = (ev) => {
+    setArrastre((a) => {
+      if (!a) return a;
+      const dias = Math.round((ev.clientX - a.x0) / px);
+      return dias === a.dias ? a : { ...a, dias };
+    });
+  };
+  const soltarArrastre = () => {
+    const a = arrastre;
+    setArrastre(null);
+    if (!a || !a.dias) return;
+    const { tarea, modo, dias } = a;
+    const desp = dias * DAY;
+    let start = tarea.startDate;
+    let due = tarea.dueDate;
+    if (modo === "mover") { start += desp; due += desp; }
+    else if (modo === "inicio") start = Math.min(start + desp, due);
+    else due = Math.max(due + desp, start);
+    if (start === tarea.startDate && due === tarea.dueDate) return;
+    setBloqueoClic(true);
+    setTimeout(() => setBloqueoClic(false), 250);
+    onFechas?.(tarea, { start, due });
+  };
+  // Desplazamiento en píxeles que toca pintar durante el gesto.
+  const offset = (t) => {
+    const a = arrastre && arrastre.id === t.id ? arrastre : null;
+    if (!a) return { izq: 0, ancho: 0 };
+    const d = a.dias * px;
+    if (a.modo === "mover") return { izq: d, ancho: 0 };
+    if (a.modo === "inicio") return { izq: d, ancho: -d };
+    return { izq: 0, ancho: d };
+  };
 
   const hechas = tasks.map(conEstado).filter(cerrada).length;
   const col = paletteColor(sprint.client || sprint.name, sprint.colorKey);
@@ -387,7 +442,9 @@ export default function SprintGantt({
                       ...(zoom === "dia" && isWeekend(d)
                         ? {
                             backgroundImage:
-                              "repeating-linear-gradient(45deg, rgb(var(--ct-surface2) / 0.9) 0 5px, transparent 5px 10px)",
+                              // Tramado del finde: solo tiene que insinuar que
+                              // es no laborable, no dibujar una reja.
+                              "repeating-linear-gradient(45deg, rgb(var(--ct-surface2) / 0.5) 0 5px, transparent 5px 10px)",
                           }
                         : null),
                     }}
@@ -432,12 +489,17 @@ export default function SprintGantt({
                           <Bar
                             as={readOnly && t.href ? "a" : "button"}
                             href={readOnly && t.href ? t.href : undefined}
-                            onClick={readOnly ? undefined : (ev) => {
+                            onClick={(ev) => {
+                              // Venir de un arrastre no es un clic: ni navega ni
+                              // abre el selector de estado.
+                              if (arrastre || bloqueoClic) { ev.preventDefault(); return; }
+                              if (readOnly) return;
                               const r = ev.currentTarget.getBoundingClientRect();
                               setTip(null);
                               setPanel({ task: t, ini, fin, x: r.left + r.width / 2, y: r.top });
                             }}
                             onMouseEnter={(ev) => {
+                              if (arrastre) return;
                               const r = ev.currentTarget.getBoundingClientRect();
                               setTip({ task: t, ini, fin, x: r.left + r.width / 2, y: r.top });
                             }}
@@ -445,11 +507,17 @@ export default function SprintGantt({
                             className={cn(
                               "absolute top-1/2 -translate-y-1/2 border flex items-center pl-3 pr-1 transition hover:brightness-[0.97]",
                               readOnly ? "h-9 rounded-xl pr-2 gap-2" : "h-7 rounded-full",
+                              onFechas && "cursor-grab active:cursor-grabbing touch-none select-none",
+                              arrastre?.id === t.id && "ring-2 ring-ink/25 z-20",
                               !readOnly && vencida && "ring-1 ring-danger/70"
                             )}
+                            onPointerDown={onFechas ? (ev) => iniciarArrastre(ev, t, "mover") : undefined}
+                            onPointerMove={onFechas ? moverArrastre : undefined}
+                            onPointerUp={onFechas ? soltarArrastre : undefined}
+                            onPointerCancel={onFechas ? soltarArrastre : undefined}
                             style={{
-                              left: x(ini),
-                              width: w,
+                              left: x(ini) + offset(t).izq,
+                              width: Math.max(24, w + offset(t).ancho),
                               // Recorta lo que sobresalga SIN `overflow-hidden`:
                               // ese convierte la barra en contenedor de scroll
                               // y entonces el bloque sticky se pega a ella en
@@ -538,6 +606,28 @@ export default function SprintGantt({
                                 {(t.assignees ?? []).slice(0, 1).map((a) => (
                                   <Cara key={a.email ?? a.name} a={a} />
                                 ))}
+                              </>
+                            )}
+                            {/* Tiradores: los 10px de cada extremo mueven solo
+                                esa fecha; el resto de la barra las mueve las
+                                dos. Aparecen al pasar por encima para no
+                                ensuciar la barra en reposo. */}
+                            {onFechas && (
+                              <>
+                                <span
+                                  onPointerDown={(ev) => iniciarArrastre(ev, t, "inicio")}
+                                  onPointerMove={moverArrastre}
+                                  onPointerUp={soltarArrastre}
+                                  title="Mover el inicio"
+                                  className="absolute left-0 top-0 bottom-0 w-2.5 cursor-ew-resize rounded-l-xl opacity-0 hover:opacity-100 bg-ink/10 transition-opacity"
+                                />
+                                <span
+                                  onPointerDown={(ev) => iniciarArrastre(ev, t, "fin")}
+                                  onPointerMove={moverArrastre}
+                                  onPointerUp={soltarArrastre}
+                                  title="Mover el fin"
+                                  className="absolute right-0 top-0 bottom-0 w-2.5 cursor-ew-resize rounded-r-xl opacity-0 hover:opacity-100 bg-ink/10 transition-opacity"
+                                />
                               </>
                             )}
                             {/* El avance cierra la barra por la derecha, fuera

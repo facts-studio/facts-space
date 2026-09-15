@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { isClickUpConfigured, getClickUpHierarchy } from "@/lib/data/clickup";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentEmployee } from "@/lib/data/helpers";
@@ -235,6 +235,41 @@ export async function setClickUpTaskStatus(taskId, status) {
     }
     revalidatePath("/");
     revalidatePath("/tareas");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+// Mueve las fechas de un proyecto (lista de ClickUp) desde el timeline.
+// ClickUp acepta start_date/due_date en ms; un 0 las borra. Se escribe allí,
+// que es la fuente, y se refleja de paso en clickup_lists para que el portal no
+// tenga que esperar a la siguiente sincronización.
+export async function moverFechasProyecto({ listId, start, due }) {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard;
+  if (!isClickUpConfigured()) return { ok: false, error: "ClickUp no configurado" };
+  if (!listId || !start || !due) return { ok: false, error: "Faltan fechas." };
+  if (due < start) return { ok: false, error: "El fin no puede ir antes del inicio." };
+
+  try {
+    const res = await fetch(`https://api.clickup.com/api/v2/list/${listId}`, {
+      method: "PUT",
+      headers: { Authorization: process.env.CLICKUP_API_TOKEN, "Content-Type": "application/json" },
+      body: JSON.stringify({ start_date: start, due_date: due }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || json?.err) return { ok: false, error: json?.err || `ClickUp respondió ${res.status}` };
+
+    const supabase = await createClient();
+    await supabase
+      .from("clickup_lists")
+      .update({ list_start: new Date(start).toISOString(), list_due: new Date(due).toISOString() })
+      .eq("list_id", String(listId));
+
+    revalidateTag("clickup");
+    revalidatePath("/timeline");
+    revalidatePath("/");
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e.message };

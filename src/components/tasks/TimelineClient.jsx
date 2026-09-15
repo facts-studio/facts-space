@@ -4,10 +4,12 @@
 // proyectos son del estudio y cuáles del trabajo con Unfiltrade. El filtro
 // recorta a la vez las barras y los proyectos sin fechas del pie, para que la
 // pantalla no diga dos cosas distintas.
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import SprintGantt from "@/components/SprintGantt";
 import SinFechas from "@/components/tasks/SinFechas";
 import { Switch } from "@/components/ui";
+import { moverFechasProyecto } from "@/lib/actions/clickup";
 import CompartirTimeline from "@/components/tasks/CompartirTimeline";
 
 // El timeline NO se pinta por cliente: con doce proyectos a la vez, seis
@@ -58,10 +60,31 @@ function colorDe(p) {
 // Unfiltrade más los proyectos a los que se le invita—, así que un filtro por
 // área le ofrecería separar algo que no tiene mezclado.
 export default function TimelineClient({ proyectos = [], sinFecha = [], sprint, back, publico = false, isAdmin = false, now = null }) {
+  const router = useRouter();
   const [soloEstudio, setSoloEstudio] = useState(false);
+  // Fechas movidas a la espera de que ClickUp confirme: la barra se queda donde
+  // la sueltas en vez de volver a su sitio y saltar cuando llega la respuesta.
+  const [optimista, setOptimista] = useState({});
+  const [, empezar] = useTransition();
+
+  const cambiarFechas = (p, { start, due }) => {
+    setOptimista((o) => ({ ...o, [p.id]: { start, due } }));
+    empezar(async () => {
+      const r = await moverFechasProyecto({ listId: p.id, start, due });
+      if (!r.ok) {
+        alert(r.error);
+        setOptimista((o) => { const n = { ...o }; delete n[p.id]; return n; });
+      }
+      router.refresh();
+    });
+  };
   const filtrar = (lista) =>
-    (soloEstudio ? lista.filter((p) => p.esDelEstudio) : lista).map((p) => ({ ...p, color: colorDe(p) }));
-  const filas = useMemo(() => filtrar(proyectos), [proyectos, soloEstudio]); // eslint-disable-line react-hooks/exhaustive-deps
+    (soloEstudio ? lista.filter((p) => p.esDelEstudio) : lista).map((p) => ({
+      ...p,
+      ...(optimista[p.id] ? { startDate: optimista[p.id].start, dueDate: optimista[p.id].due } : null),
+      color: colorDe(p),
+    }));
+  const filas = useMemo(() => filtrar(proyectos), [proyectos, soloEstudio, optimista]); // eslint-disable-line react-hooks/exhaustive-deps
   const pie = useMemo(() => filtrar(sinFecha), [sinFecha, soloEstudio]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // El rango se recalcula con lo que queda a la vista: si solo miras F*cts, la
@@ -81,6 +104,8 @@ export default function TimelineClient({ proyectos = [], sinFecha = [], sprint, 
       readOnly
       back={back}
       now={now}
+      // Arrastrar las fechas es escribir en ClickUp: solo administración.
+      onFechas={isAdmin && !publico ? cambiarFechas : null}
       titleExtra={isAdmin && !publico ? <CompartirTimeline /> : null}
       controls={
         // En la vista pública ya son todos de Adhōc: no hay nada que filtrar.
