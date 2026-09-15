@@ -7,13 +7,19 @@ import { setClickUpTaskStatus } from "@/lib/actions/clickup";
 import { dueLabel } from "@/lib/clickup-ui";
 import { StatusMenu } from "@/components/tasks/task-atoms";
 
-// Hay una lista "General" por rama (F*cts Studio y Unfiltrade), así que a
-// secas no dice de qué: cuando el cliente es genérico se antepone la rama.
-const GENERICO = new Set(["general", "tareas", "sin cliente"]);
-function cliente(t) {
+// De dónde viene una tarea. Manda el PROYECTO —"Black Friday" dice mucho más
+// que "TradingLab", que puede tener cuatro a la vez—; el cliente solo aparece
+// cuando la tarea vive en su cajón ("Tareas", "General"), que no es un
+// proyecto y por sí solo tampoco identifica nada: ahí se antepone la rama,
+// porque hay una "General" por cada una.
+const GENERICO = new Set(["general", "tareas", "sin cliente", "management"]);
+const esGenerico = (v) => !v || GENERICO.has(String(v).trim().toLowerCase());
+
+function origen(t) {
+  if (!esGenerico(t.listName)) return t.listName;
   const p = t.project || "";
   if (!p) return "";
-  return t.space && GENERICO.has(p.toLowerCase()) ? `${t.space} · ${p}` : p;
+  return t.space && esGenerico(p) ? `${t.space} · ${p}` : p;
 }
 
 export default function TareasHoyList({ tasks, isAdmin = false }) {
@@ -69,7 +75,7 @@ export default function TareasHoyList({ tasks, isAdmin = false }) {
               <p className="text-micro text-mutedSoft truncate">
                 {t.isSubtask && t.parentName
                   ? `de «${t.parentName}»`
-                  : cliente(t)}
+                  : origen(t)}
                 {e.status && <>{t.isSubtask || t.project ? " · " : ""}{e.status}</>}
               </p>
             </div>
