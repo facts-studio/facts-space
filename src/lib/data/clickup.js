@@ -467,24 +467,35 @@ async function fetchListTasks(listId) {
 // histórico—. Con eso, un proyecto largo salía con un progreso ridículo: Nueva
 // Academia marcaba 33% teniendo 7 de 9 cerradas, porque las cerradas en julio
 // y agosto ni se habían pedido.
-//
-// Una petición por lista, cacheada como el resto (60 s). Se llama solo con las
-// listas que se van a pintar.
 export async function getListProgress(listIds = []) {
   if (!isClickUpConfigured() || !listIds.length) return {};
-  const pares = await Promise.all(
-    listIds.map(async (id) => {
-      try {
-        const tareas = await fetchListTasks(id);
-        const cerradas = tareas.filter((t) => ["done", "closed"].includes(t.status?.type)).length;
-        const enCurso = tareas.filter((t) => t.status?.type === "custom").length;
-        return [String(id), { total: tareas.length, done: cerradas, doing: enCurso }];
-      } catch {
-        return null; // una lista que falle no puede tumbar el bloque entero
+  const opts = authOpts();
+  const team = process.env.CLICKUP_TEAM_ID;
+  const acc = {};
+  try {
+    // UNA consulta para todas las listas, no una por lista: el endpoint del
+    // equipo acepta list_ids[] repetido y pagina sobre el conjunto.
+    for (let page = 0; page < 10; page++) {
+      const params = new URLSearchParams({ include_closed: "true", subtasks: "true", page: String(page) });
+      for (const id of listIds) params.append("list_ids[]", String(id));
+      const res = await fetch(`${BASE}/team/${team}/task?${params}`, opts);
+      if (!res.ok) break;
+      const json = await res.json();
+      const batch = json.tasks ?? [];
+      for (const t of batch) {
+        const k = String(t.list?.id ?? "");
+        if (!k) continue;
+        acc[k] ??= { total: 0, done: 0, doing: 0 };
+        acc[k].total++;
+        if (["done", "closed"].includes(t.status?.type)) acc[k].done++;
+        else if (t.status?.type === "custom") acc[k].doing++;
       }
-    })
-  );
-  return Object.fromEntries(pares.filter(Boolean));
+      if (batch.length < 100) break;
+    }
+  } catch {
+    return acc; // lo que se haya podido contar; nunca tumba la página
+  }
+  return acc;
 }
 
 // Eventos de la agenda de empresa desde ClickUp: festivos, cumpleaños e hitos.
