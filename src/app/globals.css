@@ -67,8 +67,11 @@
   color: var(--chip-fg);
 }
 .dark .chip-cliente {
-  background: color-mix(in srgb, var(--chip-bg) 20%, rgb(var(--ct-surface2)));
+  /* Sin relleno: sobre el oscuro, un fondo teñido compite con el propio chip
+     seleccionado (que sí va lleno). Queda el contorno y la letra en su color. */
+  background: transparent;
   color: color-mix(in srgb, var(--chip-fg) 45%, rgb(var(--ct-ink)));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chip-fg) 30%, transparent);
 }
 
 .dark {

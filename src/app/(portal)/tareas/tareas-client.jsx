@@ -841,12 +841,15 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
             // Quien no tiene clientes de Adhōc ve pocos chips y le caben todos:
             // recogerlos solo escondería información sin ganar sitio. Con F*cts
             // delante sí hace falta, que ahí la fila se desborda.
+            // Los CLIENTES se quedan a la vista cuando caben —sin Adhōc
+            // delante hay pocos—, pero los sprints no: son muchos y temporales,
+            // y desplegados taparían a los clientes, que es lo estable.
             const siempreVisibles = !groups.some((g) => g.key === "fcts");
-            const Avatar = (c, i) => {
+            const Avatar = (c, i, g) => {
               const sel = selection.has(c.key);
               // Recogidos bajo el maestro por defecto; un cliente SELECCIONADO se
               // queda desplegado para que el filtro activo sea visible sin hover.
-              const collapsed = !sel && !siempreVisibles;
+              const collapsed = !sel && !(siempreVisibles && g?.key === "uf");
               return (
                 <button
                   key={c.key}
@@ -888,7 +891,7 @@ export default function TareasClient({ tasks, milestones = [], myEmail, isAdmin 
                         >
                           <GroupMaster short={g.short} icon={g.icon} state={state} />
                         </button>
-                        {g.items.map((c, i) => Avatar(c, i))}
+                        {g.items.map((c, i) => Avatar(c, i, g))}
                       </div>
                     </div>
                   );
