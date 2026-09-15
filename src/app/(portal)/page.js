@@ -59,7 +59,16 @@ export default async function HomePage({ searchParams }) {
   // Aviso admin: tareas asignadas a alguien en un día que tiene ausencia aprobada.
   const conflicts = me?.is_admin ? taskVacationConflicts(events, tasks) : [];
   const mine = weekTasks(tasks, me?.email);
-  const teamWeek = teamWeekTasks(tasks); // modo Status: todo el equipo, por cliente
+  // Modo Status: el repaso del lunes, en pantalla y con el equipo delante. Las
+  // listas de administración (Management, o cualquiera marcada como solo admin)
+  // se quedan fuera aunque quien mire sea admin: ahí se habla de dinero y de
+  // personas, y esta vista se enseña.
+  const compartidas = new Set(
+    lists
+      .filter((l) => !l.admin_only && (l.list_name || "").trim().toLowerCase() !== "management")
+      .map((l) => String(l.list_id))
+  );
+  const teamWeek = teamWeekTasks(tasks.filter((t) => compartidas.has(String(t.listId))));
   // Vencidas: ya vienen dentro de `mine` (weekTasks no tiene límite inferior),
   // pero el saludo debe nombrarlas aparte.
   const startToday = new Date().setHours(0, 0, 0, 0);

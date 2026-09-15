@@ -116,17 +116,19 @@ export default function TareasEquipoSemana({ tasks = [], campaigns = [], statuse
   const i = Math.min(index, groups.length - 1);
   const g = groups[i];
 
+  // Los tres momentos del repaso del lunes, en el orden en que se cuentan:
+  // qué se cerró, qué toca ahora y qué viene detrás.
   const blocks = [
-    { key: "done", label: "Completadas", items: g.done, muted: true },
+    { key: "done", label: "Cerrado", items: g.done, muted: true },
     { key: "active", label: "Esta semana", items: g.active },
-    { key: "next", label: "Semana siguiente", items: g.next },
+    { key: "next", label: "La que viene", items: g.next },
   ].filter((b) => b.items.length);
 
   return (
     <div className={className}>
       {/* Cabecera del módulo: título + navegación entre clientes */}
       <div className="flex items-center justify-between gap-3 mb-3">
-        <p className="section-eyebrow">Tareas del equipo · esta semana</p>
+        <p className="section-eyebrow">Status del equipo</p>
         <div className="flex items-center gap-0.5 shrink-0">
           <Arrow dir="prev" onClick={() => setIndex(i - 1)} disabled={i === 0} />
           <span className="text-micro text-mutedSoft tabular-nums px-0.5">{i + 1}/{groups.length}</span>
