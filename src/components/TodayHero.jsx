@@ -92,7 +92,7 @@ function joinNodes(nodes) {
   ));
 }
 
-export default function TodayHero({ nombre = "equipo", meName = "", events = [], avisos = null, taskCount = 0, overdueCount = 0 }) {
+export default function TodayHero({ nombre = "equipo", meName = "", events = [], avisos = null, taskCount = 0, overdueCount = 0, controls = null }) {
   const now = new Date();
   const hoy = startOfDay(now);
   // ¿El protagonista del evento es el propio usuario? → segunda persona
@@ -274,7 +274,10 @@ export default function TodayHero({ nombre = "equipo", meName = "", events = [],
     <header className="pb-2 mb-8 fade-up">
       <div className="flex items-center justify-between gap-3 mb-5">
         <p className="text-caption uppercase text-mutedSoft">{fecha}</p>
-        <RefreshButton />
+        <div className="flex items-center gap-3 shrink-0">
+          {controls}
+          <RefreshButton />
+        </div>
       </div>
 
       <h1 className="font-display text-[32px] md:text-[64px] leading-[1.05] md:leading-[1.0] tracking-[-0.03em] text-ink">

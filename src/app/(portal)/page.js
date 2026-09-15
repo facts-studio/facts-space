@@ -16,12 +16,19 @@ import { getEmployees } from "@/lib/data/employees";
 import { getSlackTickets } from "@/lib/data/slack";
 import { getLastWorkedDate } from "@/lib/data/time";
 import { isColaborador } from "@/lib/team";
+import { isFactsSpace } from "@/lib/projects";
+import AdhocToggle from "@/components/AdhocToggle";
 import { madridDateISO } from "@/lib/dates";
 import { getClickUpTasks, getVisibleLists, weekTasks, teamWeekTasks, activeSprints, getListProgress } from "@/lib/data/clickup";
 import { identitiesOf, normalizeName } from "@/lib/projects";
 
-export default async function HomePage() {
-  const [events, me, tasks, notes, lists, approvals, decisions, tickets, team] = await Promise.all([
+export default async function HomePage({ searchParams }) {
+  // Ver o no el trabajo de Adhōc. Vive en la URL (?adhoc=0) para poder filtrar
+  // AQUÍ y no mandar siquiera esos datos al navegador.
+  const q = await searchParams;
+  const mostrarAdhoc = q?.adhoc !== "0";
+
+  const [events, me, tareasTodas, notes, listasTodas, approvals, decisions, tickets, team] = await Promise.all([
     getCalendarEvents(),
     getCurrentEmployee(),
     getClickUpTasks(),
@@ -32,6 +39,12 @@ export default async function HomePage() {
     getSlackTickets(),     // tickets de los canales compartidos (Slack Lists)
     getEmployees(),        // para resolver a quién menciona cada sprint
   ]);
+  // El recorte se hace sobre las listas y arrastra a todo lo que cuelga de
+  // ellas: sprints, mis tareas y las del equipo.
+  const lists = mostrarAdhoc ? listasTodas : listasTodas.filter((l) => !isFactsSpace(l));
+  const idsVisibles = new Set(lists.map((l) => String(l.list_id)));
+  const tasks = tareasTodas.filter((t) => idsVisibles.has(String(t.listId)));
+
   const nombre = me?.name?.split(" ")[0] || "equipo";
   // Un colaborador entra solo por sus proyectos: nada de cumpleaños, vacaciones
   // ni agenda del equipo. Su Inicio es sus tareas y los sprints donde está.
@@ -95,6 +108,7 @@ export default async function HomePage() {
       {/* Columna principal */}
       <div className="min-w-0">
         <TodayHero
+          controls={me?.is_admin ? <AdhocToggle mostrar={mostrarAdhoc} /> : null}
           nombre={nombre}
           meName={me?.name || ""}
           events={eventosVisibles}
