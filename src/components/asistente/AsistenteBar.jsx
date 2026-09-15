@@ -14,11 +14,12 @@
 // Portado del panel de Adhōc (components/AsistenteHome.jsx), adaptado a los
 // tokens y a los iconos de este portal.
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useSyncExternalStore } from "react";
 import Fantasma from "@/components/asistente/Fantasma";
 import AsistenteChat from "@/components/asistente/AsistenteChat";
 import { useAsistente } from "@/lib/asistente";
 import { cn } from "@/lib/cn";
+import { sonar, setSonido, suscribirSonido, snapSonido, snapSonidoServidor } from "@/lib/sonido";
 
 const ATAJOS = ["¿Qué tengo esta semana?", "Resúmeme el estado de los sprints", "¿Quién está fuera?"];
 
@@ -34,6 +35,8 @@ const IcoX = (p) => <Ico {...p} d={<path d="M6 6l12 12M18 6L6 18" />} />;
 const IcoArriba = (p) => <Ico {...p} d={<path d="M12 19V5M5 12l7-7 7 7" />} />;
 const IcoExpandir = (p) => <Ico {...p} d={<path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5" />} />;
 const IcoPlegar = (p) => <Ico {...p} d={<path d="M3 8h5V3M21 8h-5V3M3 16h5v5M21 16h-5v5" />} />;
+const IcoSonido = (p) => <Ico {...p} d={<><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z" /><path d="M16 9.5a3.5 3.5 0 0 1 0 5" /></>} />;
+const IcoSilencio = (p) => <Ico {...p} d={<><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z" /><path d="m16 10 4 4M20 10l-4 4" /></>} />;
 
 function cuando(ts) {
   const min = Math.round((Date.now() - ts) / 60000);
@@ -80,6 +83,19 @@ export default function AsistenteBar() {
   const [completa, setCompleta] = useState(false);
   const taRef = useRef(null);
   const cajaRef = useRef(null);
+  // La preferencia vive en localStorage; se lee con useSyncExternalStore para
+  // no tener que sincronizarla con un efecto.
+  const conSonido = useSyncExternalStore(suscribirSonido, snapSonido, snapSonidoServidor);
+  const ocupadoPrevio = useRef(false);
+
+  // El sonido de respuesta se dispara cuando F*ctito deja de pensar, que es el
+  // único sitio donde se sabe que ha terminado (el envío ya suena al pulsar).
+  useEffect(() => {
+    if (ocupadoPrevio.current && !ocupado) {
+      sonar(mensajes[mensajes.length - 1]?.error ? "error" : "respuesta");
+    }
+    ocupadoPrevio.current = ocupado;
+  }, [ocupado, mensajes]);
 
   useEffect(() => {
     const el = taRef.current;
@@ -91,7 +107,7 @@ export default function AsistenteBar() {
   // Clic fuera y Esc repliegan. No borran nada: la conversación sigue viva.
   useEffect(() => {
     if (!panel && !enUso) return;
-    const plegar = () => { setPanel(null); setEnUso(false); setCompleta(false); };
+    const plegar = () => { if (panel) sonar("cerrar"); setPanel(null); setEnUso(false); setCompleta(false); };
     const fuera = (e) => { if (!cajaRef.current?.contains(e.target)) plegar(); };
     // Esc sale primero de pantalla completa: es lo último que hiciste, y
     // cerrarlo todo de golpe obligaría a reabrir la conversación.
@@ -110,6 +126,7 @@ export default function AsistenteBar() {
   // la mantiene abierta: cerrar es cerrar, y el hilo sigue ahí para cuando
   // vuelvas a escribir.
   const plegarTodo = () => {
+    if (panel) sonar("cerrar");
     setPanel(null);
     setCompleta(false);
     setEnUso(false);
@@ -120,6 +137,7 @@ export default function AsistenteBar() {
     if (!q || ocupado) return;
     setTexto("");
     setPanel("hilo");
+    sonar("enviar");
     enviar(q);
   };
   const onKeyDown = (e) => {
@@ -245,7 +263,17 @@ export default function AsistenteBar() {
                 </Chip>
                 {mensajes.length === 0
                   ? ATAJOS.map((a) => <Chip key={a} onClick={() => mandar(a)}>{a}</Chip>)
-                  : <Chip icon={<IcoMas className="h-3.5 w-3.5" />} onClick={() => { nueva(); plegarTodo(); }}>Nuevo chat</Chip>}
+                  : <Chip icon={<IcoMas className="h-3.5 w-3.5" />} onClick={() => { sonar("nuevo"); nueva(); plegarTodo(); }}>Nuevo chat</Chip>}
+                {/* Apagar el sonido vive junto al resto de controles y no en
+                    ajustes: es una preferencia de esta barra y del momento
+                    (una reunión, unos cascos puestos). */}
+                <Chip
+                  icon={conSonido ? <IcoSonido className="h-3.5 w-3.5" /> : <IcoSilencio className="h-3.5 w-3.5" />}
+                  onClick={() => { const v = !conSonido; setSonido(v); if (v) sonar("abrir"); }}
+                  activo={!conSonido}
+                >
+                  {conSonido ? "Sonido" : "Silencio"}
+                </Chip>
               </div>
             </div>
           </div>
@@ -257,7 +285,7 @@ export default function AsistenteBar() {
               value={texto}
               onChange={(e) => setTexto(e.target.value)}
               onKeyDown={onKeyDown}
-              onFocus={() => { setEnUso(true); if (mensajes.length > 0) setPanel("hilo"); }}
+              onFocus={() => { if (!enUso) sonar("abrir"); setEnUso(true); if (mensajes.length > 0) setPanel("hilo"); }}
               rows={1}
               placeholder="Pregunta lo que quieras…"
               className="min-w-0 flex-1 resize-none bg-transparent py-2 pl-1 text-small leading-[1.5] text-ink outline-none placeholder:text-mutedSoft"
