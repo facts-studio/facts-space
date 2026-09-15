@@ -69,6 +69,11 @@ export default async function HomePage({ searchParams }) {
       .map((l) => String(l.list_id))
   );
   const teamWeek = teamWeekTasks(tasks.filter((t) => compartidas.has(String(t.listId))));
+  // Lunes de la semana pasada: desde ahí se cuenta lo cerrado en el repaso.
+  const hoyMadrid = new Date(`${madridDateISO()}T00:00:00`);
+  const lunesPasado =
+    new Date(hoyMadrid.getFullYear(), hoyMadrid.getMonth(), hoyMadrid.getDate() - ((hoyMadrid.getDay() + 6) % 7)).getTime() -
+    7 * 86400000;
   // Vencidas: ya vienen dentro de `mine` (weekTasks no tiene límite inferior),
   // pero el saludo debe nombrarlas aparte.
   const startToday = new Date().setHours(0, 0, 0, 0);
@@ -147,6 +152,7 @@ export default async function HomePage({ searchParams }) {
           meSlackId={me?.slack_user_id ?? null}
           isAdmin={Boolean(me?.is_admin)}
           isColaborador={colaborador}
+          lunesPasado={lunesPasado}
           initialNotes={notes}
           canUseNotes={Boolean(me)}
         />

@@ -7,6 +7,7 @@ import TareasHoy from "@/components/TareasHoy";
 import TareasEquipoSemana from "@/components/TareasEquipoSemana";
 import SprintsActivos from "@/components/SprintsActivos";
 import TicketsPanel from "@/components/TicketsPanel";
+import TicketsCerrados from "@/components/TicketsCerrados";
 import NotasClient from "@/app/(portal)/notas/notas-client";
 import { TEAM } from "@/lib/mock";
 
@@ -48,6 +49,9 @@ export default function HomePanels({
   meSlackId = null,
   isAdmin = false,
   isColaborador = false,
+  // Lunes de la semana pasada: el corte del repaso, calculado en el servidor
+  // para que no dependa del reloj de quien mira.
+  lunesPasado = 0,
   initialNotes = [],
   canUseNotes = false,
   className = "",
@@ -81,7 +85,11 @@ export default function HomePanels({
                 trabajo entrante, antes de bajar a las tareas del día. */}
             {!isColaborador && <TicketsPanel tickets={tickets} meSlackId={meSlackId} className="mt-8" />}
             {mode === "status" ? (
-              <TareasEquipoSemana tasks={teamTasks} campaigns={campaigns} statusesByList={statusesByList} sprintMeta={sprintMeta} className="mt-8" />
+              <>
+                <TareasEquipoSemana tasks={teamTasks} campaigns={campaigns} statusesByList={statusesByList} sprintMeta={sprintMeta} className="mt-8" />
+                {/* Cierra el repaso: lo que pidieron los canales y ya está. */}
+                <TicketsCerrados tickets={tickets} desde={lunesPasado} className="mt-8" />
+              </>
             ) : (
               <TareasHoy tasks={tasks} isAdmin={isAdmin} className="mt-8" />
             )}

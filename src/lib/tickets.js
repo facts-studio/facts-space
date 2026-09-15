@@ -9,3 +9,12 @@ const DONE = ["listo", "hecho", "cerrado", "completado", "done", "finalizado", "
 export const statusKey = (status) => norm(status);
 export const isOpenTicket = (t) => !DONE.includes(norm(t.status));
 export const isUnassigned = (t) => !t.assignee;
+
+// Tickets cerrados hace poco, para el repaso del lunes. Slack no guarda la
+// fecha de cierre: se usa la última modificación, que en un ticket ya en Listo
+// es casi siempre el momento en que se cerró.
+export function ticketsCerradosDesde(tickets = [], desde) {
+  return tickets
+    .filter((t) => !isOpenTicket(t) && t.updatedAt && t.updatedAt >= desde)
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+}

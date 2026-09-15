@@ -157,6 +157,11 @@ export async function getSlackTickets() {
         channel: channelId,
         list: labels[channelId] ?? null,
         createdAt: it.date_created ? Number(it.date_created) * 1000 : null,
+        // Última modificación del item. Slack no guarda cuándo se cerró un
+        // ticket, así que para "esto se cerró la semana pasada" es lo más
+        // cerca que se puede estar: un ticket en Listo casi siempre se tocó
+        // por última vez justo al darlo por cerrado.
+        updatedAt: it.updated_timestamp ? Number(it.updated_timestamp) * 1000 : null,
         url: `${listUrl}?record_id=${it.id}`,
       };
     })
