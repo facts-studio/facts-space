@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  F*cts Space (portal interno) en local, siempre levantado.
+
+  Por qué existe: el servidor se arrancaba a mano o desde una sesión de Claude,
+  y moría con ella — al cerrar VS Code, localhost:3007 se caía. Como
+  LaunchAgent, macOS lo arranca al iniciar sesión y lo vuelve a levantar si se
+  cae, sin depender de que haya un editor abierto.
+
+  Para quitarlo:
+    launchctl bootout gui/$(id -u)/studio.fcts.space
+    rm ~/Library/LaunchAgents/studio.fcts.space.plist
+
+  Para pararlo un rato sin desinstalarlo:
+    launchctl kill TERM gui/$(id -u)/studio.fcts.space
+
+  Para reiniciarlo (tras cambiar .env.local, por ejemplo):
+    launchctl kickstart -k gui/$(id -u)/studio.fcts.space
+
+  Logs: /tmp/fcts-space-dev.log
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>studio.fcts.space</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/alvarorodriguezvigil/.nvm/versions/node/v22.22.0/bin/node</string>
+    <string>/Users/alvarorodriguezvigil/.nvm/versions/node/v22.22.0/bin/npm</string>
+    <string>run</string>
+    <string>dev</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/alvarorodriguezvigil/Repositorios/F*cts/F*cts Space</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/Users/alvarorodriguezvigil/.nvm/versions/node/v22.22.0/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>NODE_ENV</key>
+    <string>development</string>
+  </dict>
+
+  <!-- Arranca al iniciar sesión y se relevanta si se cae. -->
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <!-- Espera 10s entre reintentos: si algo está mal (un error de compilación,
+       el puerto ocupado) no se reinicia en bucle comiéndose la CPU. -->
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+
+  <key>StandardOutPath</key>
+  <string>/tmp/fcts-space-dev.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/fcts-space-dev.log</string>
+</dict>
+</plist>

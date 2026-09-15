@@ -55,4 +55,10 @@ Repo `Alvarofcts/fcts-portal`. Trabajo en rama `feat/vacaciones-fichaje`.
 - Para datos reales: `.env.local` con URL+anon key y `NEXT_PUBLIC_AUTH_DISABLED=false`.
 
 ## Ejecutar
-- `npm run dev` (puerto 3000). Login Google `@fcts.studio`. `npm run build` + `npx eslint` antes de commitear.
+- **El portal corre como servicio del Mac**, no como una terminal abierta:
+  `http://localhost:3007` siempre levantado (LaunchAgent `studio.fcts.space`,
+  arranca al iniciar sesión y se relevanta si cae). Gestión:
+  `./scripts/servicio-local.sh [estado|reiniciar|logs|instalar|quitar]`.
+  NO arrancar otro `npm run dev` en 3007: el puerto ya está ocupado.
+- Se instala como app del Dock desde el navegador (manifest PWA).
+- `npm run build` + `npx eslint` antes de commitear.
