@@ -333,6 +333,25 @@ export async function identitiesFor(employee) {
   return identitiesOf(employee, grupo);
 }
 
+// Identidad visual de cada cliente: icono y color. Se elige una vez por cliente
+// pero se guarda en una de SUS listas, que puede ser la de Management —privada—,
+// así que leerla solo de las listas visibles daba a cada uno una marca distinta:
+// el admin veía la elegida y el resto la que el portal deduce del nombre.
+// Se busca en TODA la configuración y se recorta a los clientes que quien mira
+// ya ve, para no filtrar de paso los nombres de clientes que no le tocan.
+export async function getClientBranding(visibles = []) {
+  const todas = await getConfiguredLists();
+  const suyos = new Set(visibles.map((l) => l.folder_name).filter(Boolean));
+  const icons = {};
+  const colors = {};
+  for (const l of todas) {
+    if (!l.folder_name || !suyos.has(l.folder_name)) continue;
+    if (l.icon && !(l.folder_name in icons)) icons[l.folder_name] = l.icon;
+    if (l.color && !(l.folder_name in colors)) colors[l.folder_name] = l.color;
+  }
+  return { icons, colors };
+}
+
 // Listas que puede ver QUIEN está mirando. Es lo que deben usar las pantallas;
 // getConfiguredLists() devuelve la configuración entera y es solo para admin.
 export async function getVisibleLists() {

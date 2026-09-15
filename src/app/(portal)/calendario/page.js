@@ -1,7 +1,7 @@
 import CalendarMonth from "@/components/CalendarMonth";
 import { getCalendarEvents, getPendingAbsenceEvents } from "@/lib/data/calendar";
 import { getCurrentEmployee } from "@/lib/data/helpers";
-import { getClickUpTasks, getVisibleLists } from "@/lib/data/clickup";
+import { getClickUpTasks, getVisibleLists, getClientBranding } from "@/lib/data/clickup";
 import { getEmployees } from "@/lib/data/employees";
 import { paletteColor } from "@/lib/client-palette";
 import SinAcceso from "@/components/SinAcceso";
@@ -50,7 +50,9 @@ export default async function CalendarioPage() {
     getVisibleLists(),
     getEmployees(), // plantilla activa real (no el mock) para la fila de personas
   ]);
-  const colorsByClient = Object.fromEntries(lists.filter((l) => l.color && l.folder_name).map((l) => [l.folder_name, l.color]));
+  // Ver getClientBranding: el color se guarda en una lista cualquiera del
+  // cliente, y puede ser una que quien mira no vea.
+  const { colors: colorsByClient } = await getClientBranding(lists);
   const taskEvents = tasks.filter((t) => t.dueDate).map((t) => toEvent(t, colorsByClient));
   // Los hitos que pertenecen a un cliente (sprints y milestones de tarea) llevan
   // su tinte: el calendario lo usa cuando la vista de tareas está activa.
