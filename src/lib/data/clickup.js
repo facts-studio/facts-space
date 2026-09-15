@@ -460,6 +460,33 @@ async function fetchListTasks(listId) {
   return out;
 }
 
+// Avance REAL de unas listas: cuántas tareas tienen y cuántas están cerradas.
+//
+// Hace falta porque getClickUpTasks() trae las abiertas y solo las cerradas de
+// las dos últimas semanas —lo que necesita el día a día, sin arrastrar años de
+// histórico—. Con eso, un proyecto largo salía con un progreso ridículo: Nueva
+// Academia marcaba 33% teniendo 7 de 9 cerradas, porque las cerradas en julio
+// y agosto ni se habían pedido.
+//
+// Una petición por lista, cacheada como el resto (60 s). Se llama solo con las
+// listas que se van a pintar.
+export async function getListProgress(listIds = []) {
+  if (!isClickUpConfigured() || !listIds.length) return {};
+  const pares = await Promise.all(
+    listIds.map(async (id) => {
+      try {
+        const tareas = await fetchListTasks(id);
+        const cerradas = tareas.filter((t) => ["done", "closed"].includes(t.status?.type)).length;
+        const enCurso = tareas.filter((t) => t.status?.type === "custom").length;
+        return [String(id), { total: tareas.length, done: cerradas, doing: enCurso }];
+      } catch {
+        return null; // una lista que falle no puede tumbar el bloque entero
+      }
+    })
+  );
+  return Object.fromEntries(pares.filter(Boolean));
+}
+
 // Eventos de la agenda de empresa desde ClickUp: festivos, cumpleaños e hitos.
 // Shape de evento: { id, type, title, start, end, who }.
 export async function getAgendaEvents() {
@@ -823,7 +850,10 @@ export function workspaceOverview(tasks, now = Date.now()) {
  * avanza en cuanto se empieza a mover, no solo al cerrar. `elapsedPct` sí es
  * el tiempo, para contrastar «vas por el 30% con el 80% del plazo gastado».
  */
-export function activeSprints(lists = [], tasks = [], now = Date.now()) {
+export function activeSprints(lists = [], tasks = [], nowMs = null, progreso = {}) {
+  // El reloj se lee aquí dentro, no en la llamada: en una página de servidor
+  // eso sería impuro (regla react-hooks/purity).
+  const now = nowMs ?? Date.now();
   const today = endOfToday(now);
   const startToday = new Date(now).setHours(0, 0, 0, 0);
   const out = [];
@@ -841,15 +871,19 @@ export function activeSprints(lists = [], tasks = [], now = Date.now()) {
     if (l.list_start && l.list_start > today) continue;
 
     const items = tasks.filter((t) => t.listId === l.list_id);
-    const total = items.length;
     const open = items.filter(isOpen);
-    const done = total - open.length;
+    // Lo abierto y lo vencido salen de las tareas cargadas, que las traen todas.
+    // El TOTAL y lo hecho, del recuento real de la lista cuando lo tenemos: si
+    // no, un proyecto viejo parece a medias por las cerradas que no se piden.
+    const real = progreso[String(l.list_id)] ?? null;
+    const total = real ? real.total : items.length;
+    const done = real ? real.done : items.length - open.length;
     const overdue = open.filter((t) => t.dueDate && t.dueDate < startToday).length;
     // Las que ya se están moviendo: en ClickUp los estados intermedios
     // ("en progreso", "revisión"…) son de tipo `custom`; `open` es el "pendiente"
     // inicial. Cuentan medio punto en el progreso: no están hechas, pero
     // tampoco sin empezar.
-    const doing = open.filter((t) => t.statusType === "custom").length;
+    const doing = real ? real.doing : open.filter((t) => t.statusType === "custom").length;
 
     // Un proyecto del estudio solo cuenta como "activo" si está vendido o en
     // marcha (prioridad Urgente o Alta). Una propuesta o un lead ocupan sitio

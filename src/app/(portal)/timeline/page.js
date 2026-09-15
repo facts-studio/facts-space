@@ -1,7 +1,7 @@
 import Link from "next/link";
 import TimelineClient from "@/components/tasks/TimelineClient";
 import SinAcceso from "@/components/SinAcceso";
-import { getVisibleLists, getClickUpTasks, flattenTasks } from "@/lib/data/clickup";
+import { getVisibleLists, getListProgress } from "@/lib/data/clickup";
 import { getCurrentEmployee } from "@/lib/data/helpers";
 import { isColaborador } from "@/lib/team";
 import { phaseOf, isFactsSpace, isFactsProject, parseProjectMeta, identitiesOf, normalizeName } from "@/lib/projects";
@@ -22,7 +22,7 @@ export default async function TimelinePage() {
     );
   }
 
-  const [lists, tasks, team] = await Promise.all([getVisibleLists(), getClickUpTasks(), getEmployees()]);
+  const [lists, team] = await Promise.all([getVisibleLists(), getEmployees()]);
   // Una sola lectura del reloj, y del día de Madrid: en el render sería impuro.
   const ahora = new Date(`${madridDateISO()}T00:00:00`).getTime();
 
@@ -38,15 +38,13 @@ export default async function TimelinePage() {
       .filter(Boolean)
       .map((e) => ({ email: e.email, name: e.name, initials: (e.name || "?")[0] }));
 
-  // Cuánto lleva hecho cada proyecto.
-  const porLista = new Map();
-  for (const t of flattenTasks(tasks)) {
-    const k = String(t.listId);
-    if (!porLista.has(k)) porLista.set(k, { total: 0, hechas: 0 });
-    const acc = porLista.get(k);
-    acc.total++;
-    if (["done", "closed"].includes(t.statusType)) acc.hechas++;
-  }
+  // Cuánto lleva hecho cada proyecto, contando TODAS sus tareas: las del día a
+  // día no traen las cerradas de hace meses, y un proyecto largo salía a medias.
+  const progreso = await getListProgress(lists.map((l) => l.list_id));
+  const avance = (l) => {
+    const p = progreso[String(l.list_id)];
+    return p ? { total: p.total, hechas: p.done } : null;
+  };
 
   // El timeline los enseña TODOS, cada uno con su fase. Fuera quedan solo las
   // listas que no son proyectos: las "General" de cada cliente.
@@ -66,19 +64,19 @@ export default async function TimelinePage() {
     equipo: !isFactsSpace(l),
     // Avance del proyecto, dentro de la propia barra.
     meta: (() => {
-      const acc = porLista.get(String(l.list_id));
+      const acc = avance(l);
       return acc?.total ? `${acc.hechas}/${acc.total}` : null;
     })(),
     // Todo el trabajo cerrado: da igual de quién sea el proyecto.
     completado: (() => {
-      const acc = porLista.get(String(l.list_id));
+      const acc = avance(l);
       return Boolean(acc && acc.total > 0 && acc.hechas === acc.total);
     })(),
     // Pasado de fecha y CON trabajo vivo dentro. Terminar tarde y terminar a
     // tiempo se distinguen; haber acabado todo y que la fecha quede atrás no
     // es ningún problema.
     fueraDePlazo: (() => {
-      const acc = porLista.get(String(l.list_id));
+      const acc = avance(l);
       const fin = new Date(l.list_due).getTime();
       const parado = phaseOf(l)?.key === "parado";
       return Boolean(fin < ahora && !parado && acc && acc.total > acc.hechas);

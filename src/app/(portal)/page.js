@@ -17,7 +17,7 @@ import { getSlackTickets } from "@/lib/data/slack";
 import { getLastWorkedDate } from "@/lib/data/time";
 import { isColaborador } from "@/lib/team";
 import { madridDateISO } from "@/lib/dates";
-import { getClickUpTasks, getVisibleLists, weekTasks, teamWeekTasks, activeSprints } from "@/lib/data/clickup";
+import { getClickUpTasks, getVisibleLists, weekTasks, teamWeekTasks, activeSprints, getListProgress } from "@/lib/data/clickup";
 import { identitiesOf, normalizeName } from "@/lib/projects";
 
 export default async function HomePage() {
@@ -57,12 +57,18 @@ export default async function HomePage() {
   const sprintMeta = Object.fromEntries(
     lists.filter((l) => l.is_sprint).map((l) => [l.list_id, { note: (l.list_content || "").trim(), start: l.list_start, due: l.list_due }])
   );
+  // Avance real de cada proyecto (incluye las cerradas de hace meses, que las
+  // tareas del día a día no traen).
+  const progreso = await getListProgress(
+    lists.filter((l) => l.list_start || l.list_due).map((l) => l.list_id)
+  );
+
   // Sprints y proyectos en curso (fechas + progreso) para Inicio. A cada uno se
   // le cuelga QUIÉN lo trabaja: lo del equipo con Unfiltrade es "Equipo"; un
   // proyecto del estudio lo lleva quien diga su cabecera [colaborador: …].
   const porNombre = new Map();
   for (const e of team) for (const id of identitiesOf(e, e.clickup_group_name)) porNombre.set(id, e);
-  const sprints = activeSprints(lists, tasks).map((s) => ({
+  const sprints = activeSprints(lists, tasks, null, progreso).map((s) => ({
     ...s,
     equipo: !s.esDelEstudio,
     gente: s.esDelEstudio
