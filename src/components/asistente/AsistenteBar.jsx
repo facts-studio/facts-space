@@ -106,7 +106,15 @@ export default function AsistenteBar() {
 
   if (!disponible) return null;
 
-  const plegarTodo = () => { setPanel(null); setCompleta(false); };
+  // Cerrar devuelve la barra a su tamaño de reposo. Que haya conversación no
+  // la mantiene abierta: cerrar es cerrar, y el hilo sigue ahí para cuando
+  // vuelvas a escribir.
+  const plegarTodo = () => {
+    setPanel(null);
+    setCompleta(false);
+    setEnUso(false);
+    taRef.current?.blur();
+  };
   const mandar = (v) => {
     const q = (v ?? texto).trim();
     if (!q || ocupado) return;
@@ -118,10 +126,9 @@ export default function AsistenteBar() {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); mandar(); }
   };
 
-  // Con conversación viva el panel está abierto salvo que lo hayas plegado a
-  // mano: se deriva del estado en vez de sincronizarlo con un efecto.
   const panelVisible = panel;
-  const abierta = enUso || !!panelVisible || mensajes.length > 0;
+  // Ancha solo mientras se usa: con el cursor dentro o con el panel desplegado.
+  const abierta = enUso || Boolean(panelVisible);
   // La cara sigue al estado: concentrado mientras trabaja, triste si algo
   // falló, guiño mientras escribes, y sonriendo el resto del tiempo.
   const ultimo = mensajes[mensajes.length - 1];
