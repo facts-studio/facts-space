@@ -6,7 +6,6 @@ import { fmtRange, fmtDate } from "@/lib/mock";
 import { ABSENCE_TYPES } from "@/lib/absences";
 import { getDocumentUrl } from "@/lib/actions/documents";
 import { isExternal, companyOf } from "@/lib/team";
-import FctitoTokens from "@/components/FctitoTokens";
 
 // `team`: pestañas que solo tienen sentido con relación laboral con el estudio.
 const TABS = [
@@ -15,7 +14,6 @@ const TABS = [
   ["datos", "Datos"],
   ["nominas", "Nóminas", true],
   ["documentos", "Documentos"],
-  ["fctito", "F*ctito"],
 ];
 
 const STATUS = {
@@ -25,7 +23,7 @@ const STATUS = {
   cancelled: ["Cancelada", "bg-surface2 text-muted"],
 };
 
-export default function MiEspacioClient({ me, overview, missingCount, requests = [], documents = [], tokens = [], urlMcp = "" }) {
+export default function MiEspacioClient({ me, overview, missingCount, requests = [], documents = [] }) {
   const externo = isExternal(me);
   const nominas = documents.filter((d) => d.category === "nomina");
   const otros = documents.filter((d) => d.category !== "nomina");
@@ -49,7 +47,6 @@ export default function MiEspacioClient({ me, overview, missingCount, requests =
       {tab === "ausencias" && <Ausencias requests={requests} />}
       {tab === "datos" && <Datos me={me} externo={externo} />}
       {tab === "nominas" && !externo && <DocList title="Nóminas" items={nominas} empty="Aún no hay nóminas publicadas." />}
-      {tab === "fctito" && <FctitoTokens tokens={tokens} url={urlMcp} />}
       {tab === "documentos" && <DocList title="Documentos" items={otros} empty="Aún no hay documentos." />}
     </div>
   );

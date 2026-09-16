@@ -14,6 +14,7 @@ import { getAllDocuments } from "@/lib/data/documents";
 import { getCalendarEvents } from "@/lib/data/calendar";
 import { getConfiguredLists, getClickUpGroups } from "@/lib/data/clickup";
 import { getSlackUsers } from "@/lib/data/slack";
+import { getTokensFctito } from "@/lib/data/tokens-fctito";
 import { madridDateISO } from "@/lib/dates";
 
 export default async function AdminPage() {
@@ -45,6 +46,11 @@ export default async function AdminPage() {
   const clickupLists = await getConfiguredLists();
   const clickupGroups = await getClickUpGroups();
   const slackUsers = await getSlackUsers();
+  const tokensFctito = await getTokensFctito();
+  // La URL que se pega en ChatGPT. En local no sirve —el conector vive en su
+  // nube— pero se enseña la del entorno para no mentir sobre dónde apunta.
+  const dominio = process.env.SHARE_BASE_URL || process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  const urlMcp = `${dominio ? `https://${dominio.replace(/^https?:\/\//, "")}` : process.env.NEXT_PUBLIC_SITE_URL || ""}/api/mcp`;
 
   return (
     <div>
@@ -63,6 +69,8 @@ export default async function AdminPage() {
         clickupLists={clickupLists}
         clickupGroups={clickupGroups}
         slackUsers={slackUsers}
+        tokensFctito={tokensFctito}
+        urlMcp={urlMcp}
         month={month}
         year={year}
       />

@@ -16,6 +16,7 @@ import { evaluateVacation } from "@/lib/vacation-policy";
 import { Avatar, Badge, Button, Field, Input, Select } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import ClickUpSources from "@/components/admin/ClickUpSources";
+import FctitoTokens from "@/components/FctitoTokens";
 import VerComo from "@/components/admin/VerComo";
 
 const TABS = [
@@ -24,9 +25,10 @@ const TABS = [
   ["documentos", "Documentos"],
   ["clickup", "ClickUp"],
   ["informes", "Informes"],
+  ["fctito", "F*ctito"],
 ];
 
-export default function AdminClient({ meId, employees, pending, recent, timeStats, vacUsed, timeHours = {}, documents = [], clickupLists = [], clickupGroups = [], slackUsers = [], events = [], month, year }) {
+export default function AdminClient({ meId, employees, pending, recent, timeStats, vacUsed, timeHours = {}, documents = [], clickupLists = [], clickupGroups = [], slackUsers = [], events = [], tokensFctito = [], urlMcp = "", month, year }) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -69,6 +71,7 @@ export default function AdminClient({ meId, employees, pending, recent, timeStat
       {tab === "equipo" && <Equipo employees={employees} vacUsed={vacUsed} year={year} clickupGroups={clickupGroups} slackUsers={slackUsers} onDone={refresh} />}
       {tab === "documentos" && <Documentos employees={employees} documents={documents} nameById={nameById} month={month} onDone={refresh} />}
       {tab === "clickup" && <ClickUpSources lists={clickupLists} />}
+      {tab === "fctito" && <FctitoTokens tokens={tokensFctito} url={urlMcp} />}
       {tab === "informes" && <Informes employees={employees} vacUsed={vacUsed} timeHours={timeHours} month={month} year={year} />}
     </div>
   );

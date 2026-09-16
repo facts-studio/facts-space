@@ -4,9 +4,9 @@ import { useState, useTransition } from "react";
 import { Surface, Badge, Button, Input } from "@/components/ui";
 import { crearTokenFctito, revocarTokenFctito } from "@/lib/actions/tokens";
 
-// Conectar F*ctito a ChatGPT (o a Claude): un token por persona, que responde
-// con SUS permisos. Vive en Mi espacio porque es una llave personal, no una
-// configuración del estudio.
+// Conectar F*ctito al ChatGPT del estudio. La cuenta es compartida, así que la
+// llave es una sola y la gestiona administración: F*ctito contesta siempre con
+// el alcance de un miembro del equipo, sea quien sea el que pregunte.
 const fecha = (iso) => (iso ? new Date(iso).toLocaleDateString("es-ES", { day: "numeric", month: "short" }) : "—");
 
 export default function FctitoTokens({ tokens = [], url }) {
@@ -31,11 +31,12 @@ export default function FctitoTokens({ tokens = [], url }) {
   return (
     <Surface variant="soft" className="space-y-4">
       <div>
-        <p className="section-eyebrow mb-1">F*ctito fuera del portal</p>
-        <p className="text-small text-muted max-w-[68ch] leading-relaxed">
-          Crea una llave para preguntarle a F*ctito desde ChatGPT o Claude: tus tareas, tus vacaciones, los
-          proyectos que ves y quién está fuera. Responde <span className="text-ink">como tú</span>, con tus
-          permisos — no llega a nóminas, contratos, datos bancarios ni a las ausencias de nadie más.
+        <p className="section-eyebrow mb-1">F*ctito en ChatGPT</p>
+        <p className="text-small text-muted max-w-[70ch] leading-relaxed">
+          Una llave para el ChatGPT del equipo: pueden preguntarle por las tareas de la semana, los proyectos
+          en curso, quién está fuera, los tickets y las políticas — y cambiar el estado de una tarea. Como la
+          cuenta es compartida, contesta <span className="text-ink">a nivel de equipo</span>: nada de nóminas,
+          contratos, datos bancarios, saldos de vacaciones ni proyectos de Adhōc.
         </p>
       </div>
 
@@ -59,7 +60,7 @@ export default function FctitoTokens({ tokens = [], url }) {
       )}
 
       <div className="flex flex-wrap items-end gap-2">
-        <Input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Para qué es" className="min-w-[180px]" />
+        <Input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Para qué es" className="min-w-[200px]" />
         <Button size="sm" onClick={crear} disabled={pending}>{pending ? "Creando…" : "Crear llave"}</Button>
         {msg && <span className="text-micro text-danger">{msg}</span>}
       </div>

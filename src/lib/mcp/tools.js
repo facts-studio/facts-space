@@ -1,21 +1,28 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getClickUpTasks, getVisibleLists, weekTasks, activeSprints, getListProgress, flattenTasks, isMine } from "@/lib/data/clickup";
+import { getClickUpTasks, getVisibleLists, teamWeekTasks, activeSprints, getListProgress, flattenTasks } from "@/lib/data/clickup";
 import { getSlackTickets } from "@/lib/data/slack";
 import { setClickUpTaskStatus } from "@/lib/actions/clickup";
 import { madridDateISO } from "@/lib/dates";
-import { isColaborador, roleOf } from "@/lib/team";
+import { roleOf } from "@/lib/team";
+import { normalizeName } from "@/lib/projects";
+import { POLICIES } from "@/lib/content";
 
-// Herramientas que el equipo puede usar desde fuera (ChatGPT, Claude…).
+// Lo que F*ctito contesta desde fuera (el ChatGPT del equipo).
 //
-// Regla de oro: cada una responde COMO la persona del token. Las lecturas que
-// pasan por getVisibleLists ya heredan su recorte (Adhōc, Management, listas
-// desactivadas); las que van directas a Supabase filtran aquí a mano, porque
-// sin sesión de navegador no hay RLS que las proteja.
+// La cuenta de ChatGPT es COMPARTIDA: no hay forma de saber si quien pregunta
+// es Mariola o Carles. Así que no existe nada "mío" —ni mis tareas ni mis
+// vacaciones—; todo lo que devuelve es información de equipo, la misma que
+// cualquiera vería entrando al portal.
 //
-// Lo que NO se expone, y no es un olvido: nóminas, contratos, datos bancarios,
-// salarios, documentos y las ausencias de los demás. Un token perdido no puede
-// convertirse en una fuga de datos personales del equipo.
+// De ahí salen los límites, que no son un olvido:
+//   · Fuera Adhōc y los proyectos de cliente propio: no son del equipo.
+//   · Fuera las listas de Management y todo lo marcado como solo admin.
+//   · Fuera nóminas, contratos, banco, salarios, documentos y los saldos de
+//     vacaciones de nadie. Quién está fuera y cuándo sí; el resto no.
+//
+// Las lecturas se hacen bajo una identidad sintética de miembro interno (ver
+// la ruta), así que heredan exactamente ese recorte sin repetir la regla.
 
 // Las fechas llegan de dos sitios: las tareas en ms de ClickUp y las listas en
 // ISO desde Supabase. Se aceptan las dos y nunca se lanza por una mala.
@@ -38,13 +45,22 @@ const tarea = (t) => ({
 
 export const HERRAMIENTAS = [
   {
-    name: "mis_tareas",
+    name: "tareas_de_la_semana",
     description:
-      "Las tareas de quien pregunta para esta semana: abiertas con fecha en los próximos 7 días o ya vencidas. Es la respuesta a «¿qué tengo que hacer?».",
-    inputSchema: { type: "object", properties: {} },
-    run: async (_args, me) => {
+      "Lo que tiene el equipo esta semana: tareas abiertas que vencen en los próximos 7 días o que ya están vencidas. Se puede acotar a una persona por su nombre.",
+    inputSchema: {
+      type: "object",
+      properties: { persona: { type: "string", description: "Nombre de pila, p. ej. «Mariola». Sin esto, todo el equipo." } },
+    },
+    run: async ({ persona } = {}) => {
       const tasks = await getClickUpTasks();
-      return { tareas: weekTasks(tasks, me?.email).map(tarea) };
+      const semana = teamWeekTasks(tasks).map(tarea);
+      if (!persona) return { tareas: semana };
+      const q = normalizeName(persona);
+      return {
+        persona,
+        tareas: semana.filter((t) => t.personas.some((n) => normalizeName(n).startsWith(q))),
+      };
     },
   },
   {
@@ -127,30 +143,19 @@ export const HERRAMIENTAS = [
     },
   },
   {
-    name: "mis_vacaciones",
+    name: "como_trabajamos",
     description:
-      "Saldo de vacaciones de quien pregunta y sus solicitudes: cuántos días le quedan este año y en qué estado está cada una. Solo las suyas.",
-    inputSchema: { type: "object", properties: {} },
-    run: async (_args, me) => {
-      const supabase = createAdminClient();
-      if (!supabase || !me) return { error: "No disponible." };
-      const año = madridDateISO().slice(0, 4);
-      const { data } = await supabase
-        .from("vacation_requests")
-        .select("start_date, end_date, working_days, status, type")
-        .eq("employee_id", me.id)
-        .gte("start_date", `${año}-01-01`)
-        .order("start_date");
-      const usados = (data ?? [])
-        .filter((v) => v.status === "approved" && v.type === "vacaciones")
-        .reduce((s, v) => s + Number(v.working_days || 0), 0);
-      const total = Number(me.vacation_allowance || 0) + Number(me.vacation_adjustment || 0);
-      return {
-        dias_totales: total,
-        dias_usados: usados,
-        dias_restantes: total - usados,
-        solicitudes: (data ?? []).map((v) => ({ desde: v.start_date, hasta: v.end_date, dias: v.working_days, tipo: v.type, estado: v.status })),
-      };
+      "Las políticas del estudio: horarios y flexibilidad, vacaciones y festivos, comunicación… Lo que hay escrito sobre cómo se trabaja aquí.",
+    inputSchema: {
+      type: "object",
+      properties: { tema: { type: "string", description: "Filtra por tema, p. ej. «vacaciones». Sin esto, el índice." } },
+    },
+    run: async ({ tema } = {}) => {
+      if (!tema) return { politicas: POLICIES.map((p) => ({ id: p.id, titulo: p.title, resumen: p.summary ?? null })) };
+      const q = normalizeName(tema);
+      const p = POLICIES.find((x) => normalizeName(x.title).includes(q) || normalizeName(x.id).includes(q));
+      if (!p) return { error: `No hay ninguna política sobre «${tema}».` };
+      return { politica: p };
     },
   },
   {
@@ -196,12 +201,4 @@ export const HERRAMIENTAS = [
   },
 ];
 
-// Un colaborador entra solo por sus proyectos: el resto de herramientas hablan
-// del equipo y no le tocan.
-const SOLO_COLABORADOR = new Set(["mis_tareas", "proyectos", "tareas_de_proyecto", "cambiar_estado_tarea"]);
-
-export function herramientasPara(me) {
-  return isColaborador(me) ? HERRAMIENTAS.filter((h) => SOLO_COLABORADOR.has(h.name)) : HERRAMIENTAS;
-}
-
-export { isMine };
+export const herramientasPara = () => HERRAMIENTAS;

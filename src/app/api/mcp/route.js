@@ -10,8 +10,12 @@ import { herramientasPara } from "@/lib/mcp/tools";
 // —initialize, tools/list y tools/call— y escribirlos a mano deja claro qué
 // entra y qué sale, que en algo que expone datos del equipo importa.
 //
-// La identidad viene en el token personal: F*ctito responde COMO esa persona,
-// con sus permisos, no con los de un servicio que lo ve todo.
+// La cuenta de ChatGPT del estudio es compartida, así que aquí no hay "quién
+// pregunta": F*ctito responde SIEMPRE con el alcance de un miembro interno
+// cualquiera. Eso se consigue con una identidad sintética —interna, no admin,
+// sin proyectos de Adhōc adjudicados— bajo la que corren todas las lecturas:
+// heredan el mismo recorte que la pantalla (fuera Management, fuera lo de
+// cliente propio) sin repetir una sola regla.
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -49,19 +53,33 @@ export async function manejar(request, enRuta = null) {
       capabilities: { tools: {} },
       serverInfo: { name: "fctito", title: "F*ctito · Portal de F*cts Studio", version: "1.0.0" },
       instructions:
-        "F*ctito responde con los datos del portal de F*cts Studio como la persona dueña del token: " +
-        "sus tareas, sus vacaciones, los proyectos que puede ver y el equipo. No tiene acceso a nóminas, " +
-        "contratos, datos bancarios ni a las ausencias de otras personas.",
+        "F*ctito contesta con los datos del portal de F*cts Studio a nivel de EQUIPO: tareas de la semana, " +
+        "proyectos y sprints en curso, quién está fuera, el equipo, los tickets de Slack y las políticas del " +
+        "estudio. Puede cambiar el estado de una tarea. No tiene acceso a nóminas, contratos, datos " +
+        "bancarios, saldos de vacaciones ni a los proyectos de clientes propios (Adhōc).",
     });
   }
   // Las notificaciones (sin id) no llevan respuesta.
   if (method === "notifications/initialized") return new NextResponse(null, { status: 202 });
 
-  const me = await empleadoDeToken(tokenDe(request, enRuta));
-  if (!me) return rpcError(id, -32001, "Token no válido o revocado.", 401);
-  if (me.active === false) return rpcError(id, -32001, "Esa cuenta ya no está activa.", 401);
+  const duenyo = await empleadoDeToken(tokenDe(request, enRuta));
+  if (!duenyo) return rpcError(id, -32001, "Token no válido o revocado.", 401);
+  if (duenyo.active === false) return rpcError(id, -32001, "Esa llave ya no está activa.", 401);
 
-  const herramientas = herramientasPara(me);
+  // Miembro del equipo, a secas. No es admin (no ve Management ni el panel) y
+  // no está adjudicado a ningún proyecto de Adhōc, así que esos quedan fuera
+  // por la misma regla que en pantalla, no por una lista de excepciones.
+  const equipo = {
+    id: duenyo.id,
+    name: "Equipo",
+    email: null,
+    is_admin: false,
+    is_external: false,
+    access_role: "interno",
+    active: true,
+  };
+
+  const herramientas = herramientasPara();
 
   if (method === "tools/list") {
     return rpc(id, {
@@ -75,7 +93,7 @@ export async function manejar(request, enRuta = null) {
     try {
       // Todo lo que pase de aquí cree que es esa persona: las lecturas heredan
       // su recorte sin tener que acordarse de filtrar en cada una.
-      const salida = await comoEmpleado(me, () => h.run(params.args ?? params.arguments ?? {}, me));
+      const salida = await comoEmpleado(equipo, () => h.run(params.args ?? params.arguments ?? {}, equipo));
       return rpc(id, { content: [{ type: "text", text: JSON.stringify(salida, null, 1) }] });
     } catch (e) {
       return rpc(id, { isError: true, content: [{ type: "text", text: `No ha podido ser: ${e.message}` }] });

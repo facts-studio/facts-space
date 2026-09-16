@@ -6,17 +6,11 @@ import { getMyRequests } from "@/lib/actions/vacations";
 import { getMyDocuments } from "@/lib/data/documents";
 import { getMissingWorkdays } from "@/lib/data/time";
 import { madridDateISO } from "@/lib/dates";
-import { getMisTokens } from "@/lib/data/mis-tokens";
 import SinAcceso from "@/components/SinAcceso";
 import { isColaborador } from "@/lib/team";
 
 export default async function MiEspacioPage() {
   const me = await getCurrentEmployee();
-  const tokens = await getMisTokens();
-  // La URL que hay que pegar en ChatGPT. En local no sirve de nada —el
-  // conector vive en su nube— pero se enseña igual para no mentir sobre dónde
-  // apunta cada entorno.
-  const urlMcp = `${process.env.SHARE_BASE_URL || process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${(process.env.SHARE_BASE_URL || process.env.VERCEL_PROJECT_PRODUCTION_URL).replace(/^https?:\/\//, "")}` : process.env.NEXT_PUBLIC_SITE_URL || ""}/api/mcp`;
   // Esconder el enlace no cierra la ruta.
   if (isColaborador(me)) {
     return (
@@ -49,15 +43,7 @@ export default async function MiEspacioPage() {
   return (
     <div>
       <ScreenHeader kicker="Personal" title="Mi espacio" />
-      <MiEspacioClient
-        me={me}
-        overview={overview}
-        missingCount={missing.length}
-        requests={requests}
-        documents={documents}
-        tokens={tokens}
-        urlMcp={urlMcp}
-      />
+      <MiEspacioClient me={me} overview={overview} missingCount={missing.length} requests={requests} documents={documents} />
     </div>
   );
 }
