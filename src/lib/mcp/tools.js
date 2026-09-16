@@ -4,7 +4,7 @@ import { getClickUpTasks, getVisibleLists, weekTasks, activeSprints, getListProg
 import { getSlackTickets } from "@/lib/data/slack";
 import { setClickUpTaskStatus } from "@/lib/actions/clickup";
 import { madridDateISO } from "@/lib/dates";
-import { isColaborador } from "@/lib/team";
+import { isColaborador, roleOf } from "@/lib/team";
 
 // Herramientas que el equipo puede usar desde fuera (ChatGPT, Claude…).
 //
@@ -17,7 +17,13 @@ import { isColaborador } from "@/lib/team";
 // salarios, documentos y las ausencias de los demás. Un token perdido no puede
 // convertirse en una fuga de datos personales del equipo.
 
-const dia = (ms) => (ms ? new Date(Number(ms)).toISOString().slice(0, 10) : null);
+// Las fechas llegan de dos sitios: las tareas en ms de ClickUp y las listas en
+// ISO desde Supabase. Se aceptan las dos y nunca se lanza por una mala.
+function dia(v) {
+  if (!v) return null;
+  const d = new Date(typeof v === "number" || /^\d+$/.test(String(v)) ? Number(v) : v);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+}
 
 const tarea = (t) => ({
   id: t.id,
@@ -155,17 +161,17 @@ export const HERRAMIENTAS = [
     run: async () => {
       const supabase = createAdminClient();
       if (!supabase) return { equipo: [] };
-      const { data } = await supabase
-        .from("employees")
-        .select("name, last_name, role, email, access_role, is_external")
-        .eq("active", true)
-        .order("name");
+      const CAMPOS = "name, last_name, role, email, is_external";
+      // access_role llega con la migración 0035; hasta entonces el vínculo se
+      // deduce de is_external, igual que hace roleOf().
+      let { data } = await supabase.from("employees").select(`${CAMPOS}, access_role`).eq("active", true).order("name");
+      if (!data) ({ data } = await supabase.from("employees").select(CAMPOS).eq("active", true).order("name"));
       return {
         equipo: (data ?? []).map((e) => ({
           nombre: [e.name, e.last_name].filter(Boolean).join(" "),
           puesto: e.role || null,
           email: e.email,
-          vinculo: e.access_role || (e.is_external ? "externo" : "interno"),
+          vinculo: roleOf(e),
         })),
       };
     },

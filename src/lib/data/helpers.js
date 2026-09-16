@@ -12,6 +12,12 @@ export function comoEmpleado(empleado, fn) {
   return identidad.run(empleado, fn);
 }
 
+// ¿Estamos sirviendo una petición con token (MCP) en vez de una del navegador?
+// Lo consultan las lecturas de configuración: sin cookie de sesión, la RLS las
+// deja vacías y hay que leerlas con service-role. El recorte por persona se
+// sigue aplicando después, en código.
+export const conIdentidadImpuesta = () => Boolean(identidad.getStore());
+
 // ¿Hay un Supabase real configurado? En modo preview o con el placeholder
 // seguimos sirviendo el mock para no romper el desarrollo local.
 export function isConfigured() {

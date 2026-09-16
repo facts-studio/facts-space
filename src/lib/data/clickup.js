@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import { isConfigured, getCurrentEmployee } from "./helpers";
+import { isConfigured, getCurrentEmployee, conIdentidadImpuesta } from "./helpers";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { isColaborador } from "@/lib/team";
 import {
   isFactsSpace,
@@ -40,10 +41,19 @@ function assigneesFromField(t) {
 // Plantilla real indexada por su grupo de ClickUp y por nombre de pila. Es lo
 // que permite poner cara y email a una asignación por grupo: en ClickUp casi
 // nadie tiene usuario propio, se asigna al grupo "Equipo:Nombre".
+// Cliente para leer CONFIGURACIÓN (listas de ClickUp, directorio del equipo).
+// Con una petición del navegador manda la RLS; con token no hay sesión, así
+// que se lee con service-role y el recorte por persona lo aplica después
+// listsFor(). Nunca se usa para datos personales: esos van tabla a tabla.
+async function clienteConfig() {
+  return conIdentidadImpuesta() ? createAdminClient() : await createClient();
+}
+
 async function directorioPorGrupo() {
   if (!isConfigured()) return { porId: new Map(), porNombre: new Map() };
   try {
-    const supabase = await createClient();
+    const supabase = await clienteConfig();
+    if (!supabase) return { porId: new Map(), porNombre: new Map() };
     const { data } = await supabase
       .from("employees")
       .select("name, last_name, email, photo, clickup_group_id")
@@ -272,7 +282,8 @@ const authOpts = () => ({
 export async function getConfiguredLists() {
   if (!isConfigured()) return [];
   try {
-    const supabase = await createClient();
+    const supabase = await clienteConfig();
+    if (!supabase) return [];
     const { data, error } = await supabase
       .from("clickup_lists")
       .select("*")
