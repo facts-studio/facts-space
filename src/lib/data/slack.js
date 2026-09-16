@@ -48,6 +48,7 @@ const ROLES = {
   assignee: ["responsable", "asignado"],
   author: ["enviado por", "solicitante"],
   channel: ["canal"],
+  due: ["fecha de entrega", "entrega"],
   blocked: ["motivo de bloqueado", "motivo"],
 };
 
@@ -157,6 +158,9 @@ export async function getSlackTickets() {
         channel: channelId,
         list: labels[channelId] ?? null,
         createdAt: it.date_created ? Number(it.date_created) * 1000 : null,
+        // Para cuándo se pide. Es un campo OPCIONAL de la lista, así que llega
+        // vacío a menudo: se devuelve null y lo cuenta quien lo pinte.
+        dueDate: cell(it, "due")?.date?.[0] ?? null,
         // Última modificación del item. Slack no guarda cuándo se cerró un
         // ticket, así que para "esto se cerró la semana pasada" es lo más
         // cerca que se puede estar: un ticket en Listo casi siempre se tocó

@@ -16,23 +16,27 @@ const TONES = {
 };
 const toneOf = (s) => TONES[statusKey(s)] ?? { dot: "bg-mutedSoft", kind: "neutral" };
 
-// "17 h" / "26 d" — la antigüedad de un ticket sin dueño es la señal que importa.
-function age(ts, now) {
-  if (!ts) return null;
-  const h = Math.floor((now - ts) / 3600000);
-  const d = Math.floor(h / 24);
-  return {
-    text: h < 1 ? "recién llegado" : h < 24 ? `hace ${h} h` : `hace ${d} ${d === 1 ? "día" : "días"}`,
-    // Un ticket lleva demasiado tiempo esperando: se dice en rojo, no en gris.
-    stale: d >= 5,
-  };
+// Para cuándo se pide. Es lo que de verdad hay que mirar: cuándo llegó el
+// ticket no cambia nada, la fecha a la que se ha comprometido sí.
+//
+// El campo es OPCIONAL en la lista de Slack, y la mayoría llega vacío: se dice
+// «Sin fecha» en vez de inventar nada ni dejar el hueco mudo.
+function entrega(iso, now) {
+  if (!iso) return { text: "Sin fecha", tone: "text-mutedSoft/70" };
+  const dia = new Date(`${iso}T00:00:00`);
+  const dias = Math.round((dia - new Date(new Date(now).setHours(0, 0, 0, 0))) / 86400000);
+  const corto = dia.toLocaleDateString("es-ES", { day: "numeric", month: "short" }).replace(".", "");
+  if (dias < 0) return { text: `venció el ${corto}`, tone: "text-danger" };
+  if (dias === 0) return { text: "hoy", tone: "text-warn" };
+  if (dias === 1) return { text: "mañana", tone: "text-warn" };
+  return { text: `el ${corto}`, tone: dias <= 3 ? "text-warn" : "text-mutedSoft" };
 }
 
 function Ticket({ t, now, meSlackId }) {
   const tone = toneOf(t.status);
   const libre = isUnassigned(t);
   const mio = Boolean(meSlackId) && t.assigneeId === meSlackId;
-  const edad = age(t.createdAt, now);
+  const plazo = entrega(t.dueDate, now);
   return (
     <Surface
       as="a"
@@ -60,11 +64,7 @@ function Ticket({ t, now, meSlackId }) {
           <span className="text-muted truncate">{t.assignee}</span>
         )}
         {t.author && <span className="text-mutedSoft truncate">de {t.author}</span>}
-        {edad && (
-          <span className={cn("ml-auto shrink-0 tabular-nums", edad.stale && libre ? "text-danger" : "text-mutedSoft")}>
-            {edad.text}
-          </span>
-        )}
+        <span className={cn("ml-auto shrink-0 tabular-nums", plazo.tone)}>{plazo.text}</span>
       </div>
     </Surface>
   );
