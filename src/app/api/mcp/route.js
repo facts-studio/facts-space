@@ -22,13 +22,17 @@ const rpc = (id, result) => NextResponse.json({ jsonrpc: "2.0", id, result });
 const rpcError = (id, code, message, status = 200) =>
   NextResponse.json({ jsonrpc: "2.0", id, error: { code, message } }, { status });
 
-function tokenDe(request) {
+function tokenDe(request, enRuta) {
+  if (enRuta) return enRuta;
   const auth = request.headers.get("authorization") || "";
   if (auth.toLowerCase().startsWith("bearer ")) return auth.slice(7).trim();
   return request.headers.get("x-fctito-token") || null;
 }
 
-export async function POST(request) {
+// El handler es común: el token puede venir en la cabecera (Claude y cualquier
+// cliente decente) o en la propia URL (ChatGPT, que en sus conectores solo
+// ofrece OAuth o nada — ver src/app/api/mcp/[token]/route.js).
+export async function manejar(request, enRuta = null) {
   let cuerpo;
   try {
     cuerpo = await request.json();
@@ -53,7 +57,7 @@ export async function POST(request) {
   // Las notificaciones (sin id) no llevan respuesta.
   if (method === "notifications/initialized") return new NextResponse(null, { status: 202 });
 
-  const me = await empleadoDeToken(tokenDe(request));
+  const me = await empleadoDeToken(tokenDe(request, enRuta));
   if (!me) return rpcError(id, -32001, "Token no válido o revocado.", 401);
   if (me.active === false) return rpcError(id, -32001, "Esa cuenta ya no está activa.", 401);
 
@@ -79,6 +83,10 @@ export async function POST(request) {
   }
 
   return rpcError(id, -32601, `Método no soportado: ${method}`);
+}
+
+export async function POST(request) {
+  return manejar(request);
 }
 
 // Un GET a mano (o el navegador) no debe parecer un error de servidor.

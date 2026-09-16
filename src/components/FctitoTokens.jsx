@@ -46,13 +46,14 @@ export default function FctitoTokens({ tokens = [], url }) {
           </p>
           <input
             readOnly
-            value={nuevo}
+            value={`${url}/${nuevo}`}
             onFocus={(e) => e.target.select()}
             className="w-full h-9 rounded-lg bg-surface border border-border px-2.5 text-[12.5px] text-ink outline-none font-mono"
           />
           <p className="text-micro text-mutedSoft mt-2 leading-relaxed">
-            En ChatGPT: Ajustes → Conectores → añadir uno nuevo con la URL <span className="text-ink">{url}</span> y
-            esta llave como token.
+            En ChatGPT: Ajustes → Aplicaciones → Avanzado → activa el modo desarrollador, y crea un conector
+            pegando esa URL con <span className="text-ink">«sin autenticación»</span>. La llave va dentro de la
+            dirección, así que trátala como una contraseña: quien la tenga entra como tú.
           </p>
         </div>
       )}
