@@ -2,6 +2,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getClickUpTasks, getVisibleLists, teamWeekTasks, activeSprints, getListProgress, flattenTasks } from "@/lib/data/clickup";
 import { getSlackTickets } from "@/lib/data/slack";
+import { getMeetings, getMeeting, getMeetingFolders } from "@/lib/data/granola";
 import { setClickUpTaskStatus } from "@/lib/actions/clickup";
 import { madridDateISO } from "@/lib/dates";
 import { roleOf } from "@/lib/team";
@@ -20,6 +21,8 @@ import { POLICIES } from "@/lib/content";
 //   · Fuera las listas de Management y todo lo marcado como solo admin.
 //   · Fuera nóminas, contratos, banco, salarios, documentos y los saldos de
 //     vacaciones de nadie. Quién está fuera y cuándo sí; el resto no.
+//   · De las reuniones, solo las carpetas de Granola en la lista blanca, y de
+//     cada una el resumen: ni transcripción ni notas privadas.
 //
 // Las lecturas se hacen bajo una identidad sintética de miembro interno (ver
 // la ruta), así que heredan exactamente ese recorte sin repetir la regla.
@@ -197,6 +200,43 @@ export const HERRAMIENTAS = [
           url: t.url,
         })),
       };
+    },
+  },
+  {
+    name: "reuniones",
+    description:
+      "Reuniones del equipo con notas en Granola (status, plannings, kickoffs), de la más reciente a la más antigua. Devuelve título, fecha y carpeta; para leer lo que se dijo hay que pedir la reunión por su id con «reunion». Solo se ven las carpetas de equipo, no las reuniones privadas.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        carpeta: { type: "string", description: "Acota a una carpeta, p. ej. «Creative Team / Status». Sin esto, todas las de equipo." },
+        desde: { type: "string", description: "Fecha ISO (AAAA-MM-DD): solo reuniones de ese día en adelante." },
+        limite: { type: "number", description: "Cuántas devolver, 20 por defecto y 50 como mucho." },
+      },
+    },
+    run: async ({ carpeta, desde, limite } = {}) => {
+      const [reuniones, carpetas] = await Promise.all([
+        getMeetings({ carpeta, desde, limite }),
+        getMeetingFolders(),
+      ]);
+      return { reuniones, carpetas: carpetas.map((c) => c.ruta) };
+    },
+  },
+  {
+    name: "reunion",
+    description:
+      "El resumen de una reunión concreta por su id (el que devuelve «reuniones»): qué se habló, qué se decidió y quién estaba. No incluye la transcripción ni las notas privadas de nadie.",
+    inputSchema: {
+      type: "object",
+      properties: { id: { type: "string", description: "Id de la reunión, p. ej. «not_3gEAVvXkV1xuCT»." } },
+      required: ["id"],
+    },
+    run: async ({ id } = {}) => {
+      const r = await getMeeting(id);
+      // Sin encontrarla no se distingue "no existe" de "no es de equipo", y así
+      // debe ser: decir cuál de las dos ya sería contar algo de la otra.
+      if (!r) return { error: "No hay ninguna reunión de equipo con ese id." };
+      return { reunion: r };
     },
   },
 ];
