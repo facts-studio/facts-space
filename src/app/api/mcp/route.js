@@ -3,7 +3,7 @@ import { empleadoDeToken } from "@/lib/data/tokens";
 import { comoEmpleado } from "@/lib/data/helpers";
 import { herramientasPara } from "@/lib/mcp/tools";
 
-// F*ctito como MCP: el portal, contestando desde ChatGPT o Claude.
+// F*cts Space como MCP: el portal, contestando desde ChatGPT o Claude.
 //
 // Se habla JSON-RPC 2.0 sobre HTTP (transporte "streamable"), que es lo que
 // entienden los conectores remotos. No hace falta el SDK: son tres métodos
@@ -11,7 +11,7 @@ import { herramientasPara } from "@/lib/mcp/tools";
 // entra y qué sale, que en algo que expone datos del equipo importa.
 //
 // La cuenta de ChatGPT del estudio es compartida, así que aquí no hay "quién
-// pregunta": F*ctito responde SIEMPRE con el alcance de un miembro interno
+// pregunta": se responde SIEMPRE con el alcance de un miembro interno
 // cualquiera. Eso se consigue con una identidad sintética —interna, no admin,
 // sin proyectos de Adhōc adjudicados— bajo la que corren todas las lecturas:
 // heredan el mismo recorte que la pantalla (fuera Management, fuera lo de
@@ -30,7 +30,9 @@ function tokenDe(request, enRuta) {
   if (enRuta) return enRuta;
   const auth = request.headers.get("authorization") || "";
   if (auth.toLowerCase().startsWith("bearer ")) return auth.slice(7).trim();
-  return request.headers.get("x-fctito-token") || null;
+  // La cabecera propia mantiene el nombre viejo por si quedara algún cliente
+  // configurado con ella; la nueva es la que se documenta.
+  return request.headers.get("x-facts-token") || request.headers.get("x-fctito-token") || null;
 }
 
 // El handler es común: el token puede venir en la cabecera (Claude y cualquier
@@ -51,9 +53,9 @@ export async function manejar(request, enRuta = null) {
     return rpc(id, {
       protocolVersion: VERSION_PROTOCOLO,
       capabilities: { tools: {} },
-      serverInfo: { name: "fctito", title: "F*ctito · Portal de F*cts Studio", version: "1.0.0" },
+      serverInfo: { name: "facts-space", title: "F*cts Space", version: "1.0.0" },
       instructions:
-        "F*ctito contesta con los datos del portal de F*cts Studio a nivel de EQUIPO: tareas de la semana, " +
+        "F*cts Space es el portal interno de F*cts Studio. Contesta con sus datos a nivel de EQUIPO: tareas de la semana, " +
         "proyectos y sprints en curso, quién está fuera, el equipo, los tickets de Slack y las políticas del " +
         "estudio. Puede cambiar el estado de una tarea. No tiene acceso a nóminas, contratos, datos " +
         "bancarios, saldos de vacaciones ni a los proyectos de clientes propios (Adhōc).",
@@ -89,7 +91,7 @@ export async function manejar(request, enRuta = null) {
 
   if (method === "tools/call") {
     const h = herramientas.find((x) => x.name === params?.name);
-    if (!h) return rpcError(id, -32602, `F*ctito no tiene la herramienta «${params?.name}».`);
+    if (!h) return rpcError(id, -32602, `F*cts Space no tiene la herramienta «${params?.name}».`);
     try {
       // Todo lo que pase de aquí cree que es esa persona: las lecturas heredan
       // su recorte sin tener que acordarse de filtrar en cada una.
@@ -110,7 +112,7 @@ export async function POST(request) {
 // Un GET a mano (o el navegador) no debe parecer un error de servidor.
 export async function GET() {
   return NextResponse.json({
-    nombre: "F*ctito",
+    nombre: "F*cts Space",
     descripcion: "Servidor MCP del portal de F*cts Studio. Habla JSON-RPC por POST con un token personal.",
     protocolo: VERSION_PROTOCOLO,
   });

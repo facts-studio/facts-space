@@ -9,7 +9,7 @@ import { roleOf } from "@/lib/team";
 import { normalizeName } from "@/lib/projects";
 import { POLICIES } from "@/lib/content";
 
-// Lo que F*ctito contesta desde fuera (el ChatGPT del equipo).
+// Lo que el portal contesta desde fuera (el ChatGPT del equipo).
 //
 // La cuenta de ChatGPT es COMPARTIDA: no hay forma de saber si quien pregunta
 // es Mariola o Carles. Así que no existe nada "mío" —ni mis tareas ni mis

@@ -19,7 +19,7 @@ export async function POST(request, { params }) {
 
 export async function GET() {
   return NextResponse.json({
-    nombre: "F*ctito",
+    nombre: "F*cts Space",
     descripcion: "Pega esta URL completa en el conector de ChatGPT, con «sin autenticación».",
   });
 }
