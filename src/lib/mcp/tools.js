@@ -2,7 +2,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getClickUpTasks, getVisibleLists, teamWeekTasks, activeSprints, getListProgress, flattenTasks } from "@/lib/data/clickup";
 import { getSlackTickets } from "@/lib/data/slack";
-import { getMeetings, getMeeting, getMeetingFolders } from "@/lib/data/granola";
+import { getMeetings, getMeeting, getMeetingFolders, isGranolaConfigured } from "@/lib/data/granola";
 import { setClickUpTaskStatus } from "@/lib/actions/clickup";
 import { madridDateISO } from "@/lib/dates";
 import { roleOf } from "@/lib/team";
@@ -215,10 +215,19 @@ export const HERRAMIENTAS = [
       },
     },
     run: async ({ carpeta, desde, limite } = {}) => {
+      // Sin clave, la lista vacía se leería como "no hay reuniones", que es
+      // mentira y además esconde el fallo: quien pregunta se va convencido de
+      // que no existe el status. Mejor decir que esto no está conectado.
+      if (!isGranolaConfigured()) {
+        return { error: "Las reuniones no están disponibles: falta configurar el acceso a Granola en este entorno." };
+      }
       const [reuniones, carpetas] = await Promise.all([
         getMeetings({ carpeta, desde, limite }),
         getMeetingFolders(),
       ]);
+      if (!carpetas.length) {
+        return { error: "No hay ninguna carpeta de reuniones habilitada. Revisa GRANOLA_FOLDERS." };
+      }
       return { reuniones, carpetas: carpetas.map((c) => c.ruta) };
     },
   },
@@ -232,6 +241,9 @@ export const HERRAMIENTAS = [
       required: ["id"],
     },
     run: async ({ id } = {}) => {
+      if (!isGranolaConfigured()) {
+        return { error: "Las reuniones no están disponibles: falta configurar el acceso a Granola en este entorno." };
+      }
       const r = await getMeeting(id);
       // Sin encontrarla no se distingue "no existe" de "no es de equipo", y así
       // debe ser: decir cuál de las dos ya sería contar algo de la otra.
