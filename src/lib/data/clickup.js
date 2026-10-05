@@ -405,6 +405,9 @@ export async function getClickUpTasks() {
     // El endpoint de tareas NO trae el nombre del Space (solo el id): lo
     // resolvemos desde clickup_lists para poder agrupar los clientes por rama.
     const spaceNameById = new Map(configured.filter((l) => l.space_id).map((l) => [String(l.space_id), l.space_name]));
+    // La tarea trae su carpeta INMEDIATA, que con subcarpetas ya no es el
+    // cliente ("Sprints"). La lista sincronizada sí lo sabe (ver getClickUpHierarchy).
+    const clientByList = new Map(configured.filter((l) => l.folder_name).map((l) => [String(l.list_id), l.folder_name]));
 
     if (visibleIds.length) {
       const raw = [];
@@ -440,6 +443,7 @@ export async function getClickUpTasks() {
         const m = mapTask(t, dir);
         m.sprint = sprintByList.get(m.listId) ?? null;
         m.space = spaceNameById.get(String(t.space?.id)) ?? m.space; // rama resuelta
+        if (!clientFromTags(t)) m.project = clientByList.get(String(m.listId)) ?? m.project;
         out.push(m);
       }
       // Subtareas → pliega sus asignados en la tarea padre y devuelve top-level.
@@ -683,7 +687,22 @@ export async function getClickUpHierarchy() {
     const { lists = [] } = await get(`space/${space.id}/list`); // listas sueltas del space
     for (const l of lists) push(l, null, space, statuses, sort++);
     const { folders = [] } = await get(`space/${space.id}/folder`);
-    for (const folder of folders) for (const l of folder.lists ?? []) push(l, folder, space, statuses, sort++);
+    // ClickUp ya permite subcarpetas (TradingLab › Sprints › Black Friday), pero
+    // la API las devuelve TODAS al mismo nivel: "Sprints" llega suelta y solo
+    // `parent_folder` dice de quién cuelga. Aquí la carpeta es el cliente, así
+    // que se sube por la cadena hasta la de arriba del todo: sin esto, los
+    // sprints de TradingLab pasarían a ser de un cliente llamado "Sprints".
+    const porId = new Map(folders.map((f) => [String(f.id), f]));
+    const raiz = (f) => {
+      let cur = f;
+      const vistos = new Set([String(cur.id)]);
+      while (cur.parent_folder && porId.has(String(cur.parent_folder)) && !vistos.has(String(cur.parent_folder))) {
+        cur = porId.get(String(cur.parent_folder));
+        vistos.add(String(cur.id));
+      }
+      return cur;
+    };
+    for (const folder of folders) for (const l of folder.lists ?? []) push(l, raiz(folder), space, statuses, sort++);
   }
   return rows;
 }
